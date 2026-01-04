@@ -172,7 +172,8 @@ export default function HelperScanner() {
             <div>
               <p className="font-semibold text-surface-900 text-lg">{scannedProduct.name}</p>
               <p className="text-sm text-surface-500">Kod: {scannedProduct.code}</p>
-              <p className="text-brand-600 font-bold mt-1">{scannedProduct.price.toLocaleString()} so'm</p>
+              <p className="text-sm text-surface-500">Tan narxi: {((scannedProduct as any).costPrice || 0).toLocaleString()} so'm</p>
+              <p className="text-brand-600 font-bold mt-1">Optom: {scannedProduct.price.toLocaleString()} so'm</p>
             </div>
             <button onClick={() => addToCart(scannedProduct)} className="btn-success">
               <Plus className="w-4 h-4" />
@@ -202,7 +203,8 @@ export default function HelperScanner() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-brand-600">{product.price.toLocaleString()}</p>
+                  <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
+                  <p className="font-bold text-brand-600">Optom: {product.price.toLocaleString()}</p>
                   <p className="text-xs text-surface-400">{product.quantity} dona</p>
                 </div>
               </button>

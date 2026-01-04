@@ -68,7 +68,7 @@ router.get('/next-code', auth, async (req, res) => {
         nextNum = parseInt(match[1]) + 1;
       }
     }
-    res.json({ code: String(nextNum).padStart(6, '0') });
+    res.json({ code: String(nextNum) });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -130,7 +130,7 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { warehouse, code, ...rest } = req.body;
+    const { warehouse, code, packageInfo, ...rest } = req.body;
     
     // Auto-generate code if not provided
     let productCode = code;
@@ -143,7 +143,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
           nextNum = parseInt(match[1]) + 1;
         }
       }
-      productCode = String(nextNum).padStart(6, '0');
+      productCode = String(nextNum);
     }
     
     // Check if code already exists
@@ -161,13 +161,21 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
       }
     }
     
-    const product = new Product({ 
+    // Prepare product data
+    const productData = { 
       ...rest, 
       code: productCode,
       warehouse,
       isMainWarehouse,
       createdBy: req.user._id 
-    });
+    };
+    
+    // Add package information if provided
+    if (packageInfo) {
+      productData.packages = [packageInfo];
+    }
+    
+    const product = new Product(productData);
     await product.save();
     res.status(201).json(product);
   } catch (error) {
@@ -177,7 +185,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { warehouse, code, ...rest } = req.body;
+    const { warehouse, code, packageInfo, ...rest } = req.body;
     
     // Check if code already exists (excluding current product)
     if (code) {
@@ -196,9 +204,20 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
       }
     }
     
+    // Prepare update data
+    const updateData = { ...rest, code, warehouse, isMainWarehouse };
+    
+    // Add package information if provided
+    if (packageInfo) {
+      const product = await Product.findById(req.params.id);
+      if (product) {
+        updateData.packages = [...(product.packages || []), packageInfo];
+      }
+    }
+    
     const product = await Product.findByIdAndUpdate(
       req.params.id, 
-      { ...rest, code, warehouse, isMainWarehouse }, 
+      updateData, 
       { new: true }
     );
     if (!product) return res.status(404).json({ message: 'Tovar topilmadi' });

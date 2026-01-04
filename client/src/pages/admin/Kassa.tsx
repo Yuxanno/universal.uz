@@ -477,7 +477,10 @@ export default function Kassa() {
                     <p className="font-medium text-surface-900">{product.name}</p>
                     <p className="text-sm text-surface-500">Kod: {product.code}</p>
                   </div>
-                  <p className="font-semibold text-brand-600">{product.price.toLocaleString()}</p>
+                  <div className="text-right">
+                    <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
+                    <p className="font-semibold text-brand-600">Optom: {product.price.toLocaleString()}</p>
+                  </div>
                 </button>
               ))}
               {searchQuery && searchResults.length === 0 && (
@@ -562,7 +565,10 @@ export default function Kassa() {
                     <p className="font-medium text-surface-900">{product.name}</p>
                     <p className="text-sm text-surface-500">Kod: {product.code}</p>
                   </div>
-                  <p className="font-semibold text-warning-600">{product.price.toLocaleString()}</p>
+                  <div className="text-right">
+                    <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
+                    <p className="font-semibold text-warning-600">Optom: {product.price.toLocaleString()}</p>
+                  </div>
                 </button>
               ))}
               {returnSearchQuery && searchResults.length === 0 && (

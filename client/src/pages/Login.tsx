@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Phone, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 // Format phone number as +998 (XX) XXX-XX-XX
 const formatPhone = (value: string): string => {
@@ -31,14 +31,12 @@ const getRawPhone = (formatted: string): string => {
 };
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,11 +50,7 @@ export default function Login() {
     setLoading(true);
     try {
       const rawPhone = getRawPhone(phone);
-      if (isLogin) {
-        await login(rawPhone, password);
-      } else {
-        await register(name, rawPhone, password);
-      }
+      await login(rawPhone, password);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xatolik yuz berdi');
@@ -82,24 +76,7 @@ export default function Login() {
         </div>
 
         <div className="card-glass p-8 animate-fade-up">
-          <div className="flex p-1 bg-surface-100 rounded-xl mb-8">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-                isLogin ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              Kirish
-            </button>
-            <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-                !isLogin ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              Ro'yxatdan o'tish
-            </button>
-          </div>
+          <h2 className="text-xl font-semibold text-surface-900 text-center mb-6">Tizimga kirish</h2>
 
           {error && (
             <div className="alert-danger mb-6 animate-fade-in">
@@ -111,23 +88,6 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
-              <div className="space-y-2 animate-fade-up">
-                <label className="text-sm font-medium text-surface-700">Ismingiz</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
-                  <input
-                    type="text"
-                    placeholder="Ismingizni kiriting"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="input pl-12"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="space-y-2">
               <label className="text-sm font-medium text-surface-700">Telefon raqam</label>
               <div className="relative">
@@ -170,19 +130,17 @@ export default function Login() {
                 <div className="spinner" />
               ) : (
                 <>
-                  <span>{isLogin ? 'Kirish' : "Ro'yxatdan o'tish"}</span>
+                  <span>Kirish</span>
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </>
               )}
             </button>
           </form>
 
-          {isLogin && (
-            <p className="text-center text-sm text-surface-500 mt-6">
-              Parolni unutdingizmi?{' '}
-              <button className="text-brand-600 hover:text-brand-700 font-medium">Tiklash</button>
-            </p>
-          )}
+          <p className="text-center text-sm text-surface-500 mt-6">
+            Parolni unutdingizmi?{' '}
+            <button className="text-brand-600 hover:text-brand-700 font-medium">Tiklash</button>
+          </p>
         </div>
 
         <p className="text-center text-sm text-surface-400 mt-6 animate-fade-up">

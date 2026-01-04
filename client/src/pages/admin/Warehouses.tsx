@@ -23,7 +23,11 @@ export default function Warehouses() {
   const [productFormData, setProductFormData] = useState({
     code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''
   });
+  const [packageData, setPackageData] = useState({
+    packageCount: '', unitsPerPackage: '', totalCost: ''
+  });
   const [codeError, setCodeError] = useState('');
+  const [showPackageInput, setShowPackageInput] = useState(false);
 
   useEffect(() => { fetchWarehouses(); }, []);
 
@@ -66,14 +70,36 @@ export default function Warehouses() {
       alert(codeError);
       return;
     }
+    
+    let finalQuantity = Number(productFormData.quantity);
+    let finalCostPrice = Number(productFormData.costPrice);
+    let packageInfo = null;
+    
+    // If package data is provided, calculate totals
+    if (showPackageInput && packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost) {
+      const totalUnits = Number(packageData.packageCount) * Number(packageData.unitsPerPackage);
+      const costPerUnit = Number(packageData.totalCost) / totalUnits;
+      
+      finalQuantity = editingProduct ? Number(productFormData.quantity) + totalUnits : totalUnits;
+      finalCostPrice = costPerUnit;
+      
+      packageInfo = {
+        packageCount: Number(packageData.packageCount),
+        unitsPerPackage: Number(packageData.unitsPerPackage),
+        totalCost: Number(packageData.totalCost),
+        costPerUnit: costPerUnit
+      };
+    }
+    
     try {
       const data = {
         code: productFormData.code,
         name: productFormData.name,
-        costPrice: Number(productFormData.costPrice),
+        costPrice: finalCostPrice,
         price: Number(productFormData.wholesalePrice),
-        quantity: Number(productFormData.quantity),
-        warehouse: selectedWarehouse._id
+        quantity: finalQuantity,
+        warehouse: selectedWarehouse._id,
+        packageInfo
       };
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, data);
@@ -146,7 +172,9 @@ export default function Warehouses() {
     setShowAddProductModal(false);
     setEditingProduct(null);
     setProductFormData({ code: '', name: '', costPrice: '', wholesalePrice: '', quantity: '' });
+    setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setCodeError('');
+    setShowPackageInput(false);
   };
 
   const openAddProductModal = async () => {
@@ -156,7 +184,9 @@ export default function Warehouses() {
     } catch (err) {
       console.error('Error getting next code:', err);
     }
+    setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setCodeError('');
+    setShowPackageInput(false);
     setShowAddProductModal(true);
   };
 
@@ -367,7 +397,8 @@ export default function Warehouses() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="font-semibold text-surface-900">{product.price.toLocaleString()} so'm</p>
+                          <p className="text-sm text-surface-500">Tan narxi: {((product as any).costPrice || 0).toLocaleString()} so'm</p>
+                          <p className="font-semibold text-surface-900">Optom: {product.price.toLocaleString()} so'm</p>
                           <p className={`text-sm ${product.quantity === 0 ? 'text-danger-600' : 'text-surface-500'}`}>
                             {product.quantity} dona
                           </p>
@@ -414,7 +445,7 @@ export default function Warehouses() {
                   <input 
                     type="text" 
                     className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
-                    placeholder="000001" 
+                    placeholder="1" 
                     value={productFormData.code}
                     onChange={e => setProductFormData({...productFormData, code: e.target.value})}
                     onBlur={e => checkCodeExists(e.target.value)}
@@ -445,6 +476,77 @@ export default function Warehouses() {
                     onChange={e => setProductFormData({...productFormData, wholesalePrice: e.target.value})} required />
                 </div>
               </div>
+              
+              {/* Package Information Section */}
+              <div className="border-t border-surface-200 pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-sm font-medium text-surface-700">Qop ma'lumotlari</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPackageInput(!showPackageInput)}
+                    className={`text-sm px-3 py-1 rounded-lg ${showPackageInput ? 'bg-brand-100 text-brand-600' : 'bg-surface-100 text-surface-600'}`}
+                  >
+                    {showPackageInput ? 'Yashirish' : 'Qo\'shish'}
+                  </button>
+                </div>
+                
+                {showPackageInput && (
+                  <div className="space-y-3 bg-surface-50 p-4 rounded-xl">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Qoplar soni</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="5"
+                          value={packageData.packageCount}
+                          onChange={e => setPackageData({...packageData, packageCount: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Har qopda</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="20"
+                          value={packageData.unitsPerPackage}
+                          onChange={e => setPackageData({...packageData, unitsPerPackage: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Jami narxi</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="100000"
+                          value={packageData.totalCost}
+                          onChange={e => setPackageData({...packageData, totalCost: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    {packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost && (
+                      <div className="bg-white p-3 rounded-lg border border-surface-200">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-surface-500">Jami miqdor:</span>
+                            <span className="font-semibold text-surface-900 ml-2">
+                              {Number(packageData.packageCount) * Number(packageData.unitsPerPackage)} dona
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-surface-500">Bir dona narxi:</span>
+                            <span className="font-semibold text-surface-900 ml-2">
+                              {(Number(packageData.totalCost) / (Number(packageData.packageCount) * Number(packageData.unitsPerPackage))).toLocaleString()} so'm
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeAddProductModal} className="btn-secondary flex-1">Bekor qilish</button>
                 <button type="submit" className="btn-primary flex-1" disabled={!!codeError}>Saqlash</button>
@@ -480,7 +582,8 @@ export default function Warehouses() {
               <div className="text-center mb-4">
                 <p className="font-semibold text-surface-900">{qrProduct.name}</p>
                 <p className="text-sm text-surface-500">Kod: {qrProduct.code}</p>
-                <p className="text-sm text-surface-500">{qrProduct.price.toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Tan narxi: {((qrProduct as any).costPrice || 0).toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Optom: {qrProduct.price.toLocaleString()} so'm</p>
               </div>
               <button onClick={downloadQR} className="btn-primary w-full">
                 <Download className="w-4 h-4" />

@@ -5,7 +5,7 @@ import { Product, Warehouse } from '../../types';
 import api from '../../utils/api';
 import { QRCodeSVG } from 'qrcode.react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -21,8 +21,12 @@ export default function Products() {
   const [formData, setFormData] = useState({
     code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''
   });
+  const [packageData, setPackageData] = useState({
+    packageCount: '', unitsPerPackage: '', totalCost: ''
+  });
   const [images, setImages] = useState<string[]>([]);
   const [codeError, setCodeError] = useState('');
+  const [showPackageInput, setShowPackageInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -106,15 +110,37 @@ export default function Products() {
       alert(codeError);
       return;
     }
+    
+    let finalQuantity = Number(formData.quantity);
+    let finalCostPrice = Number(formData.costPrice);
+    let packageInfo = null;
+    
+    // If package data is provided, calculate totals
+    if (showPackageInput && packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost) {
+      const totalUnits = Number(packageData.packageCount) * Number(packageData.unitsPerPackage);
+      const costPerUnit = Number(packageData.totalCost) / totalUnits;
+      
+      finalQuantity = editingProduct ? Number(formData.quantity) + totalUnits : totalUnits;
+      finalCostPrice = costPerUnit;
+      
+      packageInfo = {
+        packageCount: Number(packageData.packageCount),
+        unitsPerPackage: Number(packageData.unitsPerPackage),
+        totalCost: Number(packageData.totalCost),
+        costPerUnit: costPerUnit
+      };
+    }
+    
     try {
       const data = {
         code: formData.code,
         name: formData.name,
-        costPrice: Number(formData.costPrice),
+        costPrice: finalCostPrice,
         price: Number(formData.wholesalePrice),
-        quantity: Number(formData.quantity),
+        quantity: finalQuantity,
         warehouse: mainWarehouse?._id,
-        images
+        images,
+        packageInfo
       };
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, data);
@@ -148,7 +174,9 @@ export default function Products() {
       quantity: String(product.quantity)
     });
     setImages((product as any).images || []);
+    setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setCodeError('');
+    setShowPackageInput(false);
     setShowModal(true);
   };
 
@@ -156,8 +184,10 @@ export default function Products() {
     setShowModal(false);
     setEditingProduct(null);
     setFormData({ code: '', name: '', costPrice: '', wholesalePrice: '', quantity: '' });
+    setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setImages([]);
     setCodeError('');
+    setShowPackageInput(false);
   };
 
   const openAddModal = async () => {
@@ -167,8 +197,10 @@ export default function Products() {
     } catch (err) {
       console.error('Error getting next code:', err);
     }
+    setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setImages([]);
     setCodeError('');
+    setShowPackageInput(false);
     setShowModal(true);
   };
 
@@ -305,9 +337,10 @@ export default function Products() {
                   <div className="grid grid-cols-12 gap-4 px-6 py-4">
                     <span className="table-header-cell col-span-1">Rasm</span>
                     <span className="table-header-cell col-span-2">Kod</span>
-                    <span className="table-header-cell col-span-3">Nomi</span>
+                    <span className="table-header-cell col-span-2">Nomi</span>
+                    <span className="table-header-cell col-span-2">Tan narxi</span>
                     <span className="table-header-cell col-span-2">Optom narxi</span>
-                    <span className="table-header-cell col-span-2">Miqdori</span>
+                    <span className="table-header-cell col-span-1">Miqdori</span>
                     <span className="table-header-cell col-span-2 text-center">Amallar</span>
                   </div>
                 </div>
@@ -326,14 +359,18 @@ export default function Products() {
                       <div className="col-span-2">
                         <span className="font-mono text-sm bg-surface-100 px-2 py-1 rounded-lg">{product.code}</span>
                       </div>
-                      <div className="col-span-3">
+                      <div className="col-span-2">
                         <p className="font-medium text-surface-900">{product.name}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="font-semibold text-surface-900">{((product as any).costPrice || 0).toLocaleString()}</p>
+                        <p className="text-sm text-surface-500">so'm</p>
                       </div>
                       <div className="col-span-2">
                         <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
                         <p className="text-sm text-surface-500">so'm</p>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <span className={`font-semibold ${
                           product.quantity === 0 ? 'text-danger-600' :
                           product.quantity <= (product.minStock || 5) ? 'text-warning-600' : 'text-success-600'
@@ -377,7 +414,11 @@ export default function Products() {
                             <button onClick={() => handleDelete(product._id)} className="btn-icon-sm text-danger-500"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-surface-50 rounded-xl p-3">
+                            <p className="text-xs text-surface-500 mb-1">Tan narxi</p>
+                            <p className="font-semibold text-surface-900">{((product as any).costPrice || 0).toLocaleString()}</p>
+                          </div>
                           <div className="bg-surface-50 rounded-xl p-3">
                             <p className="text-xs text-surface-500 mb-1">Optom narxi</p>
                             <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
@@ -456,7 +497,7 @@ export default function Products() {
                   <input 
                     type="text" 
                     className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
-                    placeholder="000001" 
+                    placeholder="1" 
                     value={formData.code} 
                     onChange={e => setFormData({...formData, code: e.target.value})}
                     onBlur={e => checkCodeExists(e.target.value)}
@@ -483,6 +524,77 @@ export default function Products() {
                   <input type="number" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => setFormData({...formData, wholesalePrice: e.target.value})} required />
                 </div>
               </div>
+              
+              {/* Package Information Section */}
+              <div className="border-t border-surface-200 pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-sm font-medium text-surface-700">Qop ma'lumotlari</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPackageInput(!showPackageInput)}
+                    className={`text-sm px-3 py-1 rounded-lg ${showPackageInput ? 'bg-brand-100 text-brand-600' : 'bg-surface-100 text-surface-600'}`}
+                  >
+                    {showPackageInput ? 'Yashirish' : 'Qo\'shish'}
+                  </button>
+                </div>
+                
+                {showPackageInput && (
+                  <div className="space-y-3 bg-surface-50 p-4 rounded-xl">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Qoplar soni</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="5"
+                          value={packageData.packageCount}
+                          onChange={e => setPackageData({...packageData, packageCount: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Har qopda</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="20"
+                          value={packageData.unitsPerPackage}
+                          onChange={e => setPackageData({...packageData, unitsPerPackage: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-surface-600 mb-1 block">Jami narxi</label>
+                        <input
+                          type="number"
+                          className="input text-sm"
+                          placeholder="100000"
+                          value={packageData.totalCost}
+                          onChange={e => setPackageData({...packageData, totalCost: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    {packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost && (
+                      <div className="bg-white p-3 rounded-lg border border-surface-200">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-surface-500">Jami miqdor:</span>
+                            <span className="font-semibold text-surface-900 ml-2">
+                              {Number(packageData.packageCount) * Number(packageData.unitsPerPackage)} dona
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-surface-500">Bir dona narxi:</span>
+                            <span className="font-semibold text-surface-900 ml-2">
+                              {(Number(packageData.totalCost) / (Number(packageData.packageCount) * Number(packageData.unitsPerPackage))).toLocaleString()} so'm
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
                 <button type="submit" className="btn-primary flex-1" disabled={!!codeError}>Saqlash</button>
@@ -518,7 +630,8 @@ export default function Products() {
               <div className="text-center mb-4">
                 <p className="font-semibold text-surface-900">{selectedProduct.name}</p>
                 <p className="text-sm text-surface-500">Kod: {selectedProduct.code}</p>
-                <p className="text-sm text-surface-500">{selectedProduct.price.toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Tan narxi: {((selectedProduct as any).costPrice || 0).toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Optom: {selectedProduct.price.toLocaleString()} so'm</p>
               </div>
               <button onClick={downloadQR} className="btn-primary w-full">
                 <Download className="w-4 h-4" />
