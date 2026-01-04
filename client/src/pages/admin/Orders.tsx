@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { ShoppingBag, Package } from 'lucide-react';
+import { ShoppingBag, Package, Clock, Truck, CheckCircle2, XCircle, User } from 'lucide-react';
 import { Order } from '../../types';
 import api from '../../utils/api';
 
@@ -9,116 +9,104 @@ export default function Orders() {
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = async () => {
     try {
       const res = await api.get('/orders');
       setOrders(res.data);
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Error fetching orders:', err); }
+    finally { setLoading(false); }
   };
 
   const updateStatus = async (id: string, status: string) => {
     try {
       await api.put(`/orders/${id}/status`, { status });
       fetchOrders();
-    } catch (err) {
-      console.error('Error updating order:', err);
-    }
+    } catch (err) { console.error('Error updating order:', err); }
   };
 
-  const statusColors = {
-    new: 'bg-blue-100 text-blue-600',
-    processing: 'bg-yellow-100 text-yellow-600',
-    shipped: 'bg-purple-100 text-purple-600',
-    delivered: 'bg-green-100 text-green-600',
-    cancelled: 'bg-red-100 text-red-600',
+  const statusConfig = {
+    new: { color: 'brand', label: 'Yangi', icon: Clock },
+    processing: { color: 'warning', label: 'Jarayonda', icon: Package },
+    shipped: { color: 'accent', label: "Yo'lda", icon: Truck },
+    delivered: { color: 'success', label: 'Yetkazildi', icon: CheckCircle2 },
+    cancelled: { color: 'danger', label: 'Bekor qilindi', icon: XCircle },
   };
 
-  const statusLabels = {
-    new: 'Yangi',
-    processing: 'Jarayonda',
-    shipped: "Yo'lda",
-    delivered: 'Yetkazildi',
-    cancelled: 'Bekor qilindi',
-  };
+  const filterOptions = [
+    { value: 'all', label: 'Barchasi' },
+    ...Object.entries(statusConfig).map(([key, val]) => ({ value: key, label: val.label }))
+  ];
 
   const filteredOrders = orders.filter(o => filter === 'all' || o.status === filter);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title="Buyurtmalar" showSearch />
+    <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      <Header 
+        title="Buyurtmalar"
+        filterOptions={filterOptions}
+        filterValue={filter}
+        onFilterChange={setFilter}
+      />
 
-      <div className="p-6 space-y-6">
-        {/* Filter Tabs */}
-        <div className="flex gap-2 flex-wrap">
-          {['all', 'new', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                filter === status ? 'bg-primary-500 text-white' : 'bg-white text-gray-500 hover:text-gray-900 border border-gray-200'
-              }`}
-            >
-              {status === 'all' ? 'Barchasi' : statusLabels[status as keyof typeof statusLabels]}
-              {status !== 'all' && orders.filter(o => o.status === status).length > 0 && (
-                <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full text-xs">
-                  {orders.filter(o => o.status === status).length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
+      <div className="p-4 lg:p-6">
         {/* Orders List */}
-        <div className="card">
+        <div className="card p-0 overflow-hidden">
           {loading ? (
             <div className="flex justify-center py-20">
-              <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+              <div className="spinner text-brand-600 w-8 h-8" />
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <ShoppingBag className="w-16 h-16 mb-4 opacity-30" />
-              <p>Buyurtmalar topilmadi</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+                <ShoppingBag className="w-8 h-8 text-surface-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-surface-900 mb-2">Buyurtmalar topilmadi</h3>
+              <p className="text-surface-500">Hozircha buyurtmalar yo'q</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredOrders.map(order => (
-                <div key={order._id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                        <Package className="w-5 h-5 text-primary-500" />
+            <div className="divide-y divide-surface-100">
+              {filteredOrders.map(order => {
+                const config = statusConfig[order.status as keyof typeof statusConfig];
+                const StatusIcon = config.icon;
+                return (
+                  <div key={order._id} className="p-4 lg:p-6 hover:bg-surface-50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Package className="w-6 h-6 text-brand-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">Buyurtma #{order._id.slice(-6)}</p>
-                        <p className="text-sm text-gray-500">{order.customer?.name || 'Noma\'lum mijoz'}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold text-surface-900">Buyurtma #{order._id.slice(-6)}</h4>
+                            <div className="flex items-center gap-2 text-sm text-surface-500 mt-1">
+                              <User className="w-4 h-4" />
+                              <span>{order.customer?.name || 'Noma\'lum mijoz'}</span>
+                            </div>
+                          </div>
+                          <select
+                            value={order.status}
+                            onChange={e => updateStatus(order._id, e.target.value)}
+                            className={`select text-sm py-2 px-3 bg-${config.color}-50 text-${config.color}-700 border-${config.color}-200`}
+                          >
+                            {Object.entries(statusConfig).map(([value, cfg]) => (
+                              <option key={value} value={value}>{cfg.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-sm text-surface-500">
+                            <span>{order.items.length} ta mahsulot</span>
+                            <span>{new Date(order.createdAt).toLocaleDateString('uz-UZ')}</span>
+                          </div>
+                          <p className="font-bold text-surface-900">{order.total.toLocaleString()} so'm</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={order.status}
-                        onChange={e => updateStatus(order._id, e.target.value)}
-                        className={`px-3 py-1 rounded-lg text-sm border-0 ${statusColors[order.status]}`}
-                      >
-                        {Object.entries(statusLabels).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">{order.items.length} ta mahsulot</span>
-                    <span className="font-medium text-gray-900">{order.total.toLocaleString()} so'm</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

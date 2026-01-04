@@ -17,9 +17,20 @@ import HelperScanner from './pages/helper/Scanner';
 
 const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?: string[] }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50">
-    <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-  </div>;
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-brand-100 flex items-center justify-center">
+            <div className="spinner text-brand-600" />
+          </div>
+          <p className="text-surface-500 text-sm">Yuklanmoqda...</p>
+        </div>
+      </div>
+    );
+  }
+  
   if (!user) return <Navigate to="/login" />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" />;
   return <>{children}</>;

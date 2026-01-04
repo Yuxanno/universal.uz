@@ -1,12 +1,39 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
+
+// Format phone number as +998 (XX) XXX-XX-XX
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  
+  // Ensure it starts with 998
+  let phone = digits;
+  if (!phone.startsWith('998') && phone.length > 0) {
+    phone = '998' + phone;
+  }
+  
+  // Limit to 12 digits (998 + 9 digits)
+  phone = phone.slice(0, 12);
+  
+  // Format as +998 (XX) XXX-XX-XX
+  if (phone.length === 0) return '';
+  if (phone.length <= 3) return '+' + phone;
+  if (phone.length <= 5) return '+998 (' + phone.slice(3);
+  if (phone.length <= 8) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5);
+  if (phone.length <= 10) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8);
+  return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8, 10) + '-' + phone.slice(10);
+};
+
+// Get raw phone digits for API
+const getRawPhone = (formatted: string): string => {
+  return formatted.replace(/\D/g, '');
+};
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -14,15 +41,21 @@ export default function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
+      const rawPhone = getRawPhone(phone);
       if (isLogin) {
-        await login(email, password);
+        await login(rawPhone, password);
       } else {
-        await register(name, email, password);
+        await register(name, rawPhone, password);
       }
       navigate('/');
     } catch (err: any) {
@@ -33,27 +66,35 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-500 mb-2">Universal.uz</h1>
-          <p className="text-gray-500">Biznes boshqaruv tizimi</p>
+    <div className="min-h-screen bg-gradient-to-br from-surface-50 via-white to-brand-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent-500/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8 animate-fade-up">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl shadow-lg shadow-brand-500/25 mb-4">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-surface-900 mb-2">Universal.uz</h1>
+          <p className="text-surface-500">Biznes boshqaruv tizimi</p>
         </div>
 
-        <div className="card">
-          <div className="flex mb-6">
+        <div className="card-glass p-8 animate-fade-up">
+          <div className="flex p-1 bg-surface-100 rounded-xl mb-8">
             <button
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
-                isLogin ? 'bg-primary-500 text-white' : 'text-gray-500 hover:text-gray-900'
+              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                isLogin ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
               }`}
             >
               Kirish
             </button>
             <button
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
-                !isLogin ? 'bg-primary-500 text-white' : 'text-gray-500 hover:text-gray-900'
+              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+                !isLogin ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
               }`}
             >
               Ro'yxatdan o'tish
@@ -61,68 +102,92 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-300 text-red-600 px-4 py-2 rounded-lg mb-4">
-              {error}
+            <div className="alert-danger mb-6 animate-fade-in">
+              <div className="w-5 h-5 rounded-full bg-danger-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Ismingiz"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="input w-full pl-10"
-                  required={!isLogin}
-                />
+              <div className="space-y-2 animate-fade-up">
+                <label className="text-sm font-medium text-surface-700">Ismingiz</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+                  <input
+                    type="text"
+                    placeholder="Ismingizni kiriting"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="input pl-12"
+                    required={!isLogin}
+                  />
+                </div>
               </div>
             )}
 
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="input w-full pl-10"
-                required
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-surface-700">Telefon raqam</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+                <input
+                  type="tel"
+                  placeholder="+998 (XX) XXX-XX-XX"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  className="input pl-12"
+                  required
+                />
+              </div>
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Parol"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="input w-full pl-10 pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-surface-700">Parol</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="********"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="input pl-12 pr-12"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full py-3 flex items-center justify-center"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base group">
               {loading ? (
-                <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-              ) : isLogin ? 'Kirish' : "Ro'yxatdan o'tish"}
+                <div className="spinner" />
+              ) : (
+                <>
+                  <span>{isLogin ? 'Kirish' : "Ro'yxatdan o'tish"}</span>
+                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
             </button>
           </form>
+
+          {isLogin && (
+            <p className="text-center text-sm text-surface-500 mt-6">
+              Parolni unutdingizmi?{' '}
+              <button className="text-brand-600 hover:text-brand-700 font-medium">Tiklash</button>
+            </p>
+          )}
         </div>
+
+        <p className="text-center text-sm text-surface-400 mt-6 animate-fade-up">
+          2025 Universal.uz. Barcha huquqlar himoyalangan.
+        </p>
       </div>
     </div>
   );

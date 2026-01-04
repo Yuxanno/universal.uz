@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users, 
-  CreditCard, ShoppingBag, UserPlus, Receipt, Menu, X, LogOut
+  CreditCard, ShoppingBag, UserPlus, Receipt, Menu, X, LogOut, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -22,45 +22,74 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
   const { user, logout } = useAuth();
 
   return (
-    <aside className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 transition-all z-50 shadow-sm ${
-      collapsed ? 'w-16' : 'w-60'
+    <aside className={`fixed left-0 top-0 h-full bg-white border-r border-surface-200/60 transition-all duration-300 ease-smooth z-50 ${
+      collapsed ? 'w-[72px]' : 'w-64'
     }`}>
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        {!collapsed && <span className="font-bold text-lg text-primary-500">Universal.uz</span>}
-        <button onClick={() => setCollapsed?.(!collapsed)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600">
+      {/* Logo */}
+      <div className="h-16 flex items-center justify-between px-4 border-b border-surface-100">
+        {!collapsed && (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-sm">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-lg text-surface-900">Universal</span>
+          </div>
+        )}
+        <button 
+          onClick={() => setCollapsed?.(!collapsed)} 
+          className="btn-icon-sm"
+        >
           {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
         </button>
       </div>
 
-      <nav className="p-2 space-y-1">
+      {/* Navigation */}
+      <nav className="p-3 space-y-1 overflow-y-auto h-[calc(100vh-180px)]">
         {items.map((item, i) => (
           <NavLink
             key={i}
             to={`${basePath}${item.path}`}
             end={item.path === ''}
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-              isActive ? 'bg-primary-500 text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`}
+            className={({ isActive }) => `
+              flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200
+              ${collapsed ? 'justify-center' : ''}
+              ${isActive 
+                ? 'bg-brand-50 text-brand-600' 
+                : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
+              }
+            `}
+            title={collapsed ? item.label : undefined}
           >
-            {item.icon}
-            {!collapsed && <span>{item.label}</span>}
+            <span className="flex-shrink-0">{item.icon}</span>
+            {!collapsed && <span className="truncate">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+      {/* User Section */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-surface-100 bg-white">
         {!collapsed && (
-          <div className="mb-3 text-sm">
-            <p className="text-gray-900 font-medium">{user?.name}</p>
-            <p className="text-gray-500 text-xs">{user?.role}</p>
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="w-9 h-9 bg-gradient-to-br from-surface-200 to-surface-300 rounded-xl flex items-center justify-center">
+              <span className="text-sm font-semibold text-surface-600">
+                {user?.name?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-surface-900 truncate">{user?.name}</p>
+              <p className="text-xs text-surface-500 capitalize">{user?.role}</p>
+            </div>
           </div>
         )}
         <button
           onClick={logout}
-          className="flex items-center gap-2 text-gray-500 hover:text-primary-500 transition-colors w-full"
+          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-surface-500 hover:bg-danger-50 hover:text-danger-600 transition-all duration-200 ${
+            collapsed ? 'justify-center' : ''
+          }`}
+          title={collapsed ? 'Chiqish' : undefined}
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span>Chiqish</span>}
+          {!collapsed && <span className="font-medium">Chiqish</span>}
         </button>
       </div>
     </aside>
@@ -69,14 +98,12 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
 
 export const adminMenuItems: MenuItem[] = [
   { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Statistika', path: '' },
-  { icon: <ShoppingCart className="w-5 h-5" />, label: 'Kassa (POS)', path: '/kassa' },
   { icon: <Package className="w-5 h-5" />, label: 'Tovarlar', path: '/products' },
   { icon: <Warehouse className="w-5 h-5" />, label: 'Omborlar', path: '/warehouses' },
   { icon: <Users className="w-5 h-5" />, label: 'Mijozlar', path: '/customers' },
   { icon: <CreditCard className="w-5 h-5" />, label: 'Qarz daftarcha', path: '/debts' },
   { icon: <ShoppingBag className="w-5 h-5" />, label: 'Buyurtmalar', path: '/orders' },
   { icon: <UserPlus className="w-5 h-5" />, label: "Yordamchilar", path: '/helpers' },
-  { icon: <Receipt className="w-5 h-5" />, label: "Xodimlar cheklari", path: '/staff-receipts' },
 ];
 
 export const cashierMenuItems: MenuItem[] = [

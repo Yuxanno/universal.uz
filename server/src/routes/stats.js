@@ -25,7 +25,8 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       totalReceipts,
       totalProducts,
       lowStock,
-      outOfStock
+      outOfStock,
+      peakHourData
     ] = await Promise.all([
       Receipt.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
       Receipt.aggregate([{ $match: { status: 'completed', createdAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
@@ -34,8 +35,20 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       Receipt.countDocuments({ status: 'completed' }),
       Product.countDocuments(),
       Product.countDocuments({ $expr: { $and: [{ $gt: ['$quantity', 0] }, { $lte: ['$quantity', '$minStock'] }] } }),
-      Product.countDocuments({ quantity: 0 })
+      Product.countDocuments({ quantity: 0 }),
+      Receipt.aggregate([
+        { $match: { status: 'completed' } },
+        { $group: { _id: { $hour: '$createdAt' }, count: { $sum: 1 }, total: { $sum: '$total' } } },
+        { $sort: { total: -1 } },
+        { $limit: 1 }
+      ])
     ]);
+
+    let peakHour = '';
+    if (peakHourData.length > 0) {
+      const hour = peakHourData[0]._id;
+      peakHour = `${hour.toString().padStart(2, '0')}:00 - ${(hour + 1).toString().padStart(2, '0')}:00`;
+    }
 
     res.json({
       totalRevenue: totalRevenue[0]?.total || 0,
@@ -45,7 +58,8 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       totalReceipts,
       totalProducts,
       lowStock,
-      outOfStock
+      outOfStock,
+      peakHour
     });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -55,29 +69,64 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 router.get('/chart', auth, authorize('admin'), async (req, res) => {
   try {
     const { period = 'week' } = req.query;
-    const days = period === 'month' ? 30 : 7;
     
-    const data = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
+    if (period === 'today') {
+      // Hourly data for today - single aggregation query
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      
-      const sales = await Receipt.aggregate([
-        { $match: { status: 'completed', createdAt: { $gte: date, $lt: nextDate } } },
-        { $group: { _id: null, total: { $sum: '$total' } } }
+      const hourlyData = await Receipt.aggregate([
+        { $match: { status: 'completed', createdAt: { $gte: today, $lt: tomorrow } } },
+        { $group: { _id: { $hour: '$createdAt' }, total: { $sum: '$total' } } },
+        { $sort: { _id: 1 } }
       ]);
       
-      data.push({
-        date: date.toLocaleDateString('uz-UZ', { weekday: 'short' }),
-        sales: sales[0]?.total || 0
-      });
+      // Create full 24-hour array
+      const hourMap = new Map(hourlyData.map(h => [h._id, h.total]));
+      const data = [];
+      for (let hour = 0; hour < 24; hour++) {
+        data.push({
+          date: `${hour.toString().padStart(2, '0')}:00`,
+          sales: hourMap.get(hour) || 0
+        });
+      }
+      
+      res.json(data);
+    } else {
+      // Daily data for week/month - single aggregation query
+      const days = period === 'month' ? 30 : 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days + 1);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const dailyData = await Receipt.aggregate([
+        { $match: { status: 'completed', createdAt: { $gte: startDate } } },
+        { 
+          $group: { 
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, 
+            total: { $sum: '$total' } 
+          } 
+        },
+        { $sort: { _id: 1 } }
+      ]);
+      
+      // Create full days array
+      const dayMap = new Map(dailyData.map(d => [d._id, d.total]));
+      const data = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toISOString().split('T')[0];
+        data.push({
+          date: date.toLocaleDateString('uz-UZ', { weekday: 'short' }),
+          sales: dayMap.get(dateKey) || 0
+        });
+      }
+      
+      res.json(data);
     }
-    
-    res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }

@@ -3,7 +3,7 @@ export type UserRole = 'admin' | 'cashier' | 'helper';
 export interface User {
   _id: string;
   name: string;
-  email: string;
+  phone: string;
   role: UserRole;
   createdAt: string;
 }
@@ -17,6 +17,7 @@ export interface Product {
   warehouse: string;
   category?: string;
   image?: string;
+  minStock?: number;
 }
 
 export interface CartItem extends Product {

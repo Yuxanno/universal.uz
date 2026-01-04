@@ -7,11 +7,14 @@ const paymentSchema = new mongoose.Schema({
 });
 
 const debtSchema = new mongoose.Schema({
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+  creditorName: { type: String }, // For own debts (who you owe to)
   amount: { type: Number, required: true },
   paidAmount: { type: Number, default: 0 },
   dueDate: { type: Date, required: true },
   status: { type: String, enum: ['pending', 'overdue', 'paid', 'blacklist'], default: 'pending' },
+  type: { type: String, enum: ['receivable', 'payable'], default: 'receivable' }, // receivable = they owe me, payable = I owe them
+  description: { type: String },
   payments: [paymentSchema],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });

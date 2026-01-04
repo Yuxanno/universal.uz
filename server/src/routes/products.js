@@ -1,12 +1,44 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Product = require('../models/Product');
+const Warehouse = require('../models/Warehouse');
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads/products');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error('Faqat rasm fayllari ruxsat etilgan!'));
+  }
+});
+
 router.get('/', auth, async (req, res) => {
   try {
-    const { search, warehouse } = req.query;
+    const { search, warehouse, mainOnly } = req.query;
     const query = {};
     
     if (search) {
@@ -16,9 +48,71 @@ router.get('/', auth, async (req, res) => {
       ];
     }
     if (warehouse) query.warehouse = warehouse;
+    if (mainOnly === 'true') query.isMainWarehouse = true;
 
     const products = await Product.find(query).populate('warehouse', 'name');
     res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Get next auto-generated code
+router.get('/next-code', auth, async (req, res) => {
+  try {
+    const lastProduct = await Product.findOne().sort({ createdAt: -1 });
+    let nextNum = 1;
+    if (lastProduct && lastProduct.code) {
+      const match = lastProduct.code.match(/(\d+)$/);
+      if (match) {
+        nextNum = parseInt(match[1]) + 1;
+      }
+    }
+    res.json({ code: String(nextNum).padStart(6, '0') });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Check if code exists
+router.get('/check-code/:code', auth, async (req, res) => {
+  try {
+    const { excludeId } = req.query;
+    const query = { code: req.params.code };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    const exists = await Product.findOne(query);
+    res.json({ exists: !!exists });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Upload images for product
+router.post('/upload-images', auth, authorize('admin'), upload.array('images', 8), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'Rasm yuklanmadi' });
+    }
+    const imagePaths = req.files.map(file => `/uploads/products/${file.filename}`);
+    res.json({ images: imagePaths });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Delete image
+router.delete('/delete-image', auth, authorize('admin'), async (req, res) => {
+  try {
+    const { imagePath } = req.body;
+    if (!imagePath) return res.status(400).json({ message: 'Rasm yo\'li ko\'rsatilmagan' });
+    
+    const fullPath = path.join(__dirname, '../..', imagePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+    res.json({ message: 'Rasm o\'chirildi' });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -36,7 +130,44 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const product = new Product({ ...req.body, createdBy: req.user._id });
+    const { warehouse, code, ...rest } = req.body;
+    
+    // Auto-generate code if not provided
+    let productCode = code;
+    if (!productCode) {
+      const lastProduct = await Product.findOne().sort({ createdAt: -1 });
+      let nextNum = 1;
+      if (lastProduct && lastProduct.code) {
+        const match = lastProduct.code.match(/(\d+)$/);
+        if (match) {
+          nextNum = parseInt(match[1]) + 1;
+        }
+      }
+      productCode = String(nextNum).padStart(6, '0');
+    }
+    
+    // Check if code already exists
+    const existingProduct = await Product.findOne({ code: productCode });
+    if (existingProduct) {
+      return res.status(400).json({ message: `Kod "${productCode}" allaqachon mavjud` });
+    }
+    
+    // Check if warehouse is "Asosiy ombor"
+    let isMainWarehouse = false;
+    if (warehouse) {
+      const warehouseDoc = await Warehouse.findById(warehouse);
+      if (warehouseDoc && warehouseDoc.name === 'Asosiy ombor') {
+        isMainWarehouse = true;
+      }
+    }
+    
+    const product = new Product({ 
+      ...rest, 
+      code: productCode,
+      warehouse,
+      isMainWarehouse,
+      createdBy: req.user._id 
+    });
     await product.save();
     res.status(201).json(product);
   } catch (error) {
@@ -46,7 +177,30 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { warehouse, code, ...rest } = req.body;
+    
+    // Check if code already exists (excluding current product)
+    if (code) {
+      const existingProduct = await Product.findOne({ code, _id: { $ne: req.params.id } });
+      if (existingProduct) {
+        return res.status(400).json({ message: `Kod "${code}" allaqachon mavjud` });
+      }
+    }
+    
+    // Check if warehouse is "Asosiy ombor"
+    let isMainWarehouse = false;
+    if (warehouse) {
+      const warehouseDoc = await Warehouse.findById(warehouse);
+      if (warehouseDoc && warehouseDoc.name === 'Asosiy ombor') {
+        isMainWarehouse = true;
+      }
+    }
+    
+    const product = await Product.findByIdAndUpdate(
+      req.params.id, 
+      { ...rest, code, warehouse, isMainWarehouse }, 
+      { new: true }
+    );
     if (!product) return res.status(404).json({ message: 'Tovar topilmadi' });
     res.json(product);
   } catch (error) {

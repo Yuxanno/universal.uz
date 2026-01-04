@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '../../components/Header';
 import { Plus, Users, X, Phone, Mail, MapPin, Edit, Trash2 } from 'lucide-react';
 import { Customer } from '../../types';
@@ -6,30 +6,20 @@ import api from '../../utils/api';
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: ''
-  });
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+  useEffect(() => { fetchCustomers(); }, []);
 
   const fetchCustomers = async () => {
     try {
       const res = await api.get('/customers');
       setCustomers(res.data);
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,19 +32,15 @@ export default function Customers() {
       }
       fetchCustomers();
       closeModal();
-    } catch (err) {
-      console.error('Error saving customer:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Mijozni o'chirishni tasdiqlaysizmi?")) return;
+    if (!window.confirm("Mijozni o'chirishni tasdiqlaysizmi?")) return;
     try {
       await api.delete(`/customers/${id}`);
       fetchCustomers();
-    } catch (err) {
-      console.error('Error deleting customer:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const openEditModal = (customer: Customer) => {
@@ -75,150 +61,177 @@ export default function Customers() {
   };
 
   const filteredCustomers = customers.filter(c =>
+    searchQuery.trim() === '' ||
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.phone.includes(searchQuery)
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header 
-        title="Mijozlar" 
+    <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      <Header
+        title="Mijozlar"
         showSearch
         onSearch={setSearchQuery}
         actions={
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => setShowModal(true)} className="btn-primary">
             <Plus className="w-4 h-4" />
-            Yangi mijoz
+            <span className="hidden sm:inline">Yangi mijoz</span>
           </button>
         }
       />
 
-      <div className="p-6">
+      <div className="p-4 lg:p-6">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            <div className="spinner text-brand-600 w-8 h-8" />
           </div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="card flex flex-col items-center justify-center py-20 text-gray-400">
-            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-              <Users className="w-10 h-10" />
+          <div className="card flex flex-col items-center py-16">
+            <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+              <Users className="w-8 h-8 text-surface-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Mijozlar yo'q</h3>
-            <p className="text-sm mb-6">Hozircha mijozlar mavjud emas</p>
+            <h3 className="text-lg font-semibold text-surface-900 mb-2">Mijozlar yo'q</h3>
+            <p className="text-surface-500 mb-6">Birinchi mijozni qo'shing</p>
             <button onClick={() => setShowModal(true)} className="btn-primary">
-              Birinchi mijozni qo'shing
+              Mijoz qo'shish
             </button>
           </div>
         ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500 text-sm">
-                  <th className="pb-3">Ism</th>
-                  <th className="pb-3">Telefon</th>
-                  <th className="pb-3">Email</th>
-                  <th className="pb-3">Xaridlar</th>
-                  <th className="pb-3">Qarz</th>
-                  <th className="pb-3">Amallar</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="card p-0 overflow-hidden">
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <div className="table-header">
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <span className="table-header-cell col-span-3">Ism</span>
+                  <span className="table-header-cell col-span-2">Telefon</span>
+                  <span className="table-header-cell col-span-2">Email</span>
+                  <span className="table-header-cell col-span-2">Xaridlar</span>
+                  <span className="table-header-cell col-span-2">Qarz</span>
+                  <span className="table-header-cell col-span-1 text-center">Amallar</span>
+                </div>
+              </div>
+              <div className="divide-y divide-surface-100">
                 {filteredCustomers.map(customer => (
-                  <tr key={customer._id} className="border-b border-gray-100 text-gray-900">
-                    <td className="py-3 font-medium">{customer.name}</td>
-                    <td className="py-3">{customer.phone}</td>
-                    <td className="py-3 text-gray-500">{customer.email || '-'}</td>
-                    <td className="py-3">{customer.totalPurchases.toLocaleString()} so'm</td>
-                    <td className="py-3">
-                      <span className={customer.debt > 0 ? 'text-primary-500 font-medium' : 'text-green-600'}>
+                  <div key={customer._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-50 transition-colors">
+                    <div className="col-span-3 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+                        <span className="font-semibold text-brand-600">{customer.name.charAt(0)}</span>
+                      </div>
+                      <span className="font-medium text-surface-900">{customer.name}</span>
+                    </div>
+                    <div className="col-span-2 text-surface-600">{customer.phone}</div>
+                    <div className="col-span-2 text-surface-600">{customer.email || '-'}</div>
+                    <div className="col-span-2 font-medium text-surface-900">
+                      {customer.totalPurchases?.toLocaleString() || 0} so'm
+                    </div>
+                    <div className="col-span-2">
+                      <span className={customer.debt > 0 ? 'text-danger-600 font-medium' : 'text-success-600'}>
                         {customer.debt.toLocaleString()} so'm
                       </span>
-                    </td>
-                    <td className="py-3">
-                      <button onClick={() => openEditModal(customer)} className="text-primary-500 hover:text-primary-600 mr-3">
+                    </div>
+                    <div className="col-span-1 flex items-center justify-center gap-2">
+                      <button onClick={() => openEditModal(customer)} className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(customer._id)} className="text-primary-500 hover:text-primary-600">
+                      <button onClick={() => handleDelete(customer._id)} className="btn-icon-sm hover:bg-danger-100 hover:text-danger-600">
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden divide-y divide-surface-100">
+              {filteredCustomers.map(customer => (
+                <div key={customer._id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="font-semibold text-brand-600 text-lg">{customer.name.charAt(0)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-medium text-surface-900">{customer.name}</h4>
+                          <p className="text-sm text-surface-500">{customer.phone}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => openEditModal(customer)} className="btn-icon-sm">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(customer._id)} className="btn-icon-sm text-danger-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-surface-50 rounded-xl p-3">
+                          <p className="text-xs text-surface-500 mb-1">Xaridlar</p>
+                          <p className="font-semibold text-surface-900">{customer.totalPurchases?.toLocaleString() || 0}</p>
+                        </div>
+                        <div className={`rounded-xl p-3 ${customer.debt > 0 ? 'bg-danger-50' : 'bg-success-50'}`}>
+                          <p className="text-xs text-surface-500 mb-1">Qarz</p>
+                          <p className={`font-semibold ${customer.debt > 0 ? 'text-danger-600' : 'text-success-600'}`}>
+                            {customer.debt.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Add/Edit Customer Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="overlay" onClick={closeModal} />
+          <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingCustomer ? 'Mijozni tahrirlash' : 'Yangi mijoz qo\'shish'}
+              <h3 className="text-lg font-semibold text-surface-900">
+                {editingCustomer ? 'Mijozni tahrirlash' : 'Yangi mijoz'}
               </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
+              <button onClick={closeModal} className="btn-icon-sm">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Ism</label>
-                <input 
-                  type="text" 
-                  className="input w-full" 
-                  placeholder="Mijoz ismi"
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  required
-                />
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Ism</label>
+                <input className="input" placeholder="Mijoz ismi" value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Telefon</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Telefon</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input 
-                    type="tel" 
-                    className="input w-full pl-10" 
-                    placeholder="+998 90 123 45 67"
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                    required
-                  />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input className="input pl-12" placeholder="+998 90 123 45 67" value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })} required />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Email (ixtiyoriy)</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input 
-                    type="email" 
-                    className="input w-full pl-10" 
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input className="input pl-12" placeholder="email@example.com" value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Manzil (ixtiyoriy)</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Manzil</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input 
-                    type="text" 
-                    className="input w-full pl-10" 
-                    placeholder="Manzil"
-                    value={formData.address}
-                    onChange={e => setFormData({...formData, address: e.target.value})}
-                  />
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input className="input pl-12" placeholder="Manzil" value={formData.address}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })} />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-500 hover:text-gray-700">
-                  Bekor qilish
-                </button>
-                <button type="submit" className="btn-primary">Saqlash</button>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
+                <button type="submit" className="btn-primary flex-1">Saqlash</button>
               </div>
             </form>
           </div>

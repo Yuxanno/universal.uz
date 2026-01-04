@@ -1,25 +1,32 @@
 import { Outlet } from 'react-router-dom';
-import { LogOut, QrCode } from 'lucide-react';
+import { LogOut, Sparkles, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function HelperLayout() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <QrCode className="w-6 h-6 text-primary-500" />
-          <span className="font-bold text-lg text-primary-500">Universal.uz</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-600">{user?.name}</span>
-          <button onClick={logout} className="text-gray-500 hover:text-primary-500">
-            <LogOut className="w-5 h-5" />
-          </button>
+    <div className="min-h-screen bg-surface-50">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-surface-200/60">
+        <div className="px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center shadow-sm">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-lg text-surface-900">Universal</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-2 bg-surface-100 rounded-xl">
+              <User className="w-4 h-4 text-surface-500" />
+              <span className="text-sm font-medium text-surface-700">{user?.name}</span>
+            </div>
+            <button onClick={logout} className="btn-icon text-surface-500 hover:text-danger-600 hover:bg-danger-50">
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
-      <main className="p-6">
+      <main className="p-4">
         <Outlet />
       </main>
     </div>

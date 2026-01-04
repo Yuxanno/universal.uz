@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { Receipt, Check, X, Clock, User } from 'lucide-react';
+import { 
+  Receipt, Check, X, Clock, User, CheckCircle2, XCircle, Package, FileText
+} from 'lucide-react';
 import api from '../../utils/api';
 
 interface StaffReceipt {
@@ -15,151 +17,175 @@ interface StaffReceipt {
 export default function StaffReceipts() {
   const [receipts, setReceipts] = useState<StaffReceipt[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchReceipts();
-  }, []);
+  useEffect(() => { fetchReceipts(); }, []);
 
   const fetchReceipts = async () => {
     try {
       const res = await api.get('/receipts/staff');
       setReceipts(res.data);
-    } catch (err) {
-      console.error('Error fetching receipts:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Error fetching receipts:', err); }
+    finally { setLoading(false); }
   };
 
   const handleApprove = async (id: string) => {
     try {
       await api.put(`/receipts/${id}/approve`);
       fetchReceipts();
-    } catch (err) {
-      console.error('Error approving receipt:', err);
-    }
+    } catch (err) { console.error('Error approving receipt:', err); }
   };
 
   const handleReject = async (id: string) => {
     try {
       await api.put(`/receipts/${id}/reject`);
       fetchReceipts();
-    } catch (err) {
-      console.error('Error rejecting receipt:', err);
-    }
+    } catch (err) { console.error('Error rejecting receipt:', err); }
   };
 
-  const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-600',
-    approved: 'bg-green-100 text-green-600',
-    rejected: 'bg-red-100 text-red-600',
+  const statusConfig = {
+    pending: { color: 'warning', label: 'Kutilmoqda', icon: Clock },
+    approved: { color: 'success', label: 'Tasdiqlangan', icon: CheckCircle2 },
+    rejected: { color: 'danger', label: 'Rad etilgan', icon: XCircle },
   };
 
-  const statusLabels = {
-    pending: 'Kutilmoqda',
-    approved: 'Tasdiqlangan',
-    rejected: 'Rad etilgan',
-  };
-
-  const filteredReceipts = receipts.filter(r => filter === 'all' || r.status === filter);
+  const filteredReceipts = receipts.filter(r => {
+    const matchesFilter = filter === 'all' || r.status === filter;
+    const matchesSearch = r.createdBy?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         r._id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title="Xodimlar cheklari" showSearch />
+    <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      <Header 
+        title="Xodimlar cheklari"
+        showSearch
+        onSearch={setSearchQuery}
+      />
 
-      <div className="p-6 space-y-6">
-        {/* Filter Tabs */}
-        <div className="flex gap-2">
-          {['all', 'pending', 'approved', 'rejected'].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                filter === status ? 'bg-primary-500 text-white' : 'bg-white text-gray-500 hover:text-gray-900 border border-gray-200'
-              }`}
-            >
-              {status === 'all' ? 'Barchasi' : statusLabels[status as keyof typeof statusLabels]}
-              {status === 'pending' && receipts.filter(r => r.status === 'pending').length > 0 && (
-                <span className="ml-2 px-2 py-0.5 bg-yellow-500 text-white rounded-full text-xs">
-                  {receipts.filter(r => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
-          ))}
+      <div className="p-4 lg:p-6 space-y-6">
+        {/* Filters */}
+        <div className="card">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'Barchasi', icon: FileText },
+              { key: 'pending', label: 'Kutilmoqda', icon: Clock },
+              { key: 'approved', label: 'Tasdiqlangan', icon: CheckCircle2 },
+              { key: 'rejected', label: 'Rad etilgan', icon: XCircle }
+            ].map(item => (
+              <button
+                key={item.key}
+                onClick={() => setFilter(item.key)}
+                className={`btn-sm ${filter === item.key ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+                {item.key === 'pending' && receipts.filter(r => r.status === 'pending').length > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
+                    filter === item.key ? 'bg-white/20' : 'bg-warning-100 text-warning-700'
+                  }`}>
+                    {receipts.filter(r => r.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Receipts List */}
-        <div className="card">
+        <div className="card p-0 overflow-hidden">
           {loading ? (
             <div className="flex justify-center py-20">
-              <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+              <div className="spinner text-brand-600 w-8 h-8" />
             </div>
           ) : filteredReceipts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <Receipt className="w-16 h-16 mb-4 opacity-30" />
-              <p>Xodimlar cheklari topilmadi</p>
-              <p className="text-sm mt-2">Yordamchilar tomonidan yuborilgan cheklar shu yerda ko'rinadi</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+                <Receipt className="w-8 h-8 text-surface-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-surface-900 mb-2">Cheklar topilmadi</h3>
+              <p className="text-surface-500">Hozircha cheklar yo'q</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredReceipts.map(receipt => (
-                <div key={receipt._id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                        <Receipt className="w-5 h-5 text-primary-500" />
+            <div className="divide-y divide-surface-100">
+              {filteredReceipts.map(receipt => {
+                const config = statusConfig[receipt.status];
+                const StatusIcon = config.icon;
+                return (
+                  <div key={receipt._id} className="p-4 lg:p-6 hover:bg-surface-50 transition-colors">
+                    {/* Header */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Receipt className="w-6 h-6 text-brand-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">Chek #{receipt._id.slice(-6)}</p>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <User className="w-3 h-3" />
-                          <span>{receipt.createdBy?.name || 'Noma\'lum'}</span>
-                          <Clock className="w-3 h-3 ml-2" />
-                          <span>{new Date(receipt.createdAt).toLocaleString()}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold text-surface-900">Chek #{receipt._id.slice(-6)}</h4>
+                            <div className="flex items-center gap-3 text-sm text-surface-500 mt-1">
+                              <div className="flex items-center gap-1">
+                                <User className="w-4 h-4" />
+                                <span>{receipt.createdBy?.name || 'Noma\'lum'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{new Date(receipt.createdAt).toLocaleString('uz-UZ')}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-xl font-bold text-surface-900">{receipt.total.toLocaleString()} <span className="text-sm font-normal text-surface-500">so'm</span></p>
+                            <span className={`badge badge-${config.color}`}>
+                              <StatusIcon className="w-3 h-3" />
+                              {config.label}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-lg text-sm ${statusColors[receipt.status]}`}>
-                      {statusLabels[receipt.status]}
-                    </span>
-                  </div>
 
-                  {/* Items */}
-                  <div className="bg-white rounded-lg p-3 mb-4 border border-gray-100">
-                    {receipt.items.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between py-1 text-sm text-gray-700">
-                        <span>{item.name} x{item.quantity}</span>
-                        <span>{(item.price * item.quantity).toLocaleString()} so'm</span>
+                    {/* Items */}
+                    <div className="bg-surface-50 rounded-xl p-4 mb-4">
+                      <div className="flex items-center gap-2 mb-3 text-sm font-medium text-surface-700">
+                        <Package className="w-4 h-4" />
+                        Mahsulotlar ({receipt.items.length} ta)
                       </div>
-                    ))}
-                    <div className="border-t border-gray-100 mt-2 pt-2 flex items-center justify-between font-medium text-gray-900">
-                      <span>Jami:</span>
-                      <span>{receipt.total.toLocaleString()} so'm</span>
+                      <div className="space-y-2">
+                        {receipt.items.slice(0, 3).map((item, i) => (
+                          <div key={i} className="flex items-center justify-between py-2 px-3 bg-white rounded-lg text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-surface-900">{item.name}</span>
+                              <span className="text-surface-500">× {item.quantity}</span>
+                            </div>
+                            <span className="font-semibold text-surface-900">{(item.price * item.quantity).toLocaleString()}</span>
+                          </div>
+                        ))}
+                        {receipt.items.length > 3 && (
+                          <p className="text-sm text-surface-500 text-center py-2">
+                            +{receipt.items.length - 3} ta mahsulot
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  {receipt.status === 'pending' && (
-                    <div className="flex gap-3">
-                      <button 
-                        onClick={() => handleApprove(receipt._id)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-500 text-white rounded-lg hover:bg-green-400"
-                      >
-                        <Check className="w-4 h-4" />
-                        Tasdiqlash
-                      </button>
-                      <button 
-                        onClick={() => handleReject(receipt._id)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                      >
-                        <X className="w-4 h-4" />
-                        Rad etish
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {/* Actions */}
+                    {receipt.status === 'pending' && (
+                      <div className="flex gap-3">
+                        <button onClick={() => handleApprove(receipt._id)} className="btn-success flex-1">
+                          <Check className="w-4 h-4" />
+                          Tasdiqlash
+                        </button>
+                        <button onClick={() => handleReject(receipt._id)} className="btn-danger flex-1">
+                          <X className="w-4 h-4" />
+                          Rad etish
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

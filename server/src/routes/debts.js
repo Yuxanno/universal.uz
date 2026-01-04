@@ -7,11 +7,12 @@ const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, type } = req.query;
     const query = {};
     if (status) query.status = status;
+    if (type) query.type = type;
     
-    const debts = await Debt.find(query).populate('customer', 'name phone');
+    const debts = await Debt.find(query).populate('customer', 'name phone').sort({ createdAt: -1 });
     res.json(debts);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -20,17 +21,23 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/stats', auth, async (req, res) => {
   try {
+    const { type } = req.query;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const typeFilter = type ? { type } : {};
 
     const stats = {
-      total: await Debt.countDocuments(),
-      pending: await Debt.countDocuments({ status: 'pending' }),
-      today: await Debt.countDocuments({ dueDate: { $gte: today, $lt: new Date(today.getTime() + 86400000) } }),
-      overdue: await Debt.countDocuments({ status: 'overdue' }),
-      paid: await Debt.countDocuments({ status: 'paid' }),
-      blacklist: await Debt.countDocuments({ status: 'blacklist' }),
-      totalAmount: (await Debt.aggregate([{ $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } }]))[0]?.total || 0
+      total: await Debt.countDocuments(typeFilter),
+      pending: await Debt.countDocuments({ ...typeFilter, status: 'pending' }),
+      today: await Debt.countDocuments({ ...typeFilter, status: { $ne: 'paid' }, dueDate: { $gte: today, $lt: new Date(today.getTime() + 86400000) } }),
+      overdue: await Debt.countDocuments({ ...typeFilter, status: 'overdue' }),
+      paid: await Debt.countDocuments({ ...typeFilter, status: 'paid' }),
+      blacklist: await Debt.countDocuments({ ...typeFilter, status: 'blacklist' }),
+      totalAmount: (await Debt.aggregate([
+        { $match: { ...typeFilter, status: { $ne: 'paid' } } },
+        { $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } }
+      ]))[0]?.total || 0
     };
     res.json(stats);
   } catch (error) {
@@ -40,10 +47,27 @@ router.get('/stats', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
-    const debt = new Debt({ ...req.body, createdBy: req.user._id });
-    await debt.save();
+    const { type, customer, creditorName, amount, dueDate, description } = req.body;
     
-    await Customer.findByIdAndUpdate(req.body.customer, { $inc: { debt: req.body.amount } });
+    const debtData = {
+      type: type || 'receivable',
+      amount,
+      dueDate,
+      description,
+      createdBy: req.user._id
+    };
+    
+    if (type === 'payable') {
+      // Own debt - I owe someone
+      debtData.creditorName = creditorName;
+    } else {
+      // Customer debt - they owe me
+      debtData.customer = customer;
+      await Customer.findByIdAndUpdate(customer, { $inc: { debt: amount } });
+    }
+    
+    const debt = new Debt(debtData);
+    await debt.save();
     
     res.status(201).json(debt);
   } catch (error) {
@@ -65,7 +89,11 @@ router.post('/:id/payment', auth, authorize('admin', 'cashier'), async (req, res
     }
     
     await debt.save();
-    await Customer.findByIdAndUpdate(debt.customer, { $inc: { debt: -amount } });
+    
+    // Only update customer debt for receivable type
+    if (debt.type === 'receivable' && debt.customer) {
+      await Customer.findByIdAndUpdate(debt.customer, { $inc: { debt: -amount } });
+    }
     
     res.json(debt);
   } catch (error) {

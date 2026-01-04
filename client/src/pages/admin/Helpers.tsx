@@ -1,39 +1,69 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2 } from 'lucide-react';
-import { User } from '../../types';
+import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2, Phone, Lock, User } from 'lucide-react';
+import { User as UserType } from '../../types';
 import api from '../../utils/api';
 
+// Format phone number as +998 (XX) XXX-XX-XX
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  
+  let phone = digits;
+  if (!phone.startsWith('998') && phone.length > 0) {
+    phone = '998' + phone;
+  }
+  
+  phone = phone.slice(0, 12);
+  
+  if (phone.length === 0) return '';
+  if (phone.length <= 3) return '+' + phone;
+  if (phone.length <= 5) return '+998 (' + phone.slice(3);
+  if (phone.length <= 8) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5);
+  if (phone.length <= 10) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8);
+  return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8, 10) + '-' + phone.slice(10);
+};
+
+const getRawPhone = (formatted: string): string => {
+  return formatted.replace(/\D/g, '');
+};
+
+const displayPhone = (phone: string): string => {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length !== 12) return phone;
+  return '+998 (' + digits.slice(3, 5) + ') ' + digits.slice(5, 8) + '-' + digits.slice(8, 10) + '-' + digits.slice(10);
+};
+
 export default function Helpers() {
-  const [helpers, setHelpers] = useState<User[]>([]);
+  const [helpers, setHelpers] = useState<UserType[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'helper' as 'cashier' | 'helper'
+    name: '', phone: '', password: '', role: 'helper' as 'cashier' | 'helper'
   });
 
-  useEffect(() => {
-    fetchHelpers();
-  }, []);
+  useEffect(() => { fetchHelpers(); }, []);
 
   const fetchHelpers = async () => {
     try {
       const res = await api.get('/users/helpers');
       setHelpers(res.data);
-    } catch (err) {
-      console.error('Error fetching helpers:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error('Error fetching helpers:', err); }
+    finally { setLoading(false); }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setFormData({...formData, phone: formatted});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/users', formData);
+      await api.post('/users', {
+        ...formData,
+        phone: getRawPhone(formData.phone)
+      });
       fetchHelpers();
       closeModal();
     } catch (err: any) {
@@ -46,67 +76,59 @@ export default function Helpers() {
     try {
       await api.delete(`/users/${id}`);
       fetchHelpers();
-    } catch (err) {
-      console.error('Error deleting helper:', err);
-    }
+    } catch (err) { console.error('Error deleting helper:', err); }
   };
 
   const closeModal = () => {
     setShowModal(false);
-    setFormData({ name: '', email: '', password: '', role: 'helper' });
-  };
-
-  const roleColors = {
-    cashier: 'bg-green-100 text-green-600',
-    helper: 'bg-blue-100 text-blue-600'
+    setFormData({ name: '', phone: '', password: '', role: 'helper' });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       <Header 
-        title="Yordamchilar" 
-        showSearch
+        title="Yordamchilar"
         actions={
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => setShowModal(true)} className="btn-primary">
             <Plus className="w-4 h-4" />
-            Yangi yordamchi
+            <span className="hidden sm:inline">Yangi yordamchi</span>
           </button>
         }
       />
 
-      <div className="p-6">
+      <div className="p-4 lg:p-6">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            <div className="spinner text-brand-600 w-8 h-8" />
           </div>
         ) : helpers.length === 0 ? (
-          <div className="card flex flex-col items-center justify-center py-20 text-gray-400">
-            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-              <UserPlus className="w-10 h-10" />
+          <div className="card flex flex-col items-center py-16">
+            <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+              <UserPlus className="w-8 h-8 text-surface-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Yordamchilar yo'q</h3>
-            <p className="text-sm mb-6">Hozircha yordamchilar mavjud emas</p>
+            <h3 className="text-lg font-semibold text-surface-900 mb-2">Yordamchilar yo'q</h3>
+            <p className="text-surface-500 mb-6">Birinchi yordamchini qo'shing</p>
             <button onClick={() => setShowModal(true)} className="btn-primary">
-              Birinchi yordamchini qo'shing
+              Yordamchi qo'shish
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {helpers.map(helper => (
-              <div key={helper._id} className="card">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-lg font-bold text-white">
+              <div key={helper._id} className="card-hover">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
                     {helper.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{helper.name}</h3>
-                    <p className="text-sm text-gray-500">{helper.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-surface-900 truncate">{helper.name}</h3>
+                    <p className="text-sm text-surface-500 truncate">{displayPhone(helper.phone)}</p>
                   </div>
-                  <button onClick={() => handleDelete(helper._id)} className="text-gray-400 hover:text-primary-500">
+                  <button onClick={() => handleDelete(helper._id)} className="btn-icon-sm hover:bg-danger-100 hover:text-danger-600">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${roleColors[helper.role as keyof typeof roleColors]}`}>
+                <span className={`badge ${helper.role === 'cashier' ? 'badge-success' : 'badge-primary'}`}>
                   {helper.role === 'cashier' ? (
                     <><ShoppingCart className="w-3 h-3" /> Kassir</>
                   ) : (
@@ -119,87 +141,76 @@ export default function Helpers() {
         )}
       </div>
 
-      {/* Add Helper Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="overlay" onClick={closeModal} />
+          <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Yangi yordamchi qo'shish</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-semibold text-surface-900">Yangi yordamchi</h3>
+              <button onClick={closeModal} className="btn-icon-sm">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Ism</label>
-                <input 
-                  type="text" 
-                  className="input w-full" 
-                  placeholder="Yordamchi ismi"
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  required
-                />
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Ism</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input type="text" className="input pl-12" placeholder="Yordamchi ismi" value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})} required />
+                </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Email</label>
-                <input 
-                  type="email" 
-                  className="input w-full" 
-                  placeholder="email@example.com"
-                  value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
-                  required
-                />
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Telefon raqam</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input type="tel" className="input pl-12" placeholder="+998 (XX) XXX-XX-XX" value={formData.phone}
+                    onChange={handlePhoneChange} required />
+                </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Parol</label>
-                <input 
-                  type="password" 
-                  className="input w-full" 
-                  placeholder="Parol"
-                  value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
-                  required
-                  minLength={6}
-                />
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Parol</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input type="password" className="input pl-12" placeholder="Parol" value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})} required minLength={6} />
+                </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-2">Rol</label>
+                <label className="text-sm font-medium text-surface-700 mb-3 block">Rol</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setFormData({...formData, role: 'cashier'})}
-                    className={`p-4 rounded-xl border-2 transition-colors ${
+                    className={`p-4 rounded-xl border-2 transition-all ${
                       formData.role === 'cashier' 
-                        ? 'border-green-500 bg-green-50' 
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-success-500 bg-success-50' 
+                        : 'border-surface-200 hover:border-surface-300'
                     }`}
                   >
-                    <ShoppingCart className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'cashier' ? 'text-green-500' : 'text-gray-400'}`} />
-                    <p className="font-medium text-gray-900">Kassir</p>
-                    <p className="text-xs text-gray-500">Kassa, qarzlar, cheklar</p>
+                    <ShoppingCart className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'cashier' ? 'text-success-600' : 'text-surface-400'}`} />
+                    <p className="font-medium text-surface-900">Kassir</p>
+                    <p className="text-xs text-surface-500">Kassa, qarzlar</p>
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData({...formData, role: 'helper'})}
-                    className={`p-4 rounded-xl border-2 transition-colors ${
+                    className={`p-4 rounded-xl border-2 transition-all ${
                       formData.role === 'helper' 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-brand-500 bg-brand-50' 
+                        : 'border-surface-200 hover:border-surface-300'
                     }`}
                   >
-                    <Shield className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'helper' ? 'text-blue-500' : 'text-gray-400'}`} />
-                    <p className="font-medium text-gray-900">Yordamchi</p>
-                    <p className="text-xs text-gray-500">QR skaner, qidirish</p>
+                    <Shield className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'helper' ? 'text-brand-600' : 'text-surface-400'}`} />
+                    <p className="font-medium text-surface-900">Yordamchi</p>
+                    <p className="text-xs text-surface-500">QR skaner</p>
                   </button>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-500 hover:text-gray-700">
-                  Bekor qilish
-                </button>
-                <button type="submit" className="btn-primary">Saqlash</button>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
+                <button type="submit" className="btn-primary flex-1">Saqlash</button>
               </div>
             </form>
           </div>

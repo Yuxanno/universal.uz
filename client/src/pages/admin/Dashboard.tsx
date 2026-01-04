@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import { 
   DollarSign, TrendingUp, ShoppingCart, Receipt, Package, 
-  Brain, Clock, AlertCircle, RefreshCw
+  Clock, RefreshCw, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import api from '../../utils/api';
 
 export default function Dashboard() {
@@ -17,15 +17,19 @@ export default function Dashboard() {
     totalReceipts: 0,
     totalProducts: 0,
     lowStock: 0,
-    outOfStock: 0
+    outOfStock: 0,
+    peakHour: ''
   });
   const [chartData, setChartData] = useState<{name: string; sales: number}[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
-    fetchChartData();
   }, []);
+
+  useEffect(() => {
+    fetchChartData();
+  }, [period]);
 
   const fetchStats = async () => {
     try {
@@ -40,7 +44,7 @@ export default function Dashboard() {
 
   const fetchChartData = async () => {
     try {
-      const res = await api.get('/stats/chart?period=week');
+      const res = await api.get(`/stats/chart?period=${period}`);
       setChartData(res.data);
     } catch (err) {
       console.error('Error fetching chart data:', err);
@@ -48,166 +52,218 @@ export default function Dashboard() {
   };
 
   const mainStats = [
-    { icon: <DollarSign className="w-5 h-5 text-white" />, label: 'Umumiy tushum', value: stats.totalRevenue.toLocaleString(), suffix: "so'm", color: 'bg-yellow-500' },
-    { icon: <TrendingUp className="w-5 h-5 text-white" />, label: period === 'today' ? 'Bugungi sotuv' : 'Haftalik sotuv', value: (period === 'today' ? stats.todaySales : stats.weekSales).toLocaleString(), suffix: "so'm", color: 'bg-blue-500' },
-    { icon: <ShoppingCart className="w-5 h-5 text-white" />, label: 'Jami cheklar', value: stats.totalReceipts.toString(), color: 'bg-purple-500' },
-    { icon: <Receipt className="w-5 h-5 text-white" />, label: "O'rtacha chek", value: stats.totalReceipts > 0 ? Math.round(stats.totalRevenue / stats.totalReceipts).toLocaleString() : '0', suffix: "so'm", color: 'bg-green-500' },
+    { 
+      icon: DollarSign, 
+      label: 'Umumiy tushum', 
+      value: stats.totalRevenue.toLocaleString(), 
+      suffix: "so'm", 
+      color: 'bg-success-500',
+      bgColor: 'bg-success-50',
+      textColor: 'text-success-600',
+      trend: '+12%',
+      trendUp: true
+    },
+    { 
+      icon: TrendingUp, 
+      label: period === 'today' ? 'Bugungi sotuv' : 'Haftalik sotuv', 
+      value: (period === 'today' ? stats.todaySales : stats.weekSales).toLocaleString(), 
+      suffix: "so'm", 
+      color: 'bg-brand-500',
+      bgColor: 'bg-brand-50',
+      textColor: 'text-brand-600',
+      trend: '+8%',
+      trendUp: true
+    },
+    { 
+      icon: ShoppingCart, 
+      label: 'Jami cheklar', 
+      value: stats.totalReceipts.toString(), 
+      color: 'bg-accent-500',
+      bgColor: 'bg-accent-50',
+      textColor: 'text-accent-600',
+      trend: '+5%',
+      trendUp: true
+    },
+    { 
+      icon: Receipt, 
+      label: "Eng faol vaqt", 
+      value: stats.peakHour || '-', 
+      color: 'bg-warning-500',
+      bgColor: 'bg-warning-50',
+      textColor: 'text-warning-600',
+      trend: '',
+      trendUp: true
+    },
   ];
 
   const inventory = [
-    { label: 'Jami mahsulotlar', value: stats.totalProducts, color: 'bg-gray-400', textColor: 'text-gray-700' },
-    { label: 'Kam qolgan', value: stats.lowStock, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-    { label: 'Tugagan', value: stats.outOfStock, color: 'bg-primary-500', textColor: 'text-primary-500' },
+    { label: 'Jami mahsulotlar', value: stats.totalProducts, color: 'bg-surface-500', dotColor: 'bg-surface-400' },
+    { label: 'Kam qolgan', value: stats.lowStock, color: 'bg-warning-500', dotColor: 'bg-warning-500' },
+    { label: 'Tugagan', value: stats.outOfStock, color: 'bg-danger-500', dotColor: 'bg-danger-500' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-50">
       <Header title="Statistika" />
       
-      <div className="p-6 space-y-6">
-        {/* Stats Header */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-primary-500" />
-              <span className="font-semibold text-gray-900">Statistika</span>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="p-4 lg:p-6 space-y-6 pb-24 lg:pb-6">
+        {/* Period Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-surface-900">Umumiy ko'rinish</h2>
+            <p className="text-sm text-surface-500 mt-0.5">Biznesingiz holati</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex p-1 bg-surface-100 rounded-xl">
               <button 
                 onClick={() => setPeriod('today')}
-                className={`px-4 py-1.5 rounded-lg text-sm ${period === 'today' ? 'bg-gray-200 text-gray-900' : 'text-gray-500'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  period === 'today' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
+                }`}
               >
                 Bugun
               </button>
               <button 
                 onClick={() => setPeriod('week')}
-                className={`px-4 py-1.5 rounded-lg text-sm ${period === 'week' ? 'bg-gray-200 text-gray-900' : 'text-gray-500'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  period === 'week' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
+                }`}
               >
                 Hafta
               </button>
-              <button onClick={fetchStats} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500">
-                <RefreshCw className="w-4 h-4" />
-              </button>
             </div>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
-            </div>
-          ) : (
-            <>
-              {/* Main Stats */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {mainStats.map((stat, i) => (
-                  <div key={i} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center mb-3`}>
-                      {stat.icon}
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value} <span className="text-sm text-gray-500">{stat.suffix}</span></p>
-                    <p className="text-gray-500 text-sm">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Inventory Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                {inventory.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <div className={`w-3 h-3 ${item.color} rounded-full`} />
-                    <div>
-                      <p className="text-gray-500 text-sm">{item.label}</p>
-                      <p className={`text-xl font-bold ${item.textColor}`}>
-                        {item.value}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* AI Predictions */}
-        <div className="card bg-gradient-to-r from-gray-50 to-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary-500" />
-              <div>
-                <span className="font-semibold text-gray-900">AI Prognozlar</span>
-                <p className="text-xs text-gray-500">Sun'iy intellekt tahlili</p>
-              </div>
-            </div>
-            <button className="p-2 bg-primary-500 rounded-lg text-white">
-              <RefreshCw className="w-4 h-4" />
+            <button 
+              onClick={fetchStats} 
+              className="btn-icon"
+              title="Yangilash"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl p-4 border border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium text-gray-900">Ertangi prognoz</span>
-              </div>
-              <p className="text-gray-500 text-sm">
-                {stats.totalReceipts >= 3 
-                  ? `Taxminan ${Math.round(stats.weekSales / 7 * 1.1).toLocaleString()} so'm`
-                  : 'Prognoz uchun ma\'lumot yetarli emas'}
-              </p>
-              {stats.totalReceipts < 3 && (
-                <p className="text-xs text-primary-500 mt-1">Kamida 3 kun savdo ma'lumoti kerak</p>
-              )}
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-4 h-4 text-orange-500" />
-                <span className="text-sm font-medium text-gray-900">Eng yaxshi vaqt</span>
-              </div>
-              <p className="text-gray-500 text-sm">
-                {stats.totalReceipts >= 10 
-                  ? '14:00 - 18:00'
-                  : 'Tahlil uchun ma\'lumot yetarli emas'}
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm font-medium text-gray-900">Diqqat</span>
-              </div>
-              <p className="text-2xl font-bold text-primary-500">{stats.lowStock + stats.outOfStock}</p>
-              <p className="text-gray-500 text-sm">tovar kam qolgan</p>
-            </div>
-          </div>
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-3 gap-6">
-          {/* Daily Revenue Chart */}
-          <div className="col-span-2 card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary-500" />
-                <span className="font-semibold text-gray-900">Haftalik daromad dinamikasi</span>
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="card p-5">
+                <div className="skeleton w-10 h-10 rounded-xl mb-4" />
+                <div className="skeleton-title mb-2" />
+                <div className="skeleton-text w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* Main Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {mainStats.map((stat, i) => (
+                <div key={i} className="stat-card group">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`stat-icon ${stat.bgColor}`}>
+                      <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
+                    </div>
+                    <div className={`flex items-center gap-1 text-xs font-medium ${
+                      stat.trendUp ? 'text-success-600' : 'text-danger-600'
+                    }`}>
+                      {stat.trend && (
+                        <>
+                          {stat.trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          {stat.trend}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <p className="stat-value">{stat.value} <span className="text-sm font-normal text-surface-400">{stat.suffix}</span></p>
+                  <p className="stat-label mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Inventory Stats */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="stat-icon bg-surface-100">
+                    <Package className="w-5 h-5 text-surface-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-surface-900">Ombor holati</h3>
+                    <p className="text-sm text-surface-500">Mahsulotlar statistikasi</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {inventory.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 p-4 bg-surface-50 rounded-xl">
+                    <div className={`w-3 h-3 ${item.dotColor} rounded-full`} />
+                    <div>
+                      <p className="text-2xl font-bold text-surface-900">{item.value}</p>
+                      <p className="text-sm text-surface-500">{item.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Revenue Chart */}
+          <div className="lg:col-span-2 card">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon bg-brand-50">
+                  <TrendingUp className="w-5 h-5 text-brand-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-surface-900">
+                    {period === 'today' ? 'Bugungi daromad' : 'Haftalik daromad'}
+                  </h3>
+                  <p className="text-sm text-surface-500">
+                    {period === 'today' ? 'Soatlik dinamika' : 'Sotuv dinamikasi'}
+                  </p>
+                </div>
               </div>
             </div>
             <div className="h-64">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" stroke="#6b7280" />
-                    <YAxis stroke="#6b7280" />
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
+                    <XAxis dataKey="date" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                      labelStyle={{ color: '#111827' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e4e4e7', 
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px -2px rgb(0 0 0 / 0.06)'
+                      }}
+                      labelStyle={{ color: '#18181b', fontWeight: 600 }}
                       formatter={(value: number) => [`${value.toLocaleString()} so'm`, 'Sotuv']}
                     />
-                    <Line type="monotone" dataKey="sales" stroke="#dc2626" strokeWidth={2} dot={false} />
-                  </LineChart>
+                    <Area 
+                      type="monotone" 
+                      dataKey="sales" 
+                      stroke="#0ea5e9" 
+                      strokeWidth={2} 
+                      fill="url(#colorSales)" 
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <p>Ma'lumot topilmadi</p>
+                <div className="flex flex-col items-center justify-center h-full text-surface-400">
+                  <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+                    <TrendingUp className="w-8 h-8 text-surface-300" />
+                  </div>
+                  <p className="font-medium">Ma'lumot topilmadi</p>
                 </div>
               )}
             </div>
@@ -215,15 +271,23 @@ export default function Dashboard() {
 
           {/* Top Products */}
           <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary-500" />
-                <span className="font-semibold text-gray-900">Top mahsulotlar</span>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="stat-icon bg-accent-50">
+                  <Package className="w-5 h-5 text-accent-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-surface-900">Top mahsulotlar</h3>
+                  <p className="text-sm text-surface-500">Eng ko'p sotilgan</p>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-              <Clock className="w-12 h-12 mb-2 opacity-50" />
-              <p>Ma'lumot topilmadi</p>
+            <div className="flex flex-col items-center justify-center h-48 text-surface-400">
+              <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+                <Clock className="w-8 h-8 text-surface-300" />
+              </div>
+              <p className="font-medium">Ma'lumot topilmadi</p>
+              <p className="text-sm text-surface-400 mt-1">Sotuvlar boshlanishi kerak</p>
             </div>
           </div>
         </div>

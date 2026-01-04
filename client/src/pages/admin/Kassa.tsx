@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import Header from '../../components/Header';
-import { Search, RotateCcw, Save, CreditCard, Trash2, Plus, Minus, X, Archive, ArrowLeft } from 'lucide-react';
+import { 
+  Search, RotateCcw, Save, CreditCard, Trash2, X, 
+  Package, Banknote, Delete, AlertTriangle
+} from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
 
@@ -18,11 +20,14 @@ export default function Kassa() {
   const [inputValue, setInputValue] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
   const [isReturnMode, setIsReturnMode] = useState(false);
+  const [showReturnSearch, setShowReturnSearch] = useState(false);
+  const [returnSearchQuery, setReturnSearchQuery] = useState('');
+  const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(null);
+  const [showSavedReceipts, setShowSavedReceipts] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -40,22 +45,41 @@ export default function Kassa() {
 
   const loadSavedReceipts = () => {
     const saved = localStorage.getItem('savedReceipts');
-    if (saved) {
-      setSavedReceipts(JSON.parse(saved));
-    }
+    if (saved) setSavedReceipts(JSON.parse(saved));
   };
 
   const total = cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
 
   const handleNumpadClick = (value: string) => {
-    if (value === 'C') {
-      setInputValue('');
-    } else if (value === '⌫') {
-      setInputValue(prev => prev.slice(0, -1));
-    } else if (value === '+') {
-      addProductByCode(inputValue);
-    } else {
-      setInputValue(prev => prev + value);
+    if (value === 'C') setInputValue('');
+    else if (value === '⌫') setInputValue(prev => prev.slice(0, -1));
+    else if (value === '+') {
+      if (inputMode === 'quantity' && selectedCartItemId) {
+        const qty = parseInt(inputValue);
+        if (qty > 0) {
+          setCart(prev => prev.map(p => 
+            p._id === selectedCartItemId ? { ...p, cartQuantity: qty } : p
+          ));
+        }
+        setInputValue('');
+      } else {
+        addProductByCode(inputValue);
+      }
+    }
+    else setInputValue(prev => prev + value);
+  };
+
+  const handleCartItemClick = (item: CartItem) => {
+    setSelectedCartItemId(item._id);
+  };
+
+  const handleSoniClick = () => {
+    setInputMode('quantity');
+    if (selectedCartItemId) {
+      const selectedItem = cart.find(item => item._id === selectedCartItemId);
+      if (selectedItem) {
+        setInputValue(selectedItem.cartQuantity.toString());
+      }
     }
   };
 
@@ -64,7 +88,7 @@ export default function Kassa() {
     if (product) {
       addToCart(product);
       setInputValue('');
-    } else {
+    } else if (code) {
       alert('Tovar topilmadi');
     }
   };
@@ -83,10 +107,40 @@ export default function Kassa() {
 
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => 
-      item._id === id 
-        ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) }
-        : item
+      item._id === id ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) } : item
     ));
+  };
+
+  const toggleReturnMode = () => {
+    if (!isReturnMode) {
+      // Entering return mode - show search modal
+      setCart([]);
+      setIsReturnMode(true);
+      setShowReturnSearch(true);
+    } else {
+      // Exiting return mode
+      setIsReturnMode(false);
+      setCart([]);
+    }
+  };
+
+  const handleReturnSearch = (query: string) => {
+    setReturnSearchQuery(query);
+    if (query.length > 0) {
+      const results = products.filter(p => 
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.code.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const addToReturn = (product: Product) => {
+    addToCart(product);
+    setShowReturnSearch(false);
+    setReturnSearchQuery('');
   };
 
   const removeFromCart = (id: string) => {
@@ -124,36 +178,22 @@ export default function Kassa() {
       setCart([]);
       setShowPayment(false);
       setIsReturnMode(false);
-      alert(isReturnMode ? 'Qaytarish muvaffaqiyatli amalga oshirildi!' : 'Chek muvaffaqiyatli saqlandi!');
-      fetchProducts(); // Refresh products to get updated quantities
+      alert(isReturnMode ? 'Qaytarish muvaffaqiyatli!' : 'Chek saqlandi!');
+      fetchProducts();
     } catch (err) {
       console.error('Error creating receipt:', err);
       alert('Xatolik yuz berdi');
     }
   };
 
-  // Toggle return mode
-  const toggleReturnMode = () => {
-    setIsReturnMode(!isReturnMode);
-    if (!isReturnMode) {
-      setCart([]); // Clear cart when entering return mode
-    }
-  };
-
-  // Save current receipt
   const saveReceipt = () => {
-    if (cart.length === 0) {
-      alert('Chek bo\'sh');
-      return;
-    }
-    
+    if (cart.length === 0) { alert("Chek bo'sh"); return; }
     const newSaved: SavedReceipt = {
       id: Date.now().toString(),
       items: [...cart],
       total,
       savedAt: new Date().toLocaleString()
     };
-    
     const updated = [...savedReceipts, newSaved];
     setSavedReceipts(updated);
     localStorage.setItem('savedReceipts', JSON.stringify(updated));
@@ -161,17 +201,14 @@ export default function Kassa() {
     alert('Chek saqlandi!');
   };
 
-  // Load saved receipt
   const loadSavedReceipt = (receipt: SavedReceipt) => {
     setCart(receipt.items);
-    // Remove from saved
     const updated = savedReceipts.filter(r => r.id !== receipt.id);
     setSavedReceipts(updated);
     localStorage.setItem('savedReceipts', JSON.stringify(updated));
-    setShowSaved(false);
+    setShowSavedReceipts(false);
   };
 
-  // Delete saved receipt
   const deleteSavedReceipt = (id: string) => {
     const updated = savedReceipts.filter(r => r.id !== id);
     setSavedReceipts(updated);
@@ -179,115 +216,198 @@ export default function Kassa() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-orange-50' : 'bg-gray-50'}`}>
-      <Header 
-        title={isReturnMode ? "Qaytarish rejimi" : "Kassa (POS)"} 
-        actions={
-          <div className="flex items-center gap-2">
-            {isReturnMode && (
-              <span className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-medium">
-                QAYTARISH
+    <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50' : 'bg-surface-50'}`}>
+      {/* Header */}
+      <header className="bg-white border-b border-surface-200 px-4 lg:px-6 h-14 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-surface-900">Kassa (POS)</h1>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowSavedReceipts(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-surface-100 rounded-lg text-sm hover:bg-surface-200 transition-colors"
+          >
+            <Save className="w-4 h-4 text-surface-500" />
+            <span className="text-surface-700">Saqlangan</span>
+            {savedReceipts.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-danger-500 text-white text-xs rounded-full font-medium">
+                {savedReceipts.length}
               </span>
             )}
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gray-700">
-              <span className="w-2 h-2 bg-green-500 rounded-full" />
-              Ishlash: {cart.length}
-            </button>
-            <button 
-              onClick={() => setShowSaved(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gray-700 relative"
-            >
-              <Archive className="w-4 h-4" />
-              Saqlangan
-              {savedReceipts.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {savedReceipts.length}
-                </span>
-              )}
-            </button>
-          </div>
-        }
-      />
+          </button>
+        </div>
+      </header>
 
+      {/* Main Content */}
       <div className="flex-1 flex">
-        {/* Cart Table */}
-        <div className="flex-1 p-4">
-          <div className={`card h-full flex flex-col ${isReturnMode ? 'border-2 border-orange-300' : ''}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm text-gray-500">
-                {isReturnMode ? 'QAYTARISH - ' : 'JAMI: '}{cart.length} ta mahsulot
-              </div>
-              {isReturnMode && (
-                <span className="text-orange-600 text-sm font-medium">Tovarlar omborga qaytariladi</span>
-              )}
-            </div>
-            
+        {/* Left - Cart Table */}
+        <div className="flex-1 flex flex-col p-4 lg:p-6">
+          {/* Cart Info */}
+          <div className="mb-4 text-sm text-surface-600">
+            JAMI: {cart.length} ta mahsulot
+          </div>
+
+          {/* Table */}
+          <div className="flex-1 bg-white rounded-xl border border-surface-200 overflow-hidden flex flex-col">
             {/* Table Header */}
-            <div className={`grid grid-cols-8 gap-4 py-2 border-b text-sm ${isReturnMode ? 'border-orange-200 text-orange-600' : 'border-gray-200 text-gray-500'}`}>
-              <span>KOD</span>
-              <span className="col-span-2">MAHSULOT</span>
-              <span>OMBOR</span>
-              <span>SONI</span>
-              <span>NARX</span>
-              <span>SUMMA</span>
-              <span>AMALLAR</span>
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-surface-50 border-b border-surface-200 text-xs font-semibold text-surface-500 uppercase">
+              <div className="col-span-1">Kod</div>
+              <div className="col-span-3">Mahsulot</div>
+              <div className="col-span-2">Ombor</div>
+              <div className="col-span-2 text-center">Soni</div>
+              <div className="col-span-2 text-right">Narx</div>
+              <div className="col-span-1 text-right">Summa</div>
+              <div className="col-span-1 text-center">Amallar</div>
             </div>
 
-            {/* Cart Items */}
+            {/* Table Body */}
             <div className="flex-1 overflow-auto">
               {cart.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <Search className="w-16 h-16 mb-4 opacity-30" />
-                  <p>{isReturnMode ? 'Qaytariladigan tovarlarni qo\'shing' : '"Qidirish" tugmasini bosing'}</p>
-                  <p className="text-sm">0 ta mahsulot</p>
+                <div className="flex items-center justify-center h-full text-surface-400 py-20">
+                  <div className="text-center">
+                    <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>Savat bo'sh</p>
+                  </div>
                 </div>
               ) : (
-                cart.map(item => (
-                  <div key={item._id} className={`grid grid-cols-8 gap-4 py-3 border-b items-center ${isReturnMode ? 'border-orange-100 text-orange-900' : 'border-gray-100 text-gray-900'}`}>
-                    <span className="text-sm font-mono">{item.code}</span>
-                    <span className="col-span-2">{item.name}</span>
-                    <span className="text-sm text-gray-500">-</span>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => updateQuantity(item._id, -1)} className="p-1 hover:bg-gray-100 rounded">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="w-8 text-center">{item.cartQuantity}</span>
-                      <button onClick={() => updateQuantity(item._id, 1)} className="p-1 hover:bg-gray-100 rounded">
-                        <Plus className="w-4 h-4" />
-                      </button>
+                <div className="divide-y divide-surface-100">
+                  {cart.map((item) => (
+                    <div 
+                      key={item._id} 
+                      onClick={() => handleCartItemClick(item)}
+                      className={`grid grid-cols-12 gap-2 px-4 py-3 items-center cursor-pointer transition-colors ${
+                        selectedCartItemId === item._id 
+                          ? 'bg-brand-50 border-l-4 border-brand-500' 
+                          : 'hover:bg-surface-50'
+                      }`}
+                    >
+                      <div className="col-span-1">
+                        <span className="text-sm font-mono text-surface-600">{item.code}</span>
+                      </div>
+                      <div className="col-span-3">
+                        <span className="text-sm font-medium text-surface-900">{item.name}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm text-surface-500">-</span>
+                      </div>
+                      <div className="col-span-2 flex items-center justify-center">
+                        <input
+                          type="text"
+                          value={item.cartQuantity}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || /^\d+$/.test(val)) {
+                              setCart(prev => prev.map(p => 
+                                p._id === item._id ? { ...p, cartQuantity: val === '' ? 0 : parseInt(val) } : p
+                              ));
+                            }
+                          }}
+                          onBlur={() => {
+                            if (item.cartQuantity === 0 || !item.cartQuantity) {
+                              removeFromCart(item._id);
+                            }
+                          }}
+                          className="w-16 h-9 text-center font-medium border border-surface-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                        />
+                      </div>
+                      <div className="col-span-2 text-right">
+                        <span className="text-sm text-surface-900">{item.price.toLocaleString()}</span>
+                      </div>
+                      <div className="col-span-1 text-right">
+                        <span className="text-sm font-semibold text-surface-900">
+                          {(item.price * item.cartQuantity).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="col-span-1 flex justify-center">
+                        <button 
+                          onClick={() => removeFromCart(item._id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-danger-500 hover:bg-danger-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <span>{item.price.toLocaleString()}</span>
-                    <span className="font-medium">{(item.price * item.cartQuantity).toLocaleString()}</span>
-                    <button onClick={() => removeFromCart(item._id)} className="text-primary-500 hover:text-primary-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="flex items-center gap-3 mt-4">
+            {!isReturnMode && (
+              <button 
+                onClick={() => setShowSearch(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-surface-200 rounded-xl text-surface-700 hover:bg-surface-50 transition-colors"
+              >
+                <Search className="w-4 h-4" />
+                Qidirish
+              </button>
+            )}
+            <button 
+              onClick={toggleReturnMode}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-colors ${
+                isReturnMode 
+                  ? 'bg-warning-500 text-white' 
+                  : 'bg-warning-100 text-warning-700 hover:bg-warning-200'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4" />
+              {isReturnMode ? 'Qaytarishni bekor qilish' : 'Qaytarish'}
+            </button>
+            {isReturnMode && (
+              <button 
+                onClick={() => setShowReturnSearch(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-warning-100 text-warning-700 rounded-xl hover:bg-warning-200 transition-colors"
+              >
+                <Search className="w-4 h-4" />
+                Tovar qo'shish
+              </button>
+            )}
+            <button 
+              onClick={saveReceipt}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-surface-200 rounded-xl text-surface-700 hover:bg-surface-50 transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              Saqlash
+            </button>
+            <button 
+              onClick={() => setShowPayment(true)}
+              disabled={cart.length === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-success-500 text-white rounded-xl hover:bg-success-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CreditCard className="w-4 h-4" />
+              To'lov
+            </button>
           </div>
         </div>
 
-        {/* Right Panel - Numpad & Total */}
-        <div className="w-80 p-4 flex flex-col gap-4">
+        {/* Right - Numpad & Total */}
+        <div className="w-72 lg:w-80 bg-white border-l border-surface-200 p-4 lg:p-6 flex flex-col">
           {/* Total */}
-          <div className="text-right">
-            <span className={`text-4xl font-bold ${isReturnMode ? 'text-orange-600' : 'text-gray-900'}`}>
-              {isReturnMode && '-'}{total.toLocaleString()} so'm
-            </span>
+          <div className="text-right mb-6">
+            <p className={`text-3xl lg:text-4xl font-bold ${isReturnMode ? 'text-warning-600' : 'text-surface-900'}`}>
+              {total.toLocaleString()} so'm
+            </p>
           </div>
 
           {/* Mode Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex mb-4 bg-surface-100 rounded-xl p-1">
             <button 
-              onClick={() => setInputMode('quantity')}
-              className={`flex-1 py-2 rounded-lg text-sm ${inputMode === 'quantity' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+              onClick={handleSoniClick}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                inputMode === 'quantity' 
+                  ? 'bg-white shadow-sm text-surface-900' 
+                  : 'text-surface-500 hover:text-surface-700'
+              }`}
             >
               Soni
             </button>
             <button 
               onClick={() => setInputMode('code')}
-              className={`flex-1 py-2 rounded-lg text-sm ${inputMode === 'code' ? 'bg-primary-500 text-white' : 'text-gray-500'}`}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                inputMode === 'code' 
+                  ? 'bg-brand-500 text-white shadow-sm' 
+                  : 'text-surface-500 hover:text-surface-700'
+              }`}
             >
               Kod
             </button>
@@ -300,165 +420,215 @@ export default function Kassa() {
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addProductByCode(inputValue)}
             placeholder="Kod kiriting..."
-            className="input text-center"
+            className="w-full px-4 py-3 text-center text-lg font-mono bg-surface-50 border border-surface-200 rounded-xl mb-4 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           />
 
           {/* Numpad */}
-          <div className="grid grid-cols-4 gap-2">
-            {['7', '8', '9', 'C', '4', '5', '6', '⌫', '1', '2', '3', '+', '0', '00'].map(key => (
+          <div className="grid grid-cols-4 gap-1.5">
+            {['7', '8', '9', 'C', '4', '5', '6', '⌫', '1', '2', '3', '+', '0', '00', '.'].map((key) => (
               <button
                 key={key}
                 onClick={() => handleNumpadClick(key)}
-                className={`py-4 rounded-lg text-lg font-medium transition-colors ${
-                  key === 'C' ? 'bg-primary-500 hover:bg-primary-600 text-white' :
-                  key === '⌫' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' :
-                  key === '+' ? 'bg-primary-500 hover:bg-primary-600 text-white row-span-2' :
-                  'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                } ${key === '0' ? 'col-span-1' : ''} ${key === '00' ? 'col-span-2' : ''}`}
+                className={`
+                  flex items-center justify-center rounded-xl text-xl font-semibold transition-all active:scale-95
+                  ${key === 'C' ? 'bg-danger-500 text-white hover:bg-danger-600' : ''}
+                  ${key === '⌫' ? 'bg-warning-500 text-white hover:bg-warning-600' : ''}
+                  ${key === '+' ? 'bg-brand-500 text-white hover:bg-brand-600 row-span-2' : ''}
+                  ${!['C', '⌫', '+'].includes(key) ? 'bg-surface-100 text-surface-700 hover:bg-surface-200' : ''}
+                  ${key === '+' ? 'h-full' : 'h-16'}
+                `}
               >
-                {key}
+                {key === '⌫' ? <Delete className="w-6 h-6" /> : key}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom Actions */}
-      <div className={`border-t p-4 shadow-lg ${isReturnMode ? 'bg-orange-100 border-orange-200' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setShowSearch(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-700"
-          >
-            <Search className="w-5 h-5" />
-            Qidirish
-          </button>
-          <button 
-            onClick={toggleReturnMode}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg ${
-              isReturnMode 
-                ? 'bg-gray-600 text-white hover:bg-gray-700' 
-                : 'bg-yellow-500 text-white hover:bg-yellow-400'
-            }`}
-          >
-            {isReturnMode ? <ArrowLeft className="w-5 h-5" /> : <RotateCcw className="w-5 h-5" />}
-            {isReturnMode ? 'Orqaga' : 'Qaytarish'}
-          </button>
-          {!isReturnMode && (
-            <button 
-              onClick={saveReceipt}
-              disabled={cart.length === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-700 disabled:opacity-50"
-            >
-              <Save className="w-5 h-5" />
-              Saqlash
-            </button>
-          )}
-          <button 
-            onClick={() => setShowPayment(true)}
-            disabled={cart.length === 0}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg disabled:opacity-50 ${
-              isReturnMode 
-                ? 'bg-orange-500 text-white hover:bg-orange-400' 
-                : 'bg-green-500 text-white hover:bg-green-400'
-            }`}
-          >
-            <CreditCard className="w-5 h-5" />
-            {isReturnMode ? 'Qaytarish' : "To'lov"}
-          </button>
-        </div>
-      </div>
-
       {/* Search Modal */}
       {showSearch && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Tovar qidirish</h3>
-              <button onClick={() => setShowSearch(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowSearch(false)} />
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden">
+            <div className="p-4 border-b border-surface-100">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+                <input
+                  type="text"
+                  placeholder="Nom yoki kod bo'yicha qidiring..."
+                  value={searchQuery}
+                  onChange={e => handleSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-surface-50 border border-surface-200 rounded-xl focus:outline-none focus:border-brand-500"
+                  autoFocus
+                />
+              </div>
             </div>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder="Kod yoki nom bo'yicha qidiring..."
-                className="input w-full pl-10"
-                autoFocus
-              />
-            </div>
-            <div className="flex-1 overflow-auto">
-              {searchResults.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">
-                  {searchQuery ? 'Tovar topilmadi' : 'Qidirish uchun yozing...'}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {searchResults.map(product => (
-                    <div 
-                      key={product._id}
-                      onClick={() => addToCart(product)}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{product.name}</p>
-                        <p className="text-sm text-gray-500">Kod: {product.code}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">{product.price.toLocaleString()} so'm</p>
-                        <p className="text-sm text-gray-500">{product.quantity} dona</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="max-h-80 overflow-auto">
+              {searchResults.map(product => (
+                <button
+                  key={product._id}
+                  onClick={() => addToCart(product)}
+                  className="w-full flex items-center gap-3 p-4 hover:bg-surface-50 transition-colors text-left border-b border-surface-50 last:border-0"
+                >
+                  <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+                    <Package className="w-5 h-5 text-brand-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-surface-900">{product.name}</p>
+                    <p className="text-sm text-surface-500">Kod: {product.code}</p>
+                  </div>
+                  <p className="font-semibold text-brand-600">{product.price.toLocaleString()}</p>
+                </button>
+              ))}
+              {searchQuery && searchResults.length === 0 && (
+                <p className="text-center text-surface-500 py-8">Tovar topilmadi</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Saved Receipts Modal */}
-      {showSaved && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-full max-w-lg max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Saqlangan cheklar</h3>
-              <button onClick={() => setShowSaved(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
+      {/* Payment Modal */}
+      {showPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowPayment(false)} />
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative z-10">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-surface-900 mb-2">
+                {isReturnMode ? 'Qaytarish tasdiqlash' : "To'lov usuli"}
+              </h3>
+              <p className={`text-3xl font-bold ${isReturnMode ? 'text-warning-600' : 'text-surface-900'}`}>
+                {isReturnMode && '- '}{total.toLocaleString()} so'm
+              </p>
+              {isReturnMode && (
+                <p className="text-sm text-warning-600 mt-2">Bu summa mijozga qaytariladi</p>
+              )}
+            </div>
+            <div className="space-y-3">
+              <button onClick={() => handlePayment('cash')} className={`w-full flex items-center justify-center gap-2 py-4 ${isReturnMode ? 'bg-warning-500 hover:bg-warning-600' : 'bg-success-500 hover:bg-success-600'} text-white rounded-xl font-semibold transition-colors`}>
+                <Banknote className="w-5 h-5" />
+                Naqd pul
+              </button>
+              <button onClick={() => handlePayment('card')} className="w-full flex items-center justify-center gap-2 py-4 bg-brand-500 text-white rounded-xl font-semibold hover:bg-brand-600 transition-colors">
+                <CreditCard className="w-5 h-5" />
+                Plastik karta
+              </button>
+              <button onClick={() => setShowPayment(false)} className="w-full py-3 text-surface-600 hover:text-surface-900 transition-colors">
+                Bekor qilish
               </button>
             </div>
-            <div className="flex-1 overflow-auto">
+          </div>
+        </div>
+      )}
+
+      {/* Return Search Modal */}
+      {showReturnSearch && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => { setShowReturnSearch(false); if (cart.length === 0) setIsReturnMode(false); }} />
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden">
+            <div className="p-4 border-b border-surface-100 bg-warning-50">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-warning-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-warning-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-surface-900">Qaytarish rejimi</h3>
+                  <p className="text-sm text-surface-500">Qaytariladigan tovarni tanlang</p>
+                </div>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+                <input
+                  type="text"
+                  placeholder="Tovar nomi yoki kodi..."
+                  value={returnSearchQuery}
+                  onChange={e => handleReturnSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-surface-200 rounded-xl focus:outline-none focus:border-warning-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-80 overflow-auto">
+              {searchResults.map(product => (
+                <button
+                  key={product._id}
+                  onClick={() => addToReturn(product)}
+                  className="w-full flex items-center gap-3 p-4 hover:bg-warning-50 transition-colors text-left border-b border-surface-50 last:border-0"
+                >
+                  <div className="w-10 h-10 bg-warning-100 rounded-xl flex items-center justify-center">
+                    <RotateCcw className="w-5 h-5 text-warning-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-surface-900">{product.name}</p>
+                    <p className="text-sm text-surface-500">Kod: {product.code}</p>
+                  </div>
+                  <p className="font-semibold text-warning-600">{product.price.toLocaleString()}</p>
+                </button>
+              ))}
+              {returnSearchQuery && searchResults.length === 0 && (
+                <p className="text-center text-surface-500 py-8">Tovar topilmadi</p>
+              )}
+              {!returnSearchQuery && (
+                <p className="text-center text-surface-400 py-8">Tovar nomini yoki kodini kiriting</p>
+              )}
+            </div>
+            <div className="p-4 border-t border-surface-100 bg-surface-50">
+              <button 
+                onClick={() => { setShowReturnSearch(false); if (cart.length === 0) setIsReturnMode(false); }}
+                className="w-full py-3 text-surface-600 hover:text-surface-900 transition-colors"
+              >
+                Bekor qilish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Receipts Modal */}
+      {showSavedReceipts && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowSavedReceipts(false)} />
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden">
+            <div className="p-4 border-b border-surface-100">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-surface-900">Saqlangan cheklar</h3>
+                <button 
+                  onClick={() => setShowSavedReceipts(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-surface-500" />
+                </button>
+              </div>
+            </div>
+            <div className="max-h-96 overflow-auto">
               {savedReceipts.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">Saqlangan cheklar yo'q</p>
+                <div className="flex items-center justify-center py-12 text-surface-400">
+                  <div className="text-center">
+                    <Save className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>Saqlangan cheklar yo'q</p>
+                  </div>
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-surface-100">
                   {savedReceipts.map(receipt => (
-                    <div key={receipt.id} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <div key={receipt.id} className="p-4 hover:bg-surface-50 transition-colors">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500">{receipt.savedAt}</span>
-                        <span className="font-bold text-gray-900">{receipt.total.toLocaleString()} so'm</span>
+                        <span className="text-sm text-surface-500">{receipt.savedAt}</span>
+                        <span className="font-semibold text-surface-900">{receipt.total.toLocaleString()} so'm</span>
                       </div>
-                      <div className="text-sm text-gray-600 mb-3">
-                        {receipt.items.map(item => (
-                          <div key={item._id} className="flex justify-between">
-                            <span>{item.name} x{item.cartQuantity}</span>
-                            <span>{(item.price * item.cartQuantity).toLocaleString()}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="text-sm text-surface-600 mb-3">
+                        {receipt.items.length} ta mahsulot
+                      </p>
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => loadSavedReceipt(receipt)}
-                          className="flex-1 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 text-sm"
+                          className="flex-1 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors"
                         >
-                          Ochish
+                          Yuklash
                         </button>
-                        <button 
+                        <button
                           onClick={() => deleteSavedReceipt(receipt.id)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                          className="px-3 py-2 bg-danger-100 text-danger-600 rounded-lg hover:bg-danger-200 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -468,51 +638,6 @@ export default function Kassa() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Modal */}
-      {showPayment && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-96">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isReturnMode ? 'Qaytarishni tasdiqlash' : "To'lov"}
-              </h3>
-              <button onClick={() => setShowPayment(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="text-center mb-6">
-              <p className="text-gray-500 mb-2">{isReturnMode ? 'Qaytarish summasi' : 'Jami summa'}</p>
-              <p className={`text-3xl font-bold ${isReturnMode ? 'text-orange-600' : 'text-gray-900'}`}>
-                {isReturnMode && '-'}{total.toLocaleString()} so'm
-              </p>
-            </div>
-            {isReturnMode ? (
-              <button 
-                onClick={() => handlePayment('cash')}
-                className="w-full py-4 bg-orange-500 text-white rounded-lg hover:bg-orange-400 font-medium"
-              >
-                ✓ Qaytarishni tasdiqlash
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => handlePayment('cash')}
-                  className="py-4 bg-green-500 text-white rounded-lg hover:bg-green-400 font-medium"
-                >
-                  💵 Naqd
-                </button>
-                <button 
-                  onClick={() => handlePayment('card')}
-                  className="py-4 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium"
-                >
-                  💳 Karta
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}

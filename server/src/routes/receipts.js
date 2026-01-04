@@ -41,6 +41,21 @@ router.post('/', auth, async (req, res) => {
     const { items, total, paymentMethod, customer, isReturn } = req.body;
     const isHelper = req.user.role === 'helper';
     
+    // Check stock availability before sale (not for returns)
+    if (!isReturn && !isHelper) {
+      for (const item of items) {
+        const product = await Product.findById(item.product);
+        if (!product) {
+          return res.status(400).json({ message: `Tovar topilmadi: ${item.name}` });
+        }
+        if (product.quantity < item.quantity) {
+          return res.status(400).json({ 
+            message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${product.quantity}, So'ralgan: ${item.quantity}` 
+          });
+        }
+      }
+    }
+    
     const receipt = new Receipt({
       items,
       total,
@@ -71,6 +86,19 @@ router.put('/:id/approve', auth, authorize('admin', 'cashier'), async (req, res)
     const receipt = await Receipt.findById(req.params.id);
     if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
     if (receipt.status !== 'pending') return res.status(400).json({ message: 'Bu chek allaqachon ko\'rib chiqilgan' });
+
+    // Check stock availability before approving
+    for (const item of receipt.items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return res.status(400).json({ message: `Tovar topilmadi: ${item.name}` });
+      }
+      if (product.quantity < item.quantity) {
+        return res.status(400).json({ 
+          message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${product.quantity}, So'ralgan: ${item.quantity}` 
+        });
+      }
+    }
 
     receipt.status = 'approved';
     receipt.processedBy = req.user._id;

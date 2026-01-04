@@ -27,17 +27,19 @@ router.get('/helpers', auth, authorize('admin'), async (req, res) => {
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, phone, password, role } = req.body;
     
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ 
+      $or: [{ phone }, { email: phone }] 
+    });
     if (existingUser) {
-      return res.status(400).json({ message: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+      return res.status(400).json({ message: 'Bu telefon raqam allaqachon ro\'yxatdan o\'tgan' });
     }
 
-    const user = new User({ name, email, password, role, createdBy: req.user._id });
+    const user = new User({ name, phone, password, role, createdBy: req.user._id });
     await user.save();
     
-    res.status(201).json({ _id: user._id, name: user.name, email: user.email, role: user.role });
+    res.status(201).json({ _id: user._id, name: user.name, phone: user.phone, role: user.role });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -45,10 +47,10 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, phone, role } = req.body;
     const user = await User.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user._id },
-      { name, email, role },
+      { name, phone, role },
       { new: true }
     ).select('-password');
     

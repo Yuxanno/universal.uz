@@ -1,32 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '../../components/Header';
-import { Plus, Package, X, Camera, Edit, Trash2 } from 'lucide-react';
+import { Plus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload } from 'lucide-react';
 import { Product, Warehouse } from '../../types';
 import api from '../../utils/api';
+import { QRCodeSVG } from 'qrcode.react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    price: '',
-    quantity: '',
-    warehouse: ''
+    code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''
   });
+  const [images, setImages] = useState<string[]>([]);
+  const [codeError, setCodeError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchProducts();
-    fetchWarehouses();
+    fetchMainWarehouse();
   }, []);
+
+  useEffect(() => {
+    if (mainWarehouse) {
+      fetchProducts();
+    }
+  }, [mainWarehouse]);
+
+  const fetchMainWarehouse = async () => {
+    try {
+      const res = await api.get('/warehouses');
+      const main = res.data.find((w: Warehouse) => w.name === 'Asosiy ombor');
+      if (main) {
+        setMainWarehouse(main);
+      } else {
+        const newMain = await api.post('/warehouses', { name: 'Asosiy ombor', address: '' });
+        setMainWarehouse(newMain.data);
+      }
+    } catch (err) {
+      console.error('Error fetching warehouses:', err);
+      setLoading(false);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
-      const res = await api.get('/products');
+      const res = await api.get('/products?mainOnly=true');
       setProducts(res.data);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -35,34 +62,69 @@ export default function Products() {
     }
   };
 
-  const fetchWarehouses = async () => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const remainingSlots = 8 - images.length;
+    if (remainingSlots <= 0) {
+      alert('Maksimum 8 ta rasm yuklash mumkin');
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    const formData = new FormData();
+    filesToUpload.forEach(file => formData.append('images', file));
+
+    setUploading(true);
     try {
-      const res = await api.get('/warehouses');
-      setWarehouses(res.data);
+      const res = await api.post('/products/upload-images', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setImages([...images, ...res.data.images]);
     } catch (err) {
-      console.error('Error fetching warehouses:', err);
+      console.error('Error uploading images:', err);
+      alert('Rasmlarni yuklashda xatolik');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = async (imagePath: string) => {
+    try {
+      await api.delete('/products/delete-image', { data: { imagePath } });
+      setImages(images.filter(img => img !== imagePath));
+    } catch (err) {
+      console.error('Error deleting image:', err);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (codeError) {
+      alert(codeError);
+      return;
+    }
     try {
       const data = {
-        ...formData,
-        price: Number(formData.price),
-        quantity: Number(formData.quantity)
+        code: formData.code,
+        name: formData.name,
+        costPrice: Number(formData.costPrice),
+        price: Number(formData.wholesalePrice),
+        quantity: Number(formData.quantity),
+        warehouse: mainWarehouse?._id,
+        images
       };
-      
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, data);
       } else {
         await api.post('/products', data);
       }
-      
       fetchProducts();
       closeModal();
-    } catch (err) {
-      console.error('Error saving product:', err);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Xatolik yuz berdi');
     }
   };
 
@@ -81,188 +143,391 @@ export default function Products() {
     setFormData({
       code: product.code,
       name: product.name,
-      price: String(product.price),
-      quantity: String(product.quantity),
-      warehouse: product.warehouse || ''
+      costPrice: String((product as any).costPrice || 0),
+      wholesalePrice: String(product.price),
+      quantity: String(product.quantity)
     });
+    setImages((product as any).images || []);
+    setCodeError('');
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingProduct(null);
-    setFormData({ code: '', name: '', price: '', quantity: '', warehouse: '' });
+    setFormData({ code: '', name: '', costPrice: '', wholesalePrice: '', quantity: '' });
+    setImages([]);
+    setCodeError('');
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const openAddModal = async () => {
+    try {
+      const res = await api.get('/products/next-code');
+      setFormData({ code: res.data.code, name: '', costPrice: '', wholesalePrice: '', quantity: '' });
+    } catch (err) {
+      console.error('Error getting next code:', err);
+    }
+    setImages([]);
+    setCodeError('');
+    setShowModal(true);
+  };
+
+  const checkCodeExists = async (code: string) => {
+    if (!code) return;
+    try {
+      const excludeId = editingProduct?._id || '';
+      const res = await api.get(`/products/check-code/${code}${excludeId ? `?excludeId=${excludeId}` : ''}`);
+      if (res.data.exists) {
+        setCodeError(`Kod "${code}" allaqachon mavjud`);
+      } else {
+        setCodeError('');
+      }
+    } catch (err) {
+      console.error('Error checking code:', err);
+    }
+  };
+
+  const openQRModal = (product: Product) => {
+    setSelectedProduct(product);
+    setShowQRModal(true);
+  };
+
+  const downloadQR = () => {
+    if (!selectedProduct) return;
+    const svg = document.getElementById('qr-code-svg');
+    if (!svg) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new window.Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `QR-${selectedProduct.code}-${selectedProduct.name}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
+  const stats = {
+    total: products.length,
+    lowStock: products.filter(p => p.quantity <= (p.minStock || 5) && p.quantity > 0).length,
+    outOfStock: products.filter(p => p.quantity === 0).length,
+    totalValue: products.reduce((sum, p) => sum + (p.price * p.quantity), 0)
+  };
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         p.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStock = stockFilter === 'all' || 
+                        (stockFilter === 'low' && p.quantity <= (p.minStock || 5) && p.quantity > 0) ||
+                        (stockFilter === 'out' && p.quantity === 0);
+    return matchesSearch && matchesStock;
+  });
+
+  const statItems = [
+    { label: 'Jami tovarlar', value: stats.total, icon: Package, color: 'brand', filter: 'all' },
+    { label: 'Kam qolgan', value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
+    { label: 'Tugagan', value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
+    { label: 'Jami qiymat', value: `${stats.totalValue.toLocaleString()} so'm`, icon: DollarSign, color: 'success', filter: null },
+  ];
+
+  const getProductImage = (product: any) => {
+    if (product.images && product.images.length > 0) {
+      return `${API_URL}${product.images[0]}`;
+    }
+    return null;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       <Header 
-        title="Tovarlar" 
+        title="Tovarlar (Asosiy ombor)"
         showSearch 
         onSearch={setSearchQuery}
         actions={
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={openAddModal} className="btn-primary">
             <Plus className="w-4 h-4" />
-            Yangi tovar
+            <span className="hidden sm:inline">Yangi tovar</span>
           </button>
         }
       />
 
-      <div className="p-6">
-        <div className="card">
+      <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
+        <div className="grid grid-cols-4 gap-4">
+          {statItems.map((stat, i) => (
+            <div 
+              key={i} 
+              onClick={() => stat.filter && setStockFilter(stat.filter)}
+              className={`stat-card ${stat.filter ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${
+                stockFilter === stat.filter ? 'ring-2 ring-brand-500' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className={`stat-icon bg-${stat.color}-50`}>
+                  <stat.icon className={`w-5 h-5 text-${stat.color}-600`} />
+                </div>
+              </div>
+              <p className="stat-value">{stat.value}</p>
+              <p className="stat-label">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="card p-0 overflow-hidden">
           {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full" />
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="spinner text-brand-600 w-8 h-8 mb-4" />
+              <p className="text-surface-500">Yuklanmoqda...</p>
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-                <Package className="w-10 h-10" />
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
+                <Package className="w-8 h-8 text-surface-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Tovarlar yo'q</h3>
-              <p className="text-sm mb-6">Tovarlar yo'q</p>
-              <button onClick={() => setShowModal(true)} className="btn-primary">
-                Birinchi tovarni qo'shing
-              </button>
+              <h3 className="text-lg font-semibold text-surface-900 mb-2">Tovarlar topilmadi</h3>
+              <p className="text-surface-500 text-center max-w-md mb-6">
+                {searchQuery ? 'Qidiruv bo\'yicha tovarlar topilmadi' : 'Birinchi tovarni qo\'shing'}
+              </p>
+              <button onClick={openAddModal} className="btn-primary">Tovar qo'shish</button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-500 text-sm">
-                    <th className="pb-3">Kod</th>
-                    <th className="pb-3">Nomi</th>
-                    <th className="pb-3">Narxi</th>
-                    <th className="pb-3">Miqdori</th>
-                    <th className="pb-3">Ombor</th>
-                    <th className="pb-3">Amallar</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              <div className="hidden lg:block">
+                <div className="table-header">
+                  <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                    <span className="table-header-cell col-span-1">Rasm</span>
+                    <span className="table-header-cell col-span-2">Kod</span>
+                    <span className="table-header-cell col-span-3">Nomi</span>
+                    <span className="table-header-cell col-span-2">Optom narxi</span>
+                    <span className="table-header-cell col-span-2">Miqdori</span>
+                    <span className="table-header-cell col-span-2 text-center">Amallar</span>
+                  </div>
+                </div>
+                <div className="divide-y divide-surface-100">
                   {filteredProducts.map(product => (
-                    <tr key={product._id} className="border-b border-gray-100 text-gray-900">
-                      <td className="py-3 font-mono text-sm">{product.code}</td>
-                      <td className="py-3">{product.name}</td>
-                      <td className="py-3">{product.price.toLocaleString()} so'm</td>
-                      <td className="py-3">
-                        <span className={product.quantity <= 5 ? 'text-primary-500 font-medium' : ''}>
-                          {product.quantity}
-                        </span>
-                      </td>
-                      <td className="py-3 text-gray-500">
-                        {warehouses.find(w => w._id === product.warehouse)?.name || '-'}
-                      </td>
-                      <td className="py-3">
-                        <button onClick={() => openEditModal(product)} className="text-primary-500 hover:text-primary-600 mr-3">
+                    <div key={product._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-50 transition-colors">
+                      <div className="col-span-1">
+                        {getProductImage(product) ? (
+                          <img src={getProductImage(product)!} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 bg-surface-100 rounded-lg flex items-center justify-center">
+                            <Image className="w-5 h-5 text-surface-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-span-2">
+                        <span className="font-mono text-sm bg-surface-100 px-2 py-1 rounded-lg">{product.code}</span>
+                      </div>
+                      <div className="col-span-3">
+                        <p className="font-medium text-surface-900">{product.name}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
+                        <p className="text-sm text-surface-500">so'm</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`font-semibold ${
+                          product.quantity === 0 ? 'text-danger-600' :
+                          product.quantity <= (product.minStock || 5) ? 'text-warning-600' : 'text-success-600'
+                        }`}>{product.quantity}</span>
+                      </div>
+                      <div className="col-span-2 flex items-center justify-center gap-2">
+                        <button onClick={() => openQRModal(product)} className="btn-icon-sm hover:bg-surface-200" title="QR kod">
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openEditModal(product)} className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(product._id)} className="text-primary-500 hover:text-primary-600">
+                        <button onClick={() => handleDelete(product._id)} className="btn-icon-sm hover:bg-danger-100 hover:text-danger-600">
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+              <div className="lg:hidden divide-y divide-surface-100">
+                {filteredProducts.map(product => (
+                  <div key={product._id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      {getProductImage(product) ? (
+                        <img src={getProductImage(product)!} alt={product.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Package className="w-6 h-6 text-brand-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-medium text-surface-900 truncate">{product.name}</h4>
+                            <p className="text-sm text-surface-500">Kod: {product.code}</p>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => openQRModal(product)} className="btn-icon-sm"><QrCode className="w-4 h-4" /></button>
+                            <button onClick={() => openEditModal(product)} className="btn-icon-sm"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDelete(product._id)} className="btn-icon-sm text-danger-500"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-surface-50 rounded-xl p-3">
+                            <p className="text-xs text-surface-500 mb-1">Optom narxi</p>
+                            <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
+                          </div>
+                          <div className={`rounded-xl p-3 ${product.quantity === 0 ? 'bg-danger-50' : product.quantity <= (product.minStock || 5) ? 'bg-warning-50' : 'bg-success-50'}`}>
+                            <p className="text-xs text-surface-500 mb-1">Miqdori</p>
+                            <p className={`font-semibold ${product.quantity === 0 ? 'text-danger-600' : product.quantity <= (product.minStock || 5) ? 'text-warning-600' : 'text-success-600'}`}>{product.quantity}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Add/Edit Product Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card w-full max-w-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="overlay" onClick={closeModal} />
+          <div className="modal w-full max-w-lg p-6 relative z-10 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingProduct ? 'Tovarni tahrirlash' : 'Yangi tovar qo\'shish'}
-              </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
+              <h3 className="text-lg font-semibold text-surface-900">{editingProduct ? 'Tovarni tahrirlash' : 'Yangi tovar'}</h3>
+              <button onClick={closeModal} className="btn-icon-sm"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Image Upload */}
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Tovar kodi</label>
-                <input 
-                  type="text" 
-                  className="input w-full" 
-                  placeholder="Masalan: 001"
-                  value={formData.code}
-                  onChange={e => setFormData({...formData, code: e.target.value})}
-                  required
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Rasmlar (max 8)</label>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative aspect-square">
+                      <img src={`${API_URL}${img}`} alt="" className="w-full h-full object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(img)}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 text-white rounded-full flex items-center justify-center"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {images.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="aspect-square border-2 border-dashed border-surface-300 rounded-lg flex flex-col items-center justify-center hover:border-brand-500 hover:bg-brand-50 transition-colors"
+                    >
+                      {uploading ? (
+                        <div className="spinner w-5 h-5 text-brand-600" />
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5 text-surface-400 mb-1" />
+                          <span className="text-xs text-surface-500">Yuklash</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">Kod</label>
+                  <input 
+                    type="text" 
+                    className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
+                    placeholder="000001" 
+                    value={formData.code} 
+                    onChange={e => setFormData({...formData, code: e.target.value})}
+                    onBlur={e => checkCodeExists(e.target.value)}
+                    required 
+                  />
+                  {codeError && <p className="text-sm text-danger-600 mt-1">{codeError}</p>}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">Miqdori</label>
+                  <input type="number" className="input" placeholder="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm text-gray-500 mb-1">Tovar nomi</label>
-                <input 
-                  type="text" 
-                  className="input w-full" 
-                  placeholder="Tovar nomini kiriting"
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  required
-                />
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Nomi</label>
+                <input type="text" className="input" placeholder="Tovar nomi" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">Narxi</label>
-                  <input 
-                    type="number" 
-                    className="input w-full" 
-                    placeholder="0"
-                    value={formData.price}
-                    onChange={e => setFormData({...formData, price: e.target.value})}
-                    required
-                  />
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
+                  <input type="number" className="input" placeholder="0" value={formData.costPrice} onChange={e => setFormData({...formData, costPrice: e.target.value})} required />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">Miqdori</label>
-                  <input 
-                    type="number" 
-                    className="input w-full" 
-                    placeholder="0"
-                    value={formData.quantity}
-                    onChange={e => setFormData({...formData, quantity: e.target.value})}
-                    required
-                  />
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
+                  <input type="number" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => setFormData({...formData, wholesalePrice: e.target.value})} required />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">Ombor</label>
-                <select 
-                  className="input w-full"
-                  value={formData.warehouse}
-                  onChange={e => setFormData({...formData, warehouse: e.target.value})}
-                >
-                  <option value="">Omborni tanlang</option>
-                  {warehouses.map(w => (
-                    <option key={w._id} value={w._id}>{w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-500 hover:text-gray-700">
-                  Bekor qilish
-                </button>
-                <button type="submit" className="btn-primary">
-                  Saqlash
-                </button>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
+                <button type="submit" className="btn-primary flex-1" disabled={!!codeError}>Saqlash</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* QR Scanner Button */}
-      <button className="fixed bottom-6 right-6 w-14 h-14 bg-primary-500 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-600 text-white">
-        <Camera className="w-6 h-6" />
-      </button>
+      {showQRModal && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="overlay" onClick={() => setShowQRModal(false)} />
+          <div className="modal w-full max-w-sm p-6 relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-surface-900">QR Kod</h3>
+              <button onClick={() => setShowQRModal(false)} className="btn-icon-sm"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="bg-white p-4 rounded-xl border border-surface-200 mb-4">
+                <QRCodeSVG
+                  id="qr-code-svg"
+                  value={JSON.stringify({
+                    id: selectedProduct._id,
+                    code: selectedProduct.code,
+                    name: selectedProduct.name,
+                    price: selectedProduct.price
+                  })}
+                  size={200}
+                  level="H"
+                  includeMargin
+                />
+              </div>
+              <div className="text-center mb-4">
+                <p className="font-semibold text-surface-900">{selectedProduct.name}</p>
+                <p className="text-sm text-surface-500">Kod: {selectedProduct.code}</p>
+                <p className="text-sm text-surface-500">{selectedProduct.price.toLocaleString()} so'm</p>
+              </div>
+              <button onClick={downloadQR} className="btn-primary w-full">
+                <Download className="w-4 h-4" />
+                Yuklab olish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
