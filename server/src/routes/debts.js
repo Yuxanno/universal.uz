@@ -47,13 +47,14 @@ router.get('/stats', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
-    const { type, customer, creditorName, amount, dueDate, description } = req.body;
+    const { type, customer, creditorName, amount, dueDate, description, collateral } = req.body;
     
     const debtData = {
       type: type || 'receivable',
       amount,
       dueDate,
       description,
+      collateral,
       createdBy: req.user._id
     };
     
@@ -95,6 +96,40 @@ router.post('/:id/payment', auth, authorize('admin', 'cashier'), async (req, res
       await Customer.findByIdAndUpdate(debt.customer, { $inc: { debt: -amount } });
     }
     
+    res.json(debt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { type, customer, creditorName, amount, dueDate, description, collateral } = req.body;
+    const debt = await Debt.findById(req.params.id);
+    if (!debt) return res.status(404).json({ message: 'Qarz topilmadi' });
+    
+    // Update customer debt if amount changed (for receivable type)
+    if (debt.type === 'receivable' && debt.customer) {
+      const oldRemaining = debt.amount - debt.paidAmount;
+      const newRemaining = amount - debt.paidAmount;
+      const diff = newRemaining - oldRemaining;
+      if (diff !== 0) {
+        await Customer.findByIdAndUpdate(debt.customer, { $inc: { debt: diff } });
+      }
+    }
+    
+    debt.amount = amount;
+    debt.dueDate = dueDate;
+    debt.description = description;
+    debt.collateral = collateral;
+    
+    if (type === 'payable') {
+      debt.creditorName = creditorName;
+    } else {
+      debt.customer = customer;
+    }
+    
+    await debt.save();
     res.json(debt);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });

@@ -3,9 +3,12 @@ import Header from '../../components/Header';
 import { Plus, Warehouse as WarehouseIcon, X, Package, Edit, Trash2, MapPin, Search, QrCode, Download } from 'lucide-react';
 import { Warehouse, Product } from '../../types';
 import api from '../../utils/api';
+import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
+import { useAlert } from '../../hooks/useAlert';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function Warehouses() {
+  const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showProductsModal, setShowProductsModal] = useState(false);
@@ -27,7 +30,6 @@ export default function Warehouses() {
     packageCount: '', unitsPerPackage: '', totalCost: ''
   });
   const [codeError, setCodeError] = useState('');
-  const [showPackageInput, setShowPackageInput] = useState(false);
 
   useEffect(() => { fetchWarehouses(); }, []);
 
@@ -67,28 +69,19 @@ export default function Warehouses() {
     e.preventDefault();
     if (!selectedWarehouse) return;
     if (codeError) {
-      alert(codeError);
+      showAlert(codeError, 'Xatolik', 'danger');
       return;
     }
     
-    let finalQuantity = Number(productFormData.quantity);
-    let finalCostPrice = Number(productFormData.costPrice);
-    let packageInfo = null;
+    let finalQuantity = 0;
+    let finalCostPrice = Number(productFormData.costPrice) || 0;
     
-    // If package data is provided, calculate totals
-    if (showPackageInput && packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost) {
+    // Calculate from package data
+    if (packageData.packageCount && packageData.unitsPerPackage) {
       const totalUnits = Number(packageData.packageCount) * Number(packageData.unitsPerPackage);
-      const costPerUnit = Number(packageData.totalCost) / totalUnits;
-      
-      finalQuantity = editingProduct ? Number(productFormData.quantity) + totalUnits : totalUnits;
-      finalCostPrice = costPerUnit;
-      
-      packageInfo = {
-        packageCount: Number(packageData.packageCount),
-        unitsPerPackage: Number(packageData.unitsPerPackage),
-        totalCost: Number(packageData.totalCost),
-        costPerUnit: costPerUnit
-      };
+      finalQuantity = editingProduct ? editingProduct.quantity + totalUnits : totalUnits;
+    } else if (editingProduct) {
+      finalQuantity = editingProduct.quantity;
     }
     
     try {
@@ -98,8 +91,7 @@ export default function Warehouses() {
         costPrice: finalCostPrice,
         price: Number(productFormData.wholesalePrice),
         quantity: finalQuantity,
-        warehouse: selectedWarehouse._id,
-        packageInfo
+        warehouse: selectedWarehouse._id
       };
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, data);
@@ -109,12 +101,13 @@ export default function Warehouses() {
       fetchWarehouseProducts(selectedWarehouse._id);
       closeAddProductModal();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Xatolik yuz berdi');
+      showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!confirm("Tovarni o'chirishni tasdiqlaysizmi?")) return;
+    const confirmed = await showConfirm("Tovarni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    if (!confirmed) return;
     if (!selectedWarehouse) return;
     try {
       await api.delete(`/products/${id}`);
@@ -123,7 +116,8 @@ export default function Warehouses() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Omborni o'chirishni tasdiqlaysizmi?")) return;
+    const confirmed = await showConfirm("Omborni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    if (!confirmed) return;
     try {
       await api.delete(`/warehouses/${id}`);
       fetchWarehouses();
@@ -174,7 +168,6 @@ export default function Warehouses() {
     setProductFormData({ code: '', name: '', costPrice: '', wholesalePrice: '', quantity: '' });
     setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setCodeError('');
-    setShowPackageInput(false);
   };
 
   const openAddProductModal = async () => {
@@ -186,7 +179,6 @@ export default function Warehouses() {
     }
     setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
     setCodeError('');
-    setShowPackageInput(false);
     setShowAddProductModal(true);
   };
 
@@ -236,6 +228,7 @@ export default function Warehouses() {
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      {AlertComponent}
       <Header 
         title="Omborlar"
         actions={
@@ -397,8 +390,8 @@ export default function Warehouses() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-sm text-surface-500">Tan narxi: {((product as any).costPrice || 0).toLocaleString()} so'm</p>
-                          <p className="font-semibold text-surface-900">Optom: {product.price.toLocaleString()} so'm</p>
+                          <p className="text-sm text-surface-500">Tan narxi: {formatNumber((product as any).costPrice || 0)} so'm</p>
+                          <p className="font-semibold text-surface-900">Optom: {formatNumber(product.price)} so'm</p>
                           <p className={`text-sm ${product.quantity === 0 ? 'text-danger-600' : 'text-surface-500'}`}>
                             {product.quantity} dona
                           </p>
@@ -439,25 +432,18 @@ export default function Warehouses() {
               <button onClick={closeAddProductModal} className="btn-icon-sm"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleProductSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-surface-700 mb-2 block">Kod</label>
-                  <input 
-                    type="text" 
-                    className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
-                    placeholder="1" 
-                    value={productFormData.code}
-                    onChange={e => setProductFormData({...productFormData, code: e.target.value})}
-                    onBlur={e => checkCodeExists(e.target.value)}
-                    required 
-                  />
-                  {codeError && <p className="text-sm text-danger-600 mt-1">{codeError}</p>}
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-surface-700 mb-2 block">Miqdori</label>
-                  <input type="number" className="input" placeholder="0" value={productFormData.quantity}
-                    onChange={e => setProductFormData({...productFormData, quantity: e.target.value})} required />
-                </div>
+              <div>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Kod</label>
+                <input 
+                  type="text" 
+                  className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
+                  placeholder="000001" 
+                  value={productFormData.code}
+                  onChange={e => setProductFormData({...productFormData, code: e.target.value})}
+                  onBlur={e => checkCodeExists(e.target.value)}
+                  required 
+                />
+                {codeError && <p className="text-sm text-danger-600 mt-1">{codeError}</p>}
               </div>
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Nomi</label>
@@ -467,84 +453,55 @@ export default function Warehouses() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
-                  <input type="number" className="input" placeholder="0" value={productFormData.costPrice}
-                    onChange={e => setProductFormData({...productFormData, costPrice: e.target.value})} required />
+                  <input type="text" className="input" placeholder="0" value={formatInputNumber(productFormData.costPrice)}
+                    onChange={e => setProductFormData({...productFormData, costPrice: parseNumber(e.target.value)})} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
-                  <input type="number" className="input" placeholder="0" value={productFormData.wholesalePrice}
-                    onChange={e => setProductFormData({...productFormData, wholesalePrice: e.target.value})} required />
+                  <input type="text" className="input" placeholder="0" value={formatInputNumber(productFormData.wholesalePrice)}
+                    onChange={e => setProductFormData({...productFormData, wholesalePrice: parseNumber(e.target.value)})} required />
                 </div>
               </div>
               
-              {/* Package Information Section */}
+              {/* Package Information Section - Always visible */}
               <div className="border-t border-surface-200 pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="text-sm font-medium text-surface-700">Qop ma'lumotlari</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPackageInput(!showPackageInput)}
-                    className={`text-sm px-3 py-1 rounded-lg ${showPackageInput ? 'bg-brand-100 text-brand-600' : 'bg-surface-100 text-surface-600'}`}
-                  >
-                    {showPackageInput ? 'Yashirish' : 'Qo\'shish'}
-                  </button>
-                </div>
-                
-                {showPackageInput && (
-                  <div className="space-y-3 bg-surface-50 p-4 rounded-xl">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Qoplar soni</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="5"
-                          value={packageData.packageCount}
-                          onChange={e => setPackageData({...packageData, packageCount: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Har qopda</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="20"
-                          value={packageData.unitsPerPackage}
-                          onChange={e => setPackageData({...packageData, unitsPerPackage: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Jami narxi</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="100000"
-                          value={packageData.totalCost}
-                          onChange={e => setPackageData({...packageData, totalCost: e.target.value})}
-                        />
-                      </div>
+                <label className="text-sm font-medium text-surface-700 mb-3 block">Qop ma'lumotlari</label>
+                <div className="space-y-3 bg-surface-50 p-4 rounded-xl">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-surface-600 mb-1 block">Qoplar soni</label>
+                      <input
+                        type="number"
+                        className="input text-sm"
+                        placeholder="5"
+                        value={packageData.packageCount}
+                        onChange={e => setPackageData({...packageData, packageCount: e.target.value})}
+                      />
                     </div>
-                    
-                    {packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost && (
-                      <div className="bg-white p-3 rounded-lg border border-surface-200">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-surface-500">Jami miqdor:</span>
-                            <span className="font-semibold text-surface-900 ml-2">
-                              {Number(packageData.packageCount) * Number(packageData.unitsPerPackage)} dona
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-surface-500">Bir dona narxi:</span>
-                            <span className="font-semibold text-surface-900 ml-2">
-                              {(Number(packageData.totalCost) / (Number(packageData.packageCount) * Number(packageData.unitsPerPackage))).toLocaleString()} so'm
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <label className="text-xs font-medium text-surface-600 mb-1 block">Har qopda</label>
+                      <input
+                        type="number"
+                        className="input text-sm"
+                        placeholder="20"
+                        value={packageData.unitsPerPackage}
+                        onChange={e => setPackageData({...packageData, unitsPerPackage: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-surface-600 mb-1 block">Jami mahsulot</label>
+                      <input
+                        type="text"
+                        className="input text-sm bg-surface-100"
+                        placeholder="0"
+                        value={packageData.packageCount && packageData.unitsPerPackage ? formatNumber(Number(packageData.packageCount) * Number(packageData.unitsPerPackage)) : ''}
+                        readOnly
+                      />
+                    </div>
                   </div>
-                )}
+                  
+
+                </div>
               </div>
               
               <div className="flex gap-3 pt-4">
@@ -582,8 +539,8 @@ export default function Warehouses() {
               <div className="text-center mb-4">
                 <p className="font-semibold text-surface-900">{qrProduct.name}</p>
                 <p className="text-sm text-surface-500">Kod: {qrProduct.code}</p>
-                <p className="text-sm text-surface-500">Tan narxi: {((qrProduct as any).costPrice || 0).toLocaleString()} so'm</p>
-                <p className="text-sm text-surface-500">Optom: {qrProduct.price.toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Tan narxi: {formatNumber((qrProduct as any).costPrice || 0)} so'm</p>
+                <p className="text-sm text-surface-500">Optom: {formatNumber(qrProduct.price)} so'm</p>
               </div>
               <button onClick={downloadQR} className="btn-primary w-full">
                 <Download className="w-4 h-4" />

@@ -47,15 +47,23 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { name, phone, role } = req.body;
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
-      { name, phone, role },
-      { new: true }
-    ).select('-password');
+    const { name, phone, role, password } = req.body;
+    const updateData = { name, phone, role };
     
+    const user = await User.findOne({ _id: req.params.id, createdBy: req.user._id });
     if (!user) return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
-    res.json(user);
+    
+    user.name = name;
+    user.phone = phone;
+    user.role = role;
+    if (password) {
+      user.password = password;
+    }
+    await user.save();
+    
+    const result = user.toObject();
+    delete result.password;
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }

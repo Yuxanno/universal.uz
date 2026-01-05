@@ -16,7 +16,11 @@ const receiptSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'completed'], default: 'completed' },
   isReturn: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  metadata: {
+    offlineId: { type: String, index: true },
+    syncedAt: { type: Date }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Receipt', receiptSchema);

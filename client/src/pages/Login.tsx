@@ -2,33 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Phone, Lock, ArrowRight, Sparkles } from 'lucide-react';
-
-// Format phone number as +998 (XX) XXX-XX-XX
-const formatPhone = (value: string): string => {
-  const digits = value.replace(/\D/g, '');
-  
-  // Ensure it starts with 998
-  let phone = digits;
-  if (!phone.startsWith('998') && phone.length > 0) {
-    phone = '998' + phone;
-  }
-  
-  // Limit to 12 digits (998 + 9 digits)
-  phone = phone.slice(0, 12);
-  
-  // Format as +998 (XX) XXX-XX-XX
-  if (phone.length === 0) return '';
-  if (phone.length <= 3) return '+' + phone;
-  if (phone.length <= 5) return '+998 (' + phone.slice(3);
-  if (phone.length <= 8) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5);
-  if (phone.length <= 10) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8);
-  return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8, 10) + '-' + phone.slice(10);
-};
-
-// Get raw phone digits for API
-const getRawPhone = (formatted: string): string => {
-  return formatted.replace(/\D/g, '');
-};
+import { formatPhone, getRawPhone } from '../utils/format';
 
 export default function Login() {
   const [phone, setPhone] = useState('');

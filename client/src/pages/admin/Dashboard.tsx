@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import api from '../../utils/api';
+import { formatNumber } from '../../utils/format';
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<'today' | 'week'>('today');
@@ -55,7 +56,7 @@ export default function Dashboard() {
     { 
       icon: DollarSign, 
       label: 'Umumiy tushum', 
-      value: stats.totalRevenue.toLocaleString(), 
+      value: formatNumber(stats.totalRevenue), 
       suffix: "so'm", 
       color: 'bg-success-500',
       bgColor: 'bg-success-50',
@@ -66,7 +67,7 @@ export default function Dashboard() {
     { 
       icon: TrendingUp, 
       label: period === 'today' ? 'Bugungi sotuv' : 'Haftalik sotuv', 
-      value: (period === 'today' ? stats.todaySales : stats.weekSales).toLocaleString(), 
+      value: formatNumber(period === 'today' ? stats.todaySales : stats.weekSales), 
       suffix: "so'm", 
       color: 'bg-brand-500',
       bgColor: 'bg-brand-50',
@@ -247,7 +248,7 @@ export default function Dashboard() {
                         boxShadow: '0 4px 12px -2px rgb(0 0 0 / 0.06)'
                       }}
                       labelStyle={{ color: '#18181b', fontWeight: 600 }}
-                      formatter={(value: number) => [`${value.toLocaleString()} so'm`, 'Sotuv']}
+                      formatter={(value: number) => [`${formatNumber(value)} so'm`, 'Sotuv']}
                     />
                     <Area 
                       type="monotone" 

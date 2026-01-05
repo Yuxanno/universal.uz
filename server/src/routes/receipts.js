@@ -36,6 +36,73 @@ router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   }
 });
 
+/**
+ * Bulk sync endpoint for offline sales
+ * Receives array of sales from offline POS
+ * IMPORTANT: This endpoint must be idempotent - handle duplicate offlineIds
+ */
+router.post('/bulk', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { sales } = req.body;
+    
+    if (!sales || !Array.isArray(sales) || sales.length === 0) {
+      return res.status(400).json({ success: false, message: 'No sales provided' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const sale of sales) {
+      try {
+        // Check if this offline sale was already synced (by offlineId in metadata)
+        const existingReceipt = await Receipt.findOne({ 'metadata.offlineId': sale.offlineId });
+        if (existingReceipt) {
+          // Already synced, skip but mark as success
+          results.push({ offlineId: sale.offlineId, status: 'already_synced' });
+          continue;
+        }
+
+        // Create receipt from offline sale
+        const receipt = new Receipt({
+          items: sale.items,
+          total: sale.total,
+          paymentMethod: sale.paymentMethod || 'cash',
+          customer: sale.customer,
+          status: 'completed',
+          isReturn: sale.isReturn || false,
+          createdBy: req.user._id,
+          createdAt: sale.createdAt ? new Date(sale.createdAt) : new Date(),
+          metadata: { offlineId: sale.offlineId, syncedAt: new Date() }
+        });
+
+        // Update product quantities (skip stock check for offline sales)
+        for (const item of sale.items) {
+          const quantityChange = sale.isReturn ? item.quantity : -item.quantity;
+          await Product.findByIdAndUpdate(item.product, { $inc: { quantity: quantityChange } });
+        }
+
+        await receipt.save();
+        results.push({ offlineId: sale.offlineId, status: 'synced', receiptId: receipt._id });
+
+      } catch (itemError) {
+        errors.push({ offlineId: sale.offlineId, error: itemError.message });
+      }
+    }
+
+    // Return success even if some items failed - client will retry failed ones
+    res.json({
+      success: true,
+      synced: results.length,
+      failed: errors.length,
+      results,
+      errors
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.post('/', auth, async (req, res) => {
   try {
     const { items, total, paymentMethod, customer, isReturn } = req.body;

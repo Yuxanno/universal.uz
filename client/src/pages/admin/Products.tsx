@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../../components/Header';
-import { Plus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload } from 'lucide-react';
+import { Plus, Minus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload } from 'lucide-react';
 import { Product, Warehouse } from '../../types';
 import api from '../../utils/api';
+import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
+import { useAlert } from '../../hooks/useAlert';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 export default function Products() {
+  const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +30,9 @@ export default function Products() {
   const [images, setImages] = useState<string[]>([]);
   const [codeError, setCodeError] = useState('');
   const [showPackageInput, setShowPackageInput] = useState(false);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [quantityMode, setQuantityMode] = useState<'add' | 'subtract'>('add');
+  const [quantityInput, setQuantityInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,7 +78,7 @@ export default function Products() {
     
     const remainingSlots = 8 - images.length;
     if (remainingSlots <= 0) {
-      alert('Maksimum 8 ta rasm yuklash mumkin');
+      showAlert('Maksimum 8 ta rasm yuklash mumkin', 'Ogohlantirish', 'warning');
       return;
     }
 
@@ -88,7 +94,7 @@ export default function Products() {
       setImages([...images, ...res.data.images]);
     } catch (err) {
       console.error('Error uploading images:', err);
-      alert('Rasmlarni yuklashda xatolik');
+      showAlert('Rasmlarni yuklashda xatolik', 'Xatolik', 'danger');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -107,7 +113,7 @@ export default function Products() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (codeError) {
-      alert(codeError);
+      showAlert(codeError, 'Xatolik', 'danger');
       return;
     }
     
@@ -116,18 +122,15 @@ export default function Products() {
     let packageInfo = null;
     
     // If package data is provided, calculate totals
-    if (showPackageInput && packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost) {
+    if (showPackageInput && packageData.packageCount && packageData.unitsPerPackage) {
       const totalUnits = Number(packageData.packageCount) * Number(packageData.unitsPerPackage);
-      const costPerUnit = Number(packageData.totalCost) / totalUnits;
       
       finalQuantity = editingProduct ? Number(formData.quantity) + totalUnits : totalUnits;
-      finalCostPrice = costPerUnit;
       
       packageInfo = {
         packageCount: Number(packageData.packageCount),
         unitsPerPackage: Number(packageData.unitsPerPackage),
-        totalCost: Number(packageData.totalCost),
-        costPerUnit: costPerUnit
+        totalUnits: totalUnits
       };
     }
     
@@ -150,12 +153,13 @@ export default function Products() {
       fetchProducts();
       closeModal();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Xatolik yuz berdi');
+      showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tovarni o'chirishni tasdiqlaysizmi?")) return;
+    const confirmed = await showConfirm("Tovarni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    if (!confirmed) return;
     try {
       await api.delete(`/products/${id}`);
       fetchProducts();
@@ -188,6 +192,25 @@ export default function Products() {
     setImages([]);
     setCodeError('');
     setShowPackageInput(false);
+  };
+
+  const openQuantityModal = (mode: 'add' | 'subtract') => {
+    setQuantityMode(mode);
+    setQuantityInput('');
+    setShowQuantityModal(true);
+  };
+
+  const applyQuantityChange = () => {
+    const change = Number(quantityInput) || 0;
+    if (change <= 0) return;
+    
+    const currentQty = Number(formData.quantity) || 0;
+    let newQty = quantityMode === 'add' ? currentQty + change : currentQty - change;
+    if (newQty < 0) newQty = 0;
+    
+    setFormData({ ...formData, quantity: String(newQty) });
+    setShowQuantityModal(false);
+    setQuantityInput('');
   };
 
   const openAddModal = async () => {
@@ -268,7 +291,7 @@ export default function Products() {
     { label: 'Jami tovarlar', value: stats.total, icon: Package, color: 'brand', filter: 'all' },
     { label: 'Kam qolgan', value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
     { label: 'Tugagan', value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
-    { label: 'Jami qiymat', value: `${stats.totalValue.toLocaleString()} so'm`, icon: DollarSign, color: 'success', filter: null },
+    { label: 'Jami qiymat', value: `${formatNumber(stats.totalValue)} so'm`, icon: DollarSign, color: 'success', filter: null },
   ];
 
   const getProductImage = (product: any) => {
@@ -280,6 +303,7 @@ export default function Products() {
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      {AlertComponent}
       <Header 
         title="Tovarlar (Asosiy ombor)"
         showSearch 
@@ -363,11 +387,11 @@ export default function Products() {
                         <p className="font-medium text-surface-900">{product.name}</p>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-semibold text-surface-900">{((product as any).costPrice || 0).toLocaleString()}</p>
+                        <p className="font-semibold text-surface-900">{formatNumber((product as any).costPrice || 0)}</p>
                         <p className="text-sm text-surface-500">so'm</p>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
+                        <p className="font-semibold text-surface-900">{formatNumber(product.price)}</p>
                         <p className="text-sm text-surface-500">so'm</p>
                       </div>
                       <div className="col-span-1">
@@ -417,11 +441,11 @@ export default function Products() {
                         <div className="grid grid-cols-3 gap-3">
                           <div className="bg-surface-50 rounded-xl p-3">
                             <p className="text-xs text-surface-500 mb-1">Tan narxi</p>
-                            <p className="font-semibold text-surface-900">{((product as any).costPrice || 0).toLocaleString()}</p>
+                            <p className="font-semibold text-surface-900">{formatNumber((product as any).costPrice || 0)}</p>
                           </div>
                           <div className="bg-surface-50 rounded-xl p-3">
                             <p className="text-xs text-surface-500 mb-1">Optom narxi</p>
-                            <p className="font-semibold text-surface-900">{product.price.toLocaleString()}</p>
+                            <p className="font-semibold text-surface-900">{formatNumber(product.price)}</p>
                           </div>
                           <div className={`rounded-xl p-3 ${product.quantity === 0 ? 'bg-danger-50' : product.quantity <= (product.minStock || 5) ? 'bg-warning-50' : 'bg-success-50'}`}>
                             <p className="text-xs text-surface-500 mb-1">Miqdori</p>
@@ -507,7 +531,21 @@ export default function Products() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Miqdori</label>
-                  <input type="number" className="input" placeholder="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required />
+                  {editingProduct ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-surface-100 rounded-xl text-center font-semibold text-surface-900">
+                        {formatNumber(formData.quantity || 0)}
+                      </div>
+                      <button type="button" onClick={() => openQuantityModal('add')} className="btn-icon bg-success-100 text-success-600 hover:bg-success-200">
+                        <Plus className="w-5 h-5" />
+                      </button>
+                      <button type="button" onClick={() => openQuantityModal('subtract')} className="btn-icon bg-danger-100 text-danger-600 hover:bg-danger-200">
+                        <Minus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.quantity)} onChange={e => setFormData({...formData, quantity: parseNumber(e.target.value)})} required />
+                  )}
                 </div>
               </div>
               <div>
@@ -517,82 +555,12 @@ export default function Products() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
-                  <input type="number" className="input" placeholder="0" value={formData.costPrice} onChange={e => setFormData({...formData, costPrice: e.target.value})} required />
+                  <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.costPrice)} onChange={e => setFormData({...formData, costPrice: parseNumber(e.target.value)})} required />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
-                  <input type="number" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => setFormData({...formData, wholesalePrice: e.target.value})} required />
+                  <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.wholesalePrice)} onChange={e => setFormData({...formData, wholesalePrice: parseNumber(e.target.value)})} required />
                 </div>
-              </div>
-              
-              {/* Package Information Section */}
-              <div className="border-t border-surface-200 pt-4">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="text-sm font-medium text-surface-700">Qop ma'lumotlari</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPackageInput(!showPackageInput)}
-                    className={`text-sm px-3 py-1 rounded-lg ${showPackageInput ? 'bg-brand-100 text-brand-600' : 'bg-surface-100 text-surface-600'}`}
-                  >
-                    {showPackageInput ? 'Yashirish' : 'Qo\'shish'}
-                  </button>
-                </div>
-                
-                {showPackageInput && (
-                  <div className="space-y-3 bg-surface-50 p-4 rounded-xl">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Qoplar soni</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="5"
-                          value={packageData.packageCount}
-                          onChange={e => setPackageData({...packageData, packageCount: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Har qopda</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="20"
-                          value={packageData.unitsPerPackage}
-                          onChange={e => setPackageData({...packageData, unitsPerPackage: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-surface-600 mb-1 block">Jami narxi</label>
-                        <input
-                          type="number"
-                          className="input text-sm"
-                          placeholder="100000"
-                          value={packageData.totalCost}
-                          onChange={e => setPackageData({...packageData, totalCost: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    
-                    {packageData.packageCount && packageData.unitsPerPackage && packageData.totalCost && (
-                      <div className="bg-white p-3 rounded-lg border border-surface-200">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-surface-500">Jami miqdor:</span>
-                            <span className="font-semibold text-surface-900 ml-2">
-                              {Number(packageData.packageCount) * Number(packageData.unitsPerPackage)} dona
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-surface-500">Bir dona narxi:</span>
-                            <span className="font-semibold text-surface-900 ml-2">
-                              {(Number(packageData.totalCost) / (Number(packageData.packageCount) * Number(packageData.unitsPerPackage))).toLocaleString()} so'm
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
               
               <div className="flex gap-3 pt-4">
@@ -630,13 +598,78 @@ export default function Products() {
               <div className="text-center mb-4">
                 <p className="font-semibold text-surface-900">{selectedProduct.name}</p>
                 <p className="text-sm text-surface-500">Kod: {selectedProduct.code}</p>
-                <p className="text-sm text-surface-500">Tan narxi: {((selectedProduct as any).costPrice || 0).toLocaleString()} so'm</p>
-                <p className="text-sm text-surface-500">Optom: {selectedProduct.price.toLocaleString()} so'm</p>
+                <p className="text-sm text-surface-500">Tan narxi: {formatNumber((selectedProduct as any).costPrice || 0)} so'm</p>
+                <p className="text-sm text-surface-500">Optom: {formatNumber(selectedProduct.price)} so'm</p>
               </div>
               <button onClick={downloadQR} className="btn-primary w-full">
                 <Download className="w-4 h-4" />
                 Yuklab olish
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quantity Adjustment Modal */}
+      {showQuantityModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="overlay" onClick={() => setShowQuantityModal(false)} />
+          <div className="modal w-full max-w-sm p-6 relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-surface-900">
+                {quantityMode === 'add' ? "Miqdor qo'shish" : "Miqdor ayirish"}
+              </h3>
+              <button onClick={() => setShowQuantityModal(false)} className="btn-icon-sm"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className={`rounded-xl p-4 mb-6 ${quantityMode === 'add' ? 'bg-success-50' : 'bg-danger-50'}`}>
+              <p className="text-sm text-surface-600 mb-1">Hozirgi miqdor</p>
+              <p className={`text-2xl font-bold ${quantityMode === 'add' ? 'text-success-600' : 'text-danger-600'}`}>
+                {formatNumber(formData.quantity || 0)} dona
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">
+                  {quantityMode === 'add' ? "Qo'shiladigan miqdor" : "Ayiriladigan miqdor"}
+                </label>
+                <input 
+                  type="text" 
+                  className="input text-center text-lg font-semibold" 
+                  placeholder="0" 
+                  value={formatInputNumber(quantityInput)}
+                  onChange={e => setQuantityInput(parseNumber(e.target.value))}
+                  autoFocus
+                />
+              </div>
+
+              {quantityInput && Number(quantityInput) > 0 && (
+                <div className="bg-surface-50 rounded-xl p-4">
+                  <p className="text-sm text-surface-600 mb-1">Yangi miqdor</p>
+                  <p className="text-xl font-bold text-surface-900">
+                    {formatNumber(
+                      quantityMode === 'add' 
+                        ? (Number(formData.quantity) || 0) + Number(quantityInput)
+                        : Math.max(0, (Number(formData.quantity) || 0) - Number(quantityInput))
+                    )} dona
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowQuantityModal(false)} className="btn-secondary flex-1">
+                  Bekor qilish
+                </button>
+                <button 
+                  type="button" 
+                  onClick={applyQuantityChange} 
+                  className={`flex-1 ${quantityMode === 'add' ? 'btn-success' : 'btn-danger'}`}
+                  disabled={!quantityInput || Number(quantityInput) <= 0}
+                >
+                  {quantityMode === 'add' ? "Qo'shish" : "Ayirish"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

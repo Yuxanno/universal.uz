@@ -3,8 +3,11 @@ import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircl
 import { Html5Qrcode } from 'html5-qrcode';
 import { Product, CartItem } from '../../types';
 import api from '../../utils/api';
+import { formatNumber } from '../../utils/format';
+import { useAlert } from '../../hooks/useAlert';
 
 export default function HelperScanner() {
+  const { showAlert, AlertComponent } = useAlert();
   const [scanning, setScanning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -43,7 +46,7 @@ export default function HelperScanner() {
         (decodedText) => {
           const product = products.find(p => p.code === decodedText);
           if (product) setScannedProduct(product);
-          else alert('Tovar topilmadi: ' + decodedText);
+          else showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
           stopScanner();
         },
         () => {}
@@ -51,7 +54,7 @@ export default function HelperScanner() {
       setScanning(true);
     } catch (err) {
       console.error('Scanner error:', err);
-      alert('Kamerani ishga tushirishda xatolik');
+      showAlert('Kamerani ishga tushirishda xatolik', 'Xatolik', 'danger');
     }
   };
 
@@ -114,11 +117,11 @@ export default function HelperScanner() {
         })),
         total
       });
-      alert("Chek kassirga yuborildi!");
+      showAlert("Chek kassirga yuborildi!", 'Muvaffaqiyat', 'success');
       setCart([]);
     } catch (err) {
       console.error('Error sending receipt:', err);
-      alert('Xatolik yuz berdi');
+      showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
     } finally {
       setSending(false);
     }
@@ -128,6 +131,7 @@ export default function HelperScanner() {
 
   return (
     <div className="space-y-4">
+      {AlertComponent}
       {/* Search Bar */}
       <div className="card p-4">
         <div className="flex gap-3">
@@ -172,8 +176,8 @@ export default function HelperScanner() {
             <div>
               <p className="font-semibold text-surface-900 text-lg">{scannedProduct.name}</p>
               <p className="text-sm text-surface-500">Kod: {scannedProduct.code}</p>
-              <p className="text-sm text-surface-500">Tan narxi: {((scannedProduct as any).costPrice || 0).toLocaleString()} so'm</p>
-              <p className="text-brand-600 font-bold mt-1">Optom: {scannedProduct.price.toLocaleString()} so'm</p>
+              <p className="text-sm text-surface-500">Tan narxi: {formatNumber((scannedProduct as any).costPrice || 0)} so'm</p>
+              <p className="text-brand-600 font-bold mt-1">Optom: {formatNumber(scannedProduct.price)} so'm</p>
             </div>
             <button onClick={() => addToCart(scannedProduct)} className="btn-success">
               <Plus className="w-4 h-4" />
@@ -203,8 +207,8 @@ export default function HelperScanner() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
-                  <p className="font-bold text-brand-600">Optom: {product.price.toLocaleString()}</p>
+                  <p className="text-xs text-surface-400">Tan: {formatNumber((product as any).costPrice || 0)}</p>
+                  <p className="font-bold text-brand-600">Optom: {formatNumber(product.price)}</p>
                   <p className="text-xs text-surface-400">{product.quantity} dona</p>
                 </div>
               </button>
@@ -243,7 +247,7 @@ export default function HelperScanner() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-surface-900 truncate">{item.name}</p>
                   <p className="text-sm text-brand-600 font-medium">
-                    {(item.price * item.cartQuantity).toLocaleString()} so'm
+                    {formatNumber(item.price * item.cartQuantity)} so'm
                   </p>
                 </div>
                 <div className="flex items-center gap-1 bg-white rounded-lg border border-surface-200 p-1">
@@ -267,7 +271,7 @@ export default function HelperScanner() {
           <div className="mt-4 pt-4 border-t border-surface-200">
             <div className="flex items-center justify-between mb-4">
               <span className="text-surface-500">Jami:</span>
-              <span className="text-2xl font-bold text-surface-900">{total.toLocaleString()} so'm</span>
+              <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
             </div>
             <button onClick={sendToCashier} disabled={sending} className="btn-primary w-full py-4 text-lg">
               {sending ? (

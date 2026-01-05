@@ -70,6 +70,9 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
   try {
     const { period = 'week' } = req.query;
     
+    // Uzbekistan timezone offset (UTC+5)
+    const tzOffset = 5 * 60; // minutes
+    
     if (period === 'today') {
       // Hourly data for today - single aggregation query
       const today = new Date();
@@ -79,7 +82,17 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
       
       const hourlyData = await Receipt.aggregate([
         { $match: { status: 'completed', createdAt: { $gte: today, $lt: tomorrow } } },
-        { $group: { _id: { $hour: '$createdAt' }, total: { $sum: '$total' } } },
+        { 
+          $group: { 
+            _id: { 
+              $hour: { 
+                date: '$createdAt', 
+                timezone: '+05:00' 
+              } 
+            }, 
+            total: { $sum: '$total' } 
+          } 
+        },
         { $sort: { _id: 1 } }
       ]);
       
@@ -105,7 +118,13 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
         { $match: { status: 'completed', createdAt: { $gte: startDate } } },
         { 
           $group: { 
-            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, 
+            _id: { 
+              $dateToString: { 
+                format: '%Y-%m-%d', 
+                date: '$createdAt',
+                timezone: '+05:00'
+              } 
+            }, 
             total: { $sum: '$total' } 
           } 
         },

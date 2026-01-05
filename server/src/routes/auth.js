@@ -36,4 +36,30 @@ router.get('/me', auth, async (req, res) => {
   });
 });
 
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { name, phone, password } = req.body;
+    const user = await User.findById(req.user._id);
+    
+    if (!user) return res.status(404).json({ message: 'Foydalanuvchi topilmadi' });
+    
+    user.name = name;
+    user.phone = phone;
+    if (password) {
+      user.password = password;
+    }
+    await user.save();
+    
+    res.json({
+      _id: user._id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 module.exports = router;

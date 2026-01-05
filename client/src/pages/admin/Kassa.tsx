@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { 
   Search, RotateCcw, Save, CreditCard, Trash2, X, 
-  Package, Banknote, Delete, AlertTriangle
+  Package, Banknote, Delete, AlertTriangle, User, ChevronDown, Wifi, WifiOff, RefreshCw
 } from 'lucide-react';
-import { CartItem, Product } from '../../types';
+import { CartItem, Product, Customer } from '../../types';
 import api from '../../utils/api';
+import { formatNumber } from '../../utils/format';
+import { useAlert } from '../../hooks/useAlert';
+import { useOffline } from '../../hooks/useOffline';
+import { cacheProducts, getCachedProducts } from '../../utils/indexedDbService';
 
 interface SavedReceipt {
   id: string;
@@ -14,9 +18,11 @@ interface SavedReceipt {
 }
 
 export default function Kassa() {
+  const { showAlert, AlertComponent } = useAlert();
+  const { isOnline, pendingCount, isSyncing, manualSync } = useOffline();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [inputMode, setInputMode] = useState<'quantity' | 'code'>('code');
+  const [inputMode, setInputMode] = useState<'code'>('code');
   const [inputValue, setInputValue] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -28,18 +34,50 @@ export default function Kassa() {
   const [returnSearchQuery, setReturnSearchQuery] = useState('');
   const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(null);
   const [showSavedReceipts, setShowSavedReceipts] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCustomerSelect, setShowCustomerSelect] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
 
   useEffect(() => {
     fetchProducts();
+    fetchCustomers();
     loadSavedReceipts();
   }, []);
 
   const fetchProducts = async () => {
     try {
-      const res = await api.get('/products');
-      setProducts(res.data);
+      if (navigator.onLine) {
+        // Online: fetch from server and cache
+        const res = await api.get('/products?mainOnly=true');
+        setProducts(res.data);
+        // Cache for offline use
+        await cacheProducts(res.data);
+      } else {
+        // Offline: use cached products
+        const cached = await getCachedProducts();
+        setProducts(cached as Product[]);
+        if (cached.length === 0) {
+          showAlert('Offline rejimda keshda tovarlar yo\'q', 'Ogohlantirish', 'warning');
+        }
+      }
     } catch (err) {
       console.error('Error fetching products:', err);
+      // Try cache on error
+      const cached = await getCachedProducts();
+      if (cached.length > 0) {
+        setProducts(cached as Product[]);
+        showAlert('Serverga ulanib bo\'lmadi, keshdan yuklandi', 'Ogohlantirish', 'warning');
+      }
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await api.get('/customers');
+      setCustomers(res.data);
+    } catch (err) {
+      console.error('Error fetching customers:', err);
     }
   };
 
@@ -54,17 +92,7 @@ export default function Kassa() {
     if (value === 'C') setInputValue('');
     else if (value === '⌫') setInputValue(prev => prev.slice(0, -1));
     else if (value === '+') {
-      if (inputMode === 'quantity' && selectedCartItemId) {
-        const qty = parseInt(inputValue);
-        if (qty > 0) {
-          setCart(prev => prev.map(p => 
-            p._id === selectedCartItemId ? { ...p, cartQuantity: qty } : p
-          ));
-        }
-        setInputValue('');
-      } else {
-        addProductByCode(inputValue);
-      }
+      addProductByCode(inputValue);
     }
     else setInputValue(prev => prev + value);
   };
@@ -73,23 +101,13 @@ export default function Kassa() {
     setSelectedCartItemId(item._id);
   };
 
-  const handleSoniClick = () => {
-    setInputMode('quantity');
-    if (selectedCartItemId) {
-      const selectedItem = cart.find(item => item._id === selectedCartItemId);
-      if (selectedItem) {
-        setInputValue(selectedItem.cartQuantity.toString());
-      }
-    }
-  };
-
   const addProductByCode = (code: string) => {
     const product = products.find(p => p.code === code);
     if (product) {
       addToCart(product);
       setInputValue('');
     } else if (code) {
-      alert('Tovar topilmadi');
+      showAlert('Tovar topilmadi', 'Xatolik', 'warning');
     }
   };
 
@@ -156,38 +174,68 @@ export default function Kassa() {
       );
       setSearchResults(results);
     } else {
-      setSearchResults([]);
+      setSearchResults(products);
     }
   };
 
   const handlePayment = async (method: 'cash' | 'card') => {
     if (cart.length === 0) return;
+    
+    const saleData = {
+      items: cart.map(item => ({
+        product: item._id,
+        name: item.name,
+        code: item.code,
+        price: item.price,
+        quantity: item.cartQuantity
+      })),
+      total,
+      paymentMethod: method,
+      isReturn: isReturnMode,
+      customer: selectedCustomer?._id
+    };
+
     try {
-      await api.post('/receipts', {
-        items: cart.map(item => ({
-          product: item._id,
-          name: item.name,
-          code: item.code,
-          price: item.price,
-          quantity: item.cartQuantity
-        })),
-        total,
-        paymentMethod: method,
-        isReturn: isReturnMode
-      });
+      // Import offline sale function
+      const { saveOfflineSale, markSalesAsSynced, deleteSyncedSales, getUnsyncedSalesCount } = await import('../../utils/indexedDbService');
+      
+      // Step 1: ALWAYS save locally first (safety - never lose sales)
+      const offlineSale = await saveOfflineSale(saleData);
+      console.log('Sale saved locally:', offlineSale.id);
+
+      // Step 2: Try to sync to server if online
+      if (navigator.onLine) {
+        try {
+          await api.post('/receipts', saleData);
+          // Success - mark as synced and delete local copy
+          await markSalesAsSynced([offlineSale.id]);
+          await deleteSyncedSales([offlineSale.id]);
+          showAlert(isReturnMode ? 'Qaytarish muvaffaqiyatli!' : 'Chek saqlandi!', 'Muvaffaqiyat', 'success');
+        } catch (serverErr) {
+          // Server failed - sale is saved locally, will sync later
+          console.log('Server sync failed, sale saved offline');
+          showAlert('Chek offline saqlandi, keyinroq sinxronlanadi', 'Ogohlantirish', 'warning');
+        }
+      } else {
+        // Offline - sale saved locally
+        showAlert('Offline rejim: Chek saqlandi, internet qaytganda sinxronlanadi', 'Ogohlantirish', 'warning');
+      }
+
+      // Clear cart and reset state
       setCart([]);
       setShowPayment(false);
       setIsReturnMode(false);
-      alert(isReturnMode ? 'Qaytarish muvaffaqiyatli!' : 'Chek saqlandi!');
+      setSelectedCustomer(null);
       fetchProducts();
+      
     } catch (err) {
       console.error('Error creating receipt:', err);
-      alert('Xatolik yuz berdi');
+      showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
     }
   };
 
   const saveReceipt = () => {
-    if (cart.length === 0) { alert("Chek bo'sh"); return; }
+    if (cart.length === 0) { showAlert("Chek bo'sh", 'Ogohlantirish', 'warning'); return; }
     const newSaved: SavedReceipt = {
       id: Date.now().toString(),
       items: [...cart],
@@ -198,7 +246,7 @@ export default function Kassa() {
     setSavedReceipts(updated);
     localStorage.setItem('savedReceipts', JSON.stringify(updated));
     setCart([]);
-    alert('Chek saqlandi!');
+    showAlert('Chek saqlandi!', 'Muvaffaqiyat', 'success');
   };
 
   const loadSavedReceipt = (receipt: SavedReceipt) => {
@@ -217,9 +265,41 @@ export default function Kassa() {
 
   return (
     <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50' : 'bg-surface-50'}`}>
+      {AlertComponent}
       {/* Header */}
       <header className="bg-white border-b border-surface-200 px-4 lg:px-6 h-14 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-surface-900">Kassa (POS)</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold text-surface-900">Kassa (POS)</h1>
+          {/* Offline Status Indicator */}
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium ${
+            isOnline ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-700'
+          }`}>
+            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+            {isOnline ? 'Online' : 'Offline'}
+          </div>
+          {/* Pending Sales Indicator */}
+          {pendingCount > 0 && (
+            <button
+              onClick={async () => {
+                if (isOnline && !isSyncing) {
+                  const result = await manualSync();
+                  if (result.success) {
+                    showAlert(`${result.synced} ta chek sinxronlandi`, 'Muvaffaqiyat', 'success');
+                  } else {
+                    showAlert(result.error || 'Sinxronlash xatosi', 'Xatolik', 'danger');
+                  }
+                }
+              }}
+              disabled={!isOnline || isSyncing}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium ${
+                isSyncing ? 'bg-brand-100 text-brand-700' : 'bg-warning-100 text-warning-700 hover:bg-warning-200'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Sinxronlanmoqda...' : `${pendingCount} ta kutmoqda`}
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowSavedReceipts(true)}
@@ -241,8 +321,85 @@ export default function Kassa() {
         {/* Left - Cart Table */}
         <div className="flex-1 flex flex-col p-4 lg:p-6">
           {/* Cart Info */}
-          <div className="mb-4 text-sm text-surface-600">
-            JAMI: {cart.length} ta mahsulot
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-sm text-surface-600">JAMI: {cart.length} ta mahsulot</span>
+            
+            {/* Customer Select */}
+            <div className="relative">
+              <button
+                onClick={() => setShowCustomerSelect(!showCustomerSelect)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  selectedCustomer 
+                    ? 'bg-brand-100 text-brand-700' 
+                    : 'bg-surface-100 text-surface-600 hover:bg-surface-200'
+                }`}
+              >
+                <User className="w-4 h-4" />
+                <span className="max-w-32 truncate">
+                  {selectedCustomer ? selectedCustomer.name : 'Oddiy mijoz'}
+                </span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {showCustomerSelect && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowCustomerSelect(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-lg border border-surface-200 z-50 overflow-hidden">
+                    <div className="p-3 border-b border-surface-100">
+                      <input
+                        type="text"
+                        placeholder="Mijoz qidirish..."
+                        value={customerSearchQuery}
+                        onChange={e => setCustomerSearchQuery(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-surface-50 border border-surface-200 rounded-lg focus:outline-none focus:border-brand-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-64 overflow-auto">
+                      <button
+                        onClick={() => { setSelectedCustomer(null); setShowCustomerSelect(false); setCustomerSearchQuery(''); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-50 transition-colors ${
+                          !selectedCustomer ? 'bg-brand-50' : ''
+                        }`}
+                      >
+                        <div className="w-8 h-8 bg-surface-200 rounded-lg flex items-center justify-center">
+                          <User className="w-4 h-4 text-surface-500" />
+                        </div>
+                        <span className="text-sm font-medium text-surface-700">Oddiy mijoz</span>
+                      </button>
+                      {customers
+                        .filter(c => 
+                          customerSearchQuery === '' ||
+                          c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+                          c.phone.includes(customerSearchQuery)
+                        )
+                        .map(customer => (
+                          <button
+                            key={customer._id}
+                            onClick={() => { setSelectedCustomer(customer); setShowCustomerSelect(false); setCustomerSearchQuery(''); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-50 transition-colors ${
+                              selectedCustomer?._id === customer._id ? 'bg-brand-50' : ''
+                            }`}
+                          >
+                            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
+                              <span className="text-sm font-semibold text-brand-600">{customer.name.charAt(0)}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-surface-900 truncate">{customer.name}</p>
+                              <p className="text-xs text-surface-500">{customer.phone}</p>
+                            </div>
+                            {customer.debt > 0 && (
+                              <span className="text-xs text-danger-600 font-medium">
+                                {formatNumber(customer.debt)}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Table */}
@@ -309,11 +466,11 @@ export default function Kassa() {
                         />
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className="text-sm text-surface-900">{item.price.toLocaleString()}</span>
+                        <span className="text-sm text-surface-900">{formatNumber(item.price)}</span>
                       </div>
                       <div className="col-span-1 text-right">
                         <span className="text-sm font-semibold text-surface-900">
-                          {(item.price * item.cartQuantity).toLocaleString()}
+                          {formatNumber(item.price * item.cartQuantity)}
                         </span>
                       </div>
                       <div className="col-span-1 flex justify-center">
@@ -335,7 +492,7 @@ export default function Kassa() {
           <div className="flex items-center gap-3 mt-4">
             {!isReturnMode && (
               <button 
-                onClick={() => setShowSearch(true)}
+                onClick={() => { setShowSearch(true); setSearchResults(products); }}
                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-surface-200 rounded-xl text-surface-700 hover:bg-surface-50 transition-colors"
               >
                 <Search className="w-4 h-4" />
@@ -385,32 +542,8 @@ export default function Kassa() {
           {/* Total */}
           <div className="text-right mb-6">
             <p className={`text-3xl lg:text-4xl font-bold ${isReturnMode ? 'text-warning-600' : 'text-surface-900'}`}>
-              {total.toLocaleString()} so'm
+              {formatNumber(total)} so'm
             </p>
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="flex mb-4 bg-surface-100 rounded-xl p-1">
-            <button 
-              onClick={handleSoniClick}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                inputMode === 'quantity' 
-                  ? 'bg-white shadow-sm text-surface-900' 
-                  : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              Soni
-            </button>
-            <button 
-              onClick={() => setInputMode('code')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                inputMode === 'code' 
-                  ? 'bg-brand-500 text-white shadow-sm' 
-                  : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              Kod
-            </button>
           </div>
 
           {/* Input */}
@@ -478,8 +611,8 @@ export default function Kassa() {
                     <p className="text-sm text-surface-500">Kod: {product.code}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
-                    <p className="font-semibold text-brand-600">Optom: {product.price.toLocaleString()}</p>
+                    <p className="text-xs text-surface-400">Tan: {formatNumber((product as any).costPrice || 0)}</p>
+                    <p className="font-semibold text-brand-600">Optom: {formatNumber(product.price)}</p>
                   </div>
                 </button>
               ))}
@@ -500,8 +633,16 @@ export default function Kassa() {
               <h3 className="text-xl font-semibold text-surface-900 mb-2">
                 {isReturnMode ? 'Qaytarish tasdiqlash' : "To'lov usuli"}
               </h3>
+              {selectedCustomer && (
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="w-6 h-6 bg-brand-100 rounded-lg flex items-center justify-center">
+                    <span className="text-xs font-semibold text-brand-600">{selectedCustomer.name.charAt(0)}</span>
+                  </div>
+                  <span className="text-sm text-surface-600">{selectedCustomer.name}</span>
+                </div>
+              )}
               <p className={`text-3xl font-bold ${isReturnMode ? 'text-warning-600' : 'text-surface-900'}`}>
-                {isReturnMode && '- '}{total.toLocaleString()} so'm
+                {isReturnMode && '- '}{formatNumber(total)} so'm
               </p>
               {isReturnMode && (
                 <p className="text-sm text-warning-600 mt-2">Bu summa mijozga qaytariladi</p>
@@ -566,8 +707,8 @@ export default function Kassa() {
                     <p className="text-sm text-surface-500">Kod: {product.code}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-surface-400">Tan: {((product as any).costPrice || 0).toLocaleString()}</p>
-                    <p className="font-semibold text-warning-600">Optom: {product.price.toLocaleString()}</p>
+                    <p className="text-xs text-surface-400">Tan: {formatNumber((product as any).costPrice || 0)}</p>
+                    <p className="font-semibold text-warning-600">Optom: {formatNumber(product.price)}</p>
                   </div>
                 </button>
               ))}
@@ -620,7 +761,7 @@ export default function Kassa() {
                     <div key={receipt.id} className="p-4 hover:bg-surface-50 transition-colors">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-surface-500">{receipt.savedAt}</span>
-                        <span className="font-semibold text-surface-900">{receipt.total.toLocaleString()} so'm</span>
+                        <span className="font-semibold text-surface-900">{formatNumber(receipt.total)} so'm</span>
                       </div>
                       <p className="text-sm text-surface-600 mb-3">
                         {receipt.items.length} ta mahsulot

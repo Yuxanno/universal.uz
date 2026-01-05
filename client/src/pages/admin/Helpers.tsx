@@ -1,42 +1,16 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2, Phone, Lock, User } from 'lucide-react';
+import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2, Phone, Lock, User, Edit } from 'lucide-react';
 import { User as UserType } from '../../types';
 import api from '../../utils/api';
-
-// Format phone number as +998 (XX) XXX-XX-XX
-const formatPhone = (value: string): string => {
-  const digits = value.replace(/\D/g, '');
-  
-  let phone = digits;
-  if (!phone.startsWith('998') && phone.length > 0) {
-    phone = '998' + phone;
-  }
-  
-  phone = phone.slice(0, 12);
-  
-  if (phone.length === 0) return '';
-  if (phone.length <= 3) return '+' + phone;
-  if (phone.length <= 5) return '+998 (' + phone.slice(3);
-  if (phone.length <= 8) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5);
-  if (phone.length <= 10) return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8);
-  return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8, 10) + '-' + phone.slice(10);
-};
-
-const getRawPhone = (formatted: string): string => {
-  return formatted.replace(/\D/g, '');
-};
-
-const displayPhone = (phone: string): string => {
-  if (!phone) return '';
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length !== 12) return phone;
-  return '+998 (' + digits.slice(3, 5) + ') ' + digits.slice(5, 8) + '-' + digits.slice(8, 10) + '-' + digits.slice(10);
-};
+import { useAlert } from '../../hooks/useAlert';
+import { formatPhone, getRawPhone, displayPhone } from '../../utils/format';
 
 export default function Helpers() {
+  const { showConfirm, AlertComponent } = useAlert();
   const [helpers, setHelpers] = useState<UserType[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '', phone: '', password: '', role: 'helper' as 'cashier' | 'helper'
@@ -60,10 +34,18 @@ export default function Helpers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/users', {
-        ...formData,
-        phone: getRawPhone(formData.phone)
-      });
+      const data = {
+        name: formData.name,
+        phone: getRawPhone(formData.phone),
+        role: formData.role,
+        ...(formData.password && { password: formData.password })
+      };
+      
+      if (editingUser) {
+        await api.put(`/users/${editingUser._id}`, data);
+      } else {
+        await api.post('/users', { ...data, password: formData.password });
+      }
       fetchHelpers();
       closeModal();
     } catch (err: any) {
@@ -72,20 +54,34 @@ export default function Helpers() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yordamchini o'chirishni tasdiqlaysizmi?")) return;
+    const confirmed = await showConfirm("Yordamchini o'chirishni tasdiqlaysizmi?", "O'chirish");
+    if (!confirmed) return;
     try {
       await api.delete(`/users/${id}`);
       fetchHelpers();
     } catch (err) { console.error('Error deleting helper:', err); }
   };
 
+  const openEditModal = (user: UserType) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      phone: displayPhone(user.phone),
+      password: '',
+      role: user.role as 'cashier' | 'helper'
+    });
+    setShowModal(true);
+  };
+
   const closeModal = () => {
     setShowModal(false);
+    setEditingUser(null);
     setFormData({ name: '', phone: '', password: '', role: 'helper' });
   };
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      {AlertComponent}
       <Header 
         title="Yordamchilar"
         actions={
@@ -124,6 +120,9 @@ export default function Helpers() {
                     <h3 className="font-semibold text-surface-900 truncate">{helper.name}</h3>
                     <p className="text-sm text-surface-500 truncate">{displayPhone(helper.phone)}</p>
                   </div>
+                  <button onClick={() => openEditModal(helper)} className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600">
+                    <Edit className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handleDelete(helper._id)} className="btn-icon-sm hover:bg-danger-100 hover:text-danger-600">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -147,7 +146,9 @@ export default function Helpers() {
           <div className="overlay" onClick={closeModal} />
           <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">Yangi yordamchi</h3>
+              <h3 className="text-lg font-semibold text-surface-900">
+                {editingUser ? 'Tahrirlash' : 'Yangi yordamchi'}
+              </h3>
               <button onClick={closeModal} className="btn-icon-sm">
                 <X className="w-5 h-5" />
               </button>
@@ -170,11 +171,13 @@ export default function Helpers() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Parol</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">
+                  {editingUser ? 'Yangi parol (ixtiyoriy)' : 'Parol'}
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input type="password" className="input pl-12" placeholder="Parol" value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})} required minLength={6} />
+                  <input type="password" className="input pl-12" placeholder={editingUser ? "O'zgartirmaslik uchun bo'sh qoldiring" : "Parol"} value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})} {...(!editingUser && { required: true, minLength: 6 })} />
                 </div>
               </div>
               <div>

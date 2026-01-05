@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import { 
   Plus, AlertTriangle, X, DollarSign, Calendar, User, 
-  Clock, CheckCircle2, AlertCircle, Ban, Trash2, Wallet, ArrowDownLeft, ArrowUpRight
+  Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, Phone, UserPlus, Edit
 } from 'lucide-react';
 import { Debt, Customer } from '../../types';
 import api from '../../utils/api';
+import { formatNumber, formatInputNumber, parseNumber, formatPhone, displayPhone } from '../../utils/format';
+import { useAlert } from '../../hooks/useAlert';
+import { regions, regionNames } from '../../data/regions';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Debts() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const { showConfirm, AlertComponent } = useAlert();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stats, setStats] = useState({
@@ -19,11 +26,14 @@ export default function Debts() {
   const [loading, setLoading] = useState(true);
   const [debtType, setDebtType] = useState<'receivable' | 'payable'>('receivable');
   const [formData, setFormData] = useState({ 
-    customer: '', creditorName: '', amount: '', dueDate: '', description: '' 
+    customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' 
   });
   const [paymentAmount, setPaymentAmount] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', region: '', district: '' });
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
 
   useEffect(() => {
     fetchDebts();
@@ -56,18 +66,25 @@ export default function Debts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/debts', {
+      const data = {
         type: debtType,
         customer: debtType === 'receivable' ? formData.customer : undefined,
         creditorName: debtType === 'payable' ? formData.creditorName : undefined,
         amount: Number(formData.amount),
         dueDate: formData.dueDate,
-        description: formData.description
-      });
+        description: formData.description,
+        collateral: formData.collateral
+      };
+      
+      if (editingDebt) {
+        await api.put(`/debts/${editingDebt._id}`, data);
+      } else {
+        await api.post('/debts', data);
+      }
       fetchDebts();
       fetchStats();
       closeModal();
-    } catch (err) { console.error('Error creating debt:', err); }
+    } catch (err) { console.error('Error saving debt:', err); }
   };
 
   const handlePayment = async (e: React.FormEvent) => {
@@ -87,7 +104,8 @@ export default function Debts() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Qarzni o'chirishni tasdiqlaysizmi?")) return;
+    const confirmed = await showConfirm("Qarzni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    if (!confirmed) return;
     try {
       await api.delete(`/debts/${id}`);
       fetchDebts();
@@ -97,7 +115,40 @@ export default function Debts() {
 
   const closeModal = () => {
     setShowModal(false);
-    setFormData({ customer: '', creditorName: '', amount: '', dueDate: '', description: '' });
+    setEditingDebt(null);
+    setFormData({ customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' });
+    setShowNewCustomerForm(false);
+    setNewCustomer({ name: '', phone: '', region: '', district: '' });
+  };
+
+  const openEditModal = (debt: Debt) => {
+    setEditingDebt(debt);
+    setDebtType(debt.type as 'receivable' | 'payable');
+    setFormData({
+      customer: debt.customer?._id || '',
+      creditorName: (debt as any).creditorName || '',
+      amount: String(debt.amount),
+      dueDate: debt.dueDate.split('T')[0],
+      description: debt.description || '',
+      collateral: (debt as any).collateral || ''
+    });
+    setShowModal(true);
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomer.name || !newCustomer.phone) return;
+    try {
+      const data = {
+        name: newCustomer.name,
+        phone: newCustomer.phone,
+        address: newCustomer.region && newCustomer.district ? `${newCustomer.region}, ${newCustomer.district}` : ''
+      };
+      const res = await api.post('/customers', data);
+      await fetchCustomers();
+      setFormData({ ...formData, customer: res.data._id });
+      setShowNewCustomerForm(false);
+      setNewCustomer({ name: '', phone: '', region: '', district: '' });
+    } catch (err) { console.error('Error creating customer:', err); }
   };
 
   const filteredDebts = debts.filter(debt => {
@@ -125,8 +176,7 @@ export default function Debts() {
     { label: "Bugun to'lanadigan", value: stats.today, icon: Calendar, color: 'brand', filter: 'today' },
     { label: "To'langan", value: stats.paid, icon: CheckCircle2, color: 'success', filter: 'paid' },
     { label: "Muddati o'tgan", value: stats.overdue, icon: AlertCircle, color: 'danger', filter: 'overdue' },
-    { label: "Qora ro'yxat", value: stats.blacklist, icon: Ban, color: 'surface', filter: 'blacklist' },
-    { label: 'Jami qarz', value: `${stats.totalAmount.toLocaleString()} so'm`, icon: Wallet, color: 'accent', filter: null },
+    { label: 'Jami qarz', value: `${formatNumber(stats.totalAmount)} so'm`, icon: Wallet, color: 'accent', filter: null },
   ];
 
   const getDebtorName = (debt: Debt) => {
@@ -140,6 +190,7 @@ export default function Debts() {
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
+      {AlertComponent}
       <Header 
         title="Qarz daftarcha"
         showSearch
@@ -153,36 +204,38 @@ export default function Debts() {
       />
 
       <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
-        {/* Type Toggle */}
-        <div className="flex justify-center">
-          <div className="inline-flex p-1 bg-surface-100 rounded-xl">
-            <button
-              onClick={() => { setDebtType('receivable'); setStatusFilter('all'); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                debtType === 'receivable' 
-                  ? 'bg-white text-success-600 shadow-sm' 
-                  : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              Menga qarzdor
-            </button>
-            <button
-              onClick={() => { setDebtType('payable'); setStatusFilter('all'); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                debtType === 'payable' 
-                  ? 'bg-white text-danger-600 shadow-sm' 
-                  : 'text-surface-500 hover:text-surface-700'
-              }`}
-            >
-              <ArrowUpRight className="w-4 h-4" />
-              Men qarzdorman
+        {/* Type Toggle - only for admin */}
+        {isAdmin && (
+          <div className="flex justify-center">
+            <div className="inline-flex p-1 bg-surface-100 rounded-xl">
+              <button
+                onClick={() => { setDebtType('receivable'); setStatusFilter('all'); }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  debtType === 'receivable' 
+                    ? 'bg-white text-success-600 shadow-sm' 
+                    : 'text-surface-500 hover:text-surface-700'
+                }`}
+              >
+                <ArrowDownLeft className="w-4 h-4" />
+                Menga qarzdor
+              </button>
+              <button
+                onClick={() => { setDebtType('payable'); setStatusFilter('all'); }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  debtType === 'payable' 
+                    ? 'bg-white text-danger-600 shadow-sm' 
+                    : 'text-surface-500 hover:text-surface-700'
+                }`}
+              >
+                <ArrowUpRight className="w-4 h-4" />
+                Men qarzdorman
             </button>
           </div>
         </div>
+        )}
 
         {/* Stats */}
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           {statItems.map((stat, i) => (
             <div 
               key={i} 
@@ -225,37 +278,38 @@ export default function Debts() {
               <div className="hidden lg:block">
                 <div className="table-header">
                   <div className="grid grid-cols-12 gap-4 px-6 py-4">
-                    <span className="table-header-cell col-span-3">
+                    <span className="table-header-cell col-span-2">
                       {debtType === 'receivable' ? 'Mijoz' : 'Kimga qarzdorman'}
                     </span>
                     <span className="table-header-cell col-span-2">Qarz</span>
                     <span className="table-header-cell col-span-2">Qoldiq</span>
                     <span className="table-header-cell col-span-2">Muddat</span>
-                    <span className="table-header-cell col-span-2">Holat</span>
+                    {debtType === 'receivable' && <span className="table-header-cell col-span-2">Zalog</span>}
+                    <span className={`table-header-cell ${debtType === 'receivable' ? 'col-span-1' : 'col-span-2'}`}>Holat</span>
                     <span className="table-header-cell col-span-1 text-center">Amallar</span>
                   </div>
                 </div>
                 <div className="divide-y divide-surface-100">
                   {filteredDebts.map(debt => (
                     <div key={debt._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-50 transition-colors">
-                      <div className="col-span-3 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      <div className="col-span-2 flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           debtType === 'receivable' ? 'bg-success-100' : 'bg-danger-100'
                         }`}>
                           <User className={`w-5 h-5 ${debtType === 'receivable' ? 'text-success-600' : 'text-danger-600'}`} />
                         </div>
-                        <div>
-                          <p className="font-medium text-surface-900">{getDebtorName(debt)}</p>
-                          {getDebtorPhone(debt) && <p className="text-sm text-surface-500">{getDebtorPhone(debt)}</p>}
+                        <div className="min-w-0">
+                          <p className="font-medium text-surface-900 truncate">{getDebtorName(debt)}</p>
+                          {getDebtorPhone(debt) && <p className="text-sm text-surface-500 truncate">{getDebtorPhone(debt)}</p>}
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-semibold text-surface-900">{debt.amount.toLocaleString()}</p>
+                        <p className="font-semibold text-surface-900">{formatNumber(debt.amount)}</p>
                         <p className="text-sm text-surface-500">so'm</p>
                       </div>
                       <div className="col-span-2">
                         <p className={`font-semibold ${debtType === 'receivable' ? 'text-success-600' : 'text-danger-600'}`}>
-                          {(debt.amount - debt.paidAmount).toLocaleString()}
+                          {formatNumber(debt.amount - debt.paidAmount)}
                         </p>
                         <p className="text-sm text-surface-500">so'm</p>
                       </div>
@@ -263,19 +317,25 @@ export default function Debts() {
                         <Calendar className="w-4 h-4" />
                         {new Date(debt.dueDate).toLocaleDateString('uz-UZ')}
                       </div>
-                      <div className="col-span-2">
+                      {debtType === 'receivable' && (
+                        <div className="col-span-2">
+                          {(debt as any).collateral ? (
+                            <span className="text-sm text-amber-600 font-medium">{(debt as any).collateral}</span>
+                          ) : (
+                            <span className="text-sm text-surface-400">-</span>
+                          )}
+                        </div>
+                      )}
+                      <div className={debtType === 'receivable' ? 'col-span-1' : 'col-span-2'}>
                         <span className={`badge ${
                           debt.status === 'paid' ? 'badge-success' :
-                          debt.status === 'overdue' ? 'badge-danger' :
-                          debt.status === 'blacklist' ? 'badge-default' : 'badge-warning'
+                          debt.status === 'overdue' ? 'badge-danger' : 'badge-warning'
                         }`}>
                           {debt.status === 'paid' ? <CheckCircle2 className="w-3 h-3" /> :
                            debt.status === 'overdue' ? <AlertCircle className="w-3 h-3" /> :
-                           debt.status === 'blacklist' ? <Ban className="w-3 h-3" /> :
                            <Clock className="w-3 h-3" />}
                           {debt.status === 'paid' ? "To'langan" :
-                           debt.status === 'overdue' ? "Muddati o'tgan" :
-                           debt.status === 'blacklist' ? "Qora ro'yxat" : 'Kutilmoqda'}
+                           debt.status === 'overdue' ? "Muddati o'tgan" : 'Kutilmoqda'}
                         </span>
                       </div>
                       <div className="col-span-1 flex items-center justify-center gap-2">
@@ -288,6 +348,13 @@ export default function Debts() {
                             <DollarSign className="w-4 h-4" />
                           </button>
                         )}
+                        <button 
+                          onClick={() => openEditModal(debt)} 
+                          className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600"
+                          title="Tahrirlash"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => handleDelete(debt._id)} 
                           className="btn-icon-sm hover:bg-danger-100 hover:text-danger-600"
@@ -318,26 +385,31 @@ export default function Debts() {
                           </div>
                           <span className={`badge ${
                             debt.status === 'paid' ? 'badge-success' :
-                            debt.status === 'overdue' ? 'badge-danger' :
-                            debt.status === 'blacklist' ? 'badge-default' : 'badge-warning'
+                            debt.status === 'overdue' ? 'badge-danger' : 'badge-warning'
                           }`}>
                             {debt.status === 'paid' ? "To'langan" :
-                             debt.status === 'overdue' ? "O'tgan" :
-                             debt.status === 'blacklist' ? "Qora" : 'Kutilmoqda'}
+                             debt.status === 'overdue' ? "O'tgan" : 'Kutilmoqda'}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div className="bg-surface-50 rounded-xl p-3">
                             <p className="text-xs text-surface-500 mb-1">Qarz</p>
-                            <p className="font-semibold text-surface-900">{debt.amount.toLocaleString()}</p>
+                            <p className="font-semibold text-surface-900">{formatNumber(debt.amount)}</p>
                           </div>
                           <div className={`rounded-xl p-3 ${debtType === 'receivable' ? 'bg-success-50' : 'bg-danger-50'}`}>
                             <p className="text-xs text-surface-500 mb-1">Qoldiq</p>
                             <p className={`font-semibold ${debtType === 'receivable' ? 'text-success-600' : 'text-danger-600'}`}>
-                              {(debt.amount - debt.paidAmount).toLocaleString()}
+                              {formatNumber(debt.amount - debt.paidAmount)}
                             </p>
                           </div>
                         </div>
+                        {debtType === 'receivable' && (debt as any).collateral && (
+                          <div className="bg-amber-50 rounded-xl p-2 mb-3">
+                            <p className="text-xs text-amber-600">
+                              <span className="font-medium">Zalog:</span> {(debt as any).collateral}
+                            </p>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-sm text-surface-500">
                             <Calendar className="w-4 h-4" />
@@ -352,6 +424,12 @@ export default function Debts() {
                                 <DollarSign className="w-4 h-4" />
                               </button>
                             )}
+                            <button 
+                              onClick={() => openEditModal(debt)} 
+                              className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
                             <button onClick={() => handleDelete(debt._id)} className="btn-icon-sm text-danger-500">
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -373,43 +451,114 @@ export default function Debts() {
           <div className="overlay" onClick={closeModal} />
           <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">Yangi qarz</h3>
+              <h3 className="text-lg font-semibold text-surface-900">{editingDebt ? 'Qarzni tahrirlash' : 'Yangi qarz'}</h3>
               <button onClick={closeModal} className="btn-icon-sm"><X className="w-5 h-5" /></button>
             </div>
             
-            {/* Debt Type Toggle in Modal */}
-            <div className="flex p-1 bg-surface-100 rounded-xl mb-6">
-              <button
-                type="button"
-                onClick={() => setDebtType('receivable')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                  debtType === 'receivable' ? 'bg-white text-success-600 shadow-sm' : 'text-surface-500'
-                }`}
-              >
-                <ArrowDownLeft className="w-4 h-4" />
-                Menga qarzdor
-              </button>
-              <button
-                type="button"
-                onClick={() => setDebtType('payable')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                  debtType === 'payable' ? 'bg-white text-danger-600 shadow-sm' : 'text-surface-500'
-                }`}
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                Men qarzdorman
-              </button>
-            </div>
+            {/* Debt Type Toggle in Modal - only for admin */}
+            {isAdmin && (
+              <div className="flex p-1 bg-surface-100 rounded-xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => setDebtType('receivable')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                    debtType === 'receivable' ? 'bg-white text-success-600 shadow-sm' : 'text-surface-500'
+                  }`}
+                >
+                  <ArrowDownLeft className="w-4 h-4" />
+                  Menga qarzdor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDebtType('payable')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                    debtType === 'payable' ? 'bg-white text-danger-600 shadow-sm' : 'text-surface-500'
+                  }`}
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                  Men qarzdorman
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {debtType === 'receivable' ? (
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Mijoz</label>
-                  <select className="select" value={formData.customer}
-                    onChange={e => setFormData({...formData, customer: e.target.value})} required>
-                    <option value="">Tanlang</option>
-                    {customers.map(c => <option key={c._id} value={c._id}>{c.name} - {c.phone}</option>)}
-                  </select>
+                  {showNewCustomerForm ? (
+                    <div className="space-y-3 p-3 bg-surface-50 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-brand-600">Yangi mijoz</span>
+                        <button type="button" onClick={() => setShowNewCustomerForm(false)} className="text-surface-400 hover:text-surface-600">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <input 
+                        type="text" 
+                        className="input" 
+                        placeholder="Mijoz ismi" 
+                        value={newCustomer.name}
+                        onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} 
+                      />
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                        <input 
+                          type="text" 
+                          className="input pl-12" 
+                          placeholder="+998 (XX) XXX-XX-XX" 
+                          value={newCustomer.phone}
+                          onChange={e => setNewCustomer({ ...newCustomer, phone: formatPhone(e.target.value) })} 
+                        />
+                      </div>
+                      <select 
+                        className="select text-sm" 
+                        value={newCustomer.region}
+                        onChange={e => setNewCustomer({ ...newCustomer, region: e.target.value, district: '' })}
+                      >
+                        <option value="">Viloyatni tanlang</option>
+                        {regionNames.map(region => (
+                          <option key={region} value={region}>{region}</option>
+                        ))}
+                      </select>
+                      {newCustomer.region && (
+                        <select 
+                          className="select text-sm" 
+                          value={newCustomer.district}
+                          onChange={e => setNewCustomer({ ...newCustomer, district: e.target.value })}
+                        >
+                          <option value="">Tumanni tanlang</option>
+                          {regions[newCustomer.region]?.map(district => (
+                            <option key={district} value={district}>{district}</option>
+                          ))}
+                        </select>
+                      )}
+                      <button 
+                        type="button" 
+                        onClick={handleCreateCustomer}
+                        disabled={!newCustomer.name || !newCustomer.phone}
+                        className="btn-primary w-full"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Mijozni yaratish
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select className="select flex-1" value={formData.customer}
+                        onChange={e => setFormData({...formData, customer: e.target.value})} required>
+                        <option value="">Tanlang</option>
+                        {customers.map(c => <option key={c._id} value={c._id}>{c.name} - {c.phone}</option>)}
+                      </select>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowNewCustomerForm(true)}
+                        className="btn-icon bg-brand-100 text-brand-600 hover:bg-brand-200"
+                        title="Yangi mijoz qo'shish"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -421,8 +570,8 @@ export default function Debts() {
               )}
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Summa (so'm)</label>
-                <input type="number" className="input" placeholder="0" value={formData.amount}
-                  onChange={e => setFormData({...formData, amount: e.target.value})} required />
+                <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.amount)}
+                  onChange={e => setFormData({...formData, amount: parseNumber(e.target.value)})} required />
               </div>
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Muddat</label>
@@ -435,6 +584,14 @@ export default function Debts() {
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})} />
               </div>
+              {debtType === 'receivable' && (
+                <div>
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">Zalog (ixtiyoriy)</label>
+                  <input type="text" className="input" placeholder="Zalogga nima qoldirdi" 
+                    value={formData.collateral}
+                    onChange={e => setFormData({...formData, collateral: e.target.value})} />
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
                 <button type="submit" className="btn-primary flex-1">Saqlash</button>
@@ -456,15 +613,14 @@ export default function Debts() {
             <div className={`rounded-xl p-4 mb-6 ${debtType === 'receivable' ? 'bg-success-50' : 'bg-danger-50'}`}>
               <p className="text-sm text-surface-600 mb-1">Qoldiq summa</p>
               <p className={`text-2xl font-bold ${debtType === 'receivable' ? 'text-success-600' : 'text-danger-600'}`}>
-                {(selectedDebt.amount - selectedDebt.paidAmount).toLocaleString()} so'm
+                {formatNumber(selectedDebt.amount - selectedDebt.paidAmount)} so'm
               </p>
             </div>
             <form onSubmit={handlePayment} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">To'lov summasi</label>
-                <input type="number" className="input" placeholder="0" value={paymentAmount}
-                  onChange={e => setPaymentAmount(e.target.value)} required
-                  max={selectedDebt.amount - selectedDebt.paidAmount} />
+                <input type="text" className="input" placeholder="0" value={formatInputNumber(paymentAmount)}
+                  onChange={e => setPaymentAmount(parseNumber(e.target.value))} required />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setShowPaymentModal(false)} className="btn-secondary flex-1">
