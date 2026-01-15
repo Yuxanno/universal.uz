@@ -26,7 +26,6 @@ export default function Kassa() {
   const { showAlert, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [inputMode, setInputMode] = useState<'quantity' | 'code'>('code');
   const [inputValue, setInputValue] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -95,33 +94,13 @@ export default function Kassa() {
     if (value === 'C') setInputValue('');
     else if (value === '⌫') setInputValue(prev => prev.slice(0, -1));
     else if (value === '+') {
-      if (inputMode === 'quantity' && selectedCartItemId) {
-        const qty = parseInt(inputValue);
-        if (qty > 0) {
-          setCart(prev => prev.map(p =>
-            p._id === selectedCartItemId ? { ...p, cartQuantity: qty } : p
-          ));
-        }
-        setInputValue('');
-      } else {
-        addProductByCode(inputValue);
-      }
+      addProductByCode(inputValue);
     }
     else setInputValue(prev => prev + value);
   };
 
   const handleCartItemClick = (item: CartItem) => {
     setSelectedCartItemId(item._id);
-  };
-
-  const handleSoniClick = () => {
-    setInputMode('quantity');
-    if (selectedCartItemId) {
-      const selectedItem = cart.find(item => item._id === selectedCartItemId);
-      if (selectedItem) {
-        setInputValue(selectedItem.cartQuantity.toString());
-      }
-    }
   };
 
   const addProductByCode = (code: string) => {
@@ -144,12 +123,6 @@ export default function Kassa() {
     });
     setShowSearch(false);
     setSearchQuery('');
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item =>
-      item._id === id ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) } : item
-    ));
   };
 
   const toggleReturnMode = () => {

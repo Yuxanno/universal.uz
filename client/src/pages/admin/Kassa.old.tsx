@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Search, RotateCcw, Save, CreditCard, Trash2, X, 
   Package, Banknote, Delete, AlertTriangle, User, ChevronDown, Wifi, WifiOff, RefreshCw, Printer
@@ -30,7 +30,7 @@ export default function Kassa() {
   const { isOnline, pendingCount, isSyncing, manualSync } = useOffline();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [inputMode, setInputMode] = useState<'code'>('code');
+  const [_inputMode, _setInputMode] = useState<'code'>('code');
   const [inputValue, setInputValue] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -155,12 +155,6 @@ export default function Kassa() {
     });
     setShowSearch(false);
     setSearchQuery('');
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => 
-      item._id === id ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) } : item
-    ));
   };
 
   const toggleReturnMode = () => {

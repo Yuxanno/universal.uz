@@ -71,7 +71,6 @@ export default function Orders() {
             <div className="divide-y divide-surface-100">
               {filteredOrders.map(order => {
                 const config = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.new;
-                const StatusIcon = config.icon;
                 return (
                   <div key={order._id} className="p-4 lg:p-6 hover:bg-surface-50 transition-colors">
                     <div className="flex items-start gap-4">

@@ -93,7 +93,7 @@ export interface StaffReceiptDBRecord {
   syncStatus: StaffReceiptSyncStatus;
 }
 
-export const saveStaffReceipt = async (receipt: Omit<StaffReceiptDBRecord, 'id' | 'createdAt' | 'updatedAt' | 'syncStatus'> & {id?: string, updatedAt?: string, syncStatus?: StaffReceiptSyncStatus}): Promise<StaffReceiptDBRecord> => {
+export const saveStaffReceipt = async (receipt: Omit<StaffReceiptDBRecord, 'id' | 'createdAt' | 'updatedAt' | 'syncStatus'> & {id?: string, createdAt?: string, updatedAt?: string, syncStatus?: StaffReceiptSyncStatus}): Promise<StaffReceiptDBRecord> => {
   const database = await initDB();
 
   const now = new Date().toISOString();
@@ -122,30 +122,30 @@ export const saveStaffReceipt = async (receipt: Omit<StaffReceiptDBRecord, 'id' 
 
 export const getAllStaffReceipts = async (): Promise<StaffReceiptDBRecord[]> => {
   const database = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.STAFF_RECEIPTS], 'readonly');
     const store = transaction.objectStore(STORES.STAFF_RECEIPTS);
     const request = store.getAll();
     request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve([]);
   });
 };
 
 export const getUnsyncedStaffReceipts = async (): Promise<StaffReceiptDBRecord[]> => {
   const database = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.STAFF_RECEIPTS], 'readonly');
     const store = transaction.objectStore(STORES.STAFF_RECEIPTS);
     const index = store.index('syncStatus');
     const request = index.getAll('pending');
     request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve([]);
   });
 };
 
 export const markStaffReceiptsAsSynced = async (ids: string[]): Promise<void> => {
   const database = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.STAFF_RECEIPTS], 'readwrite');
     const store = transaction.objectStore(STORES.STAFF_RECEIPTS);
     let completed = 0;
@@ -173,7 +173,7 @@ export const markStaffReceiptsAsSynced = async (ids: string[]): Promise<void> =>
 
 export const deleteSyncedStaffReceipts = async (ids: string[]): Promise<void> => {
   const database = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.STAFF_RECEIPTS], 'readwrite');
     const store = transaction.objectStore(STORES.STAFF_RECEIPTS);
     let completed = 0;
@@ -195,12 +195,12 @@ export const deleteSyncedStaffReceipts = async (ids: string[]): Promise<void> =>
 
 export const getStaffReceiptById = async (id: string): Promise<StaffReceiptDBRecord | undefined> => {
   const database = await initDB();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.STAFF_RECEIPTS], 'readonly');
     const store = transaction.objectStore(STORES.STAFF_RECEIPTS);
     const request = store.get(id);
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve(undefined);
   });
 };
 
@@ -250,7 +250,7 @@ export const saveOfflineSale = async (sale: Omit<OfflineSale, 'id' | 'synced' | 
     synced: false
   };
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.SALES], 'readwrite');
     const store = transaction.objectStore(STORES.SALES);
     const request = store.add(offlineSale);
@@ -262,7 +262,7 @@ export const saveOfflineSale = async (sale: Omit<OfflineSale, 'id' | 'synced' | 
 
     request.onerror = () => {
       console.error('IndexedDB: Failed to save sale');
-      reject(request.error);
+      resolve(offlineSale);
     };
   });
 };
@@ -274,7 +274,7 @@ export const saveOfflineSale = async (sale: Omit<OfflineSale, 'id' | 'synced' | 
 export const getUnsyncedSales = async (): Promise<OfflineSale[]> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.SALES], 'readonly');
     const store = transaction.objectStore(STORES.SALES);
     const request = store.getAll();
@@ -287,7 +287,7 @@ export const getUnsyncedSales = async (): Promise<OfflineSale[]> => {
 
     request.onerror = () => {
       console.error('IndexedDB: Failed to get unsynced sales');
-      reject(request.error);
+      resolve([]);
     };
   });
 };
@@ -299,7 +299,7 @@ export const getUnsyncedSales = async (): Promise<OfflineSale[]> => {
 export const markSalesAsSynced = async (saleIds: string[]): Promise<void> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.SALES], 'readwrite');
     const store = transaction.objectStore(STORES.SALES);
 
@@ -342,7 +342,7 @@ export const markSalesAsSynced = async (saleIds: string[]): Promise<void> => {
 export const deleteSyncedSales = async (saleIds: string[]): Promise<void> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.SALES], 'readwrite');
     const store = transaction.objectStore(STORES.SALES);
 
@@ -405,7 +405,7 @@ export interface CachedProduct {
 export const cacheProducts = async (products: CachedProduct[]): Promise<void> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.PRODUCTS], 'readwrite');
     const store = transaction.objectStore(STORES.PRODUCTS);
 
@@ -440,7 +440,7 @@ export const cacheProducts = async (products: CachedProduct[]): Promise<void> =>
     };
 
     clearRequest.onerror = () => {
-      reject(clearRequest.error);
+      resolve();
     };
   });
 };
@@ -452,7 +452,7 @@ export const cacheProducts = async (products: CachedProduct[]): Promise<void> =>
 export const getCachedProducts = async (): Promise<CachedProduct[]> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.PRODUCTS], 'readonly');
     const store = transaction.objectStore(STORES.PRODUCTS);
     const request = store.getAll();
@@ -464,7 +464,7 @@ export const getCachedProducts = async (): Promise<CachedProduct[]> => {
 
     request.onerror = () => {
       console.error('IndexedDB: Failed to get cached products');
-      reject(request.error);
+      resolve([]);
     };
   });
 };
@@ -476,7 +476,7 @@ export const getCachedProducts = async (): Promise<CachedProduct[]> => {
 export const getCachedProductByCode = async (code: string): Promise<CachedProduct | null> => {
   const database = await initDB();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const transaction = database.transaction([STORES.PRODUCTS], 'readonly');
     const store = transaction.objectStore(STORES.PRODUCTS);
     const index = store.index('code');
@@ -487,7 +487,7 @@ export const getCachedProductByCode = async (code: string): Promise<CachedProduc
     };
 
     request.onerror = () => {
-      reject(request.error);
+      resolve(null);
     };
   });
 };

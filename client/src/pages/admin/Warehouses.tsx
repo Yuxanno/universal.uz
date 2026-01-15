@@ -27,6 +27,9 @@ export default function Warehouses() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
+  const [printers, setPrinters] = useState<{name: string; isDefault?: boolean}[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState('');
+  const [printing, setPrinting] = useState(false);
   const [formData, setFormData] = useState({ name: '', address: '' });
   const [productFormData, setProductFormData] = useState({
     code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''

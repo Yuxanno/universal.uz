@@ -6,7 +6,7 @@
 set -e
 
 APP_DIR="/var/www/universalbozor"
-REPO_URL="YOUR_GIT_REPO_URL"  # Замени на свой репозиторий
+REPO_URL="https://github.com/Yuxanno/universal.uz.git"
 
 echo "🚀 Starting deployment..."
 

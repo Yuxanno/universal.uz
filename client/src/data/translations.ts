@@ -246,29 +246,20 @@ export const translations: Record<string, string> = {
   "Bekor qilindi": "Бекор қилинди",
   "Buyurtma": "Буюртма",
   "ta mahsulot": "та маҳсулот",
-  "Noma'lum mijoz": "Номаълум мижоз",
   
   // Kassa
   "Mahsulot": "Маҳсулот",
   "Ombor": "Омбор",
   "Soni": "Сони",
   "Narx": "Нарх",
-  "Amallar": "Амаллар",
-  "Kod": "Код",
   
   // Login
   "Biznes boshqaruv tizimi": "Бизнес бошқарув тизими",
-  "Telefon raqam": "Телефон рақам",
   "Parolni unutdingizmi?": "Паролни унутдингизми?",
   "Tiklash": "Тиклаш",
   "Barcha huquqlar himoyalangan": "Барча ҳуқуқлар ҳимояланган",
   
   // Helpers modal
-  "Ism": "Исм",
-  "Kassa, qarzlar": "Касса, қарзлар",
-  "QR skaner": "QR сканер",
-  "Yordamchi ismi": "Ёрдамчи исми",
   "Mijoz ismi": "Мижоз исми",
   "Sotuv": "Сотув",
-  "Noma'lum mijoz": "Номаълум мижоз",
 };

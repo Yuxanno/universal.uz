@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircle, Loader2, Trash2, Tag } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { QrCode, Search, Send, Plus, Package, ShoppingCart, CheckCircle, Loader2, Trash2, Tag } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import api from '../../utils/api';
 import { formatNumber } from '../../utils/format';
@@ -145,15 +145,6 @@ export default function HelperScanner() {
     
   }, [cart, syncToServer, receiptStatus]);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await api.get('/products');
-      setProducts(res.data);
-    } catch (err) {
-      console.error('Error fetching products:', err);
-    }
-  };
-
   const startScanner = async () => {
     setScannedProduct(null);
     setSearchQuery('');
@@ -240,15 +231,6 @@ export default function HelperScanner() {
     setSearchQuery('');
     setSearchResults([]);
     setScannedProduct(null);
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    // Don't allow editing if receipt is pending
-    if (receiptStatus === 'pending') return;
-    
-    setCart(prev => prev.map(item =>
-      item._id === id ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) } : item
-    ));
   };
 
   const removeFromCart = (id: string) => {
@@ -445,7 +427,7 @@ export default function HelperScanner() {
                           ));
                         }
                       }}
-                      onBlur={(e) => {
+                      onBlur={() => {
                         // Если пусто - оставляем 0 (пустым)
                       }}
                       disabled={receiptStatus === 'pending'}

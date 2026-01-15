@@ -34,7 +34,7 @@ interface Worker {
 
 export default function StaffReceipts() {
   const { t } = useLanguage();
-  const { showAlert, AlertComponent } = useAlert();
+  const { AlertComponent } = useAlert();
   const navigate = useNavigate();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [receipts, setReceipts] = useState<WorkerReceipt[]>([]);
@@ -72,28 +72,6 @@ export default function StaffReceipts() {
 
   const getReadyReceipts = (workerId: string) => {
     return receipts.filter(r => r.createdBy?._id === workerId && r.status === 'approved');
-  };
-
-  const handleLoadToKassa = async (receipt: WorkerReceipt) => {
-    try {
-      // Save items to localStorage for Kassa to pick up
-      const kassaItems = receipt.items.map(item => ({
-        _id: item.product,
-        name: item.name,
-        code: item.code,
-        price: item.price,
-        cartQuantity: item.quantity,
-        quantity: 0
-      }));
-      localStorage.setItem('kassaItems', JSON.stringify(kassaItems));
-      localStorage.setItem('kassaReceiptId', receipt._id);
-      
-      // Navigate to Cashier page
-      navigate('/cashier');
-    } catch (err: any) {
-      console.error('Error loading to kassa:', err);
-      showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
-    }
   };
 
   // Показываем всех рабочих (helpers)

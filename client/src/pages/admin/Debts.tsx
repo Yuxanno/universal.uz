@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Debt, Customer } from '../../types';
 import api from '../../utils/api';
-import { formatNumber, formatInputNumber, parseNumber, formatPhone, displayPhone } from '../../utils/format';
+import { formatNumber, formatInputNumber, parseNumber, formatPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
@@ -125,13 +125,13 @@ export default function Debts() {
 
   const openEditModal = (debt: Debt) => {
     setEditingDebt(debt);
-    setDebtType(debt.type as 'receivable' | 'payable');
+    setDebtType((debt as any).type as 'receivable' | 'payable');
     setFormData({
       customer: debt.customer?._id || '',
       creditorName: (debt as any).creditorName || '',
       amount: String(debt.amount),
       dueDate: debt.dueDate.split('T')[0],
-      description: debt.description || '',
+      description: (debt as any).description || '',
       collateral: (debt as any).collateral || ''
     });
     setShowModal(true);
