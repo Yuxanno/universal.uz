@@ -116,7 +116,8 @@ router.post('/upload-images', auth, authorize('admin'), upload.array('images', 8
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'Rasm yuklanmadi' });
     }
-    const imagePaths = req.files.map(file => `/uploads/products/${file.filename}`);
+    const baseUrl = process.env.BASE_URL || '';
+    const imagePaths = req.files.map(file => `${baseUrl}/uploads/products/${file.filename}`);
     res.json({ images: imagePaths });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -126,8 +127,14 @@ router.post('/upload-images', auth, authorize('admin'), upload.array('images', 8
 // Delete image
 router.delete('/delete-image', auth, authorize('admin'), async (req, res) => {
   try {
-    const { imagePath } = req.body;
+    let { imagePath } = req.body;
     if (!imagePath) return res.status(400).json({ message: 'Rasm yo\'li ko\'rsatilmagan' });
+    
+    // Remove base URL if present to get relative path
+    const baseUrl = process.env.BASE_URL || '';
+    if (baseUrl && imagePath.startsWith(baseUrl)) {
+      imagePath = imagePath.replace(baseUrl, '');
+    }
     
     const fullPath = path.join(__dirname, '../..', imagePath);
     if (fs.existsSync(fullPath)) {
