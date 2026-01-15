@@ -8,7 +8,7 @@ import { useAlert } from '../../hooks/useAlert';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+const API_URL = 'https://pos.universalbozor.uz';
 
 export default function Products() {
   const { t } = useLanguage();
