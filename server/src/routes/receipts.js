@@ -397,4 +397,22 @@ router.put('/:id/reject', auth, authorize('admin', 'cashier'), async (req, res) 
   }
 });
 
+// Delete receipt (for worker receipts after loading to kassa)
+router.delete('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    
+    // Only allow deleting draft, pending, or approved receipts (not completed)
+    if (receipt.status === 'completed') {
+      return res.status(400).json({ message: 'Yakunlangan chekni o\'chirish mumkin emas' });
+    }
+
+    await Receipt.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Chek o\'chirildi', deleted: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 module.exports = router;

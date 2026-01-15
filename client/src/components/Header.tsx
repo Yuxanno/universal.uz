@@ -25,7 +25,7 @@ export default function Header({ title, showSearch, onSearch, actions, filterOpt
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-surface-200/60">
+    <header className="sticky top-0 z-30 bg-white border-b border-surface-200/60 hidden lg:block">
       <div className="px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
         {/* Title */}
         <h1 className="text-lg font-semibold text-surface-900">{title}</h1>

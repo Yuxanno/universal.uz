@@ -7,8 +7,10 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import api from '../../utils/api';
 import { formatNumber } from '../../utils/format';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Dashboard() {
+  const { t } = useLanguage();
   const [period, setPeriod] = useState<'today' | 'week'>('today');
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -55,9 +57,9 @@ export default function Dashboard() {
   const mainStats = [
     { 
       icon: DollarSign, 
-      label: 'Umumiy tushum', 
+      label: t('Umumiy tushum'), 
       value: formatNumber(stats.totalRevenue), 
-      suffix: "so'm", 
+      suffix: t("so'm"), 
       color: 'bg-success-500',
       bgColor: 'bg-success-50',
       textColor: 'text-success-600',
@@ -66,9 +68,9 @@ export default function Dashboard() {
     },
     { 
       icon: TrendingUp, 
-      label: period === 'today' ? 'Bugungi sotuv' : 'Haftalik sotuv', 
+      label: period === 'today' ? t('Bugungi sotuv') : t('Haftalik sotuv'), 
       value: formatNumber(period === 'today' ? stats.todaySales : stats.weekSales), 
-      suffix: "so'm", 
+      suffix: t("so'm"), 
       color: 'bg-brand-500',
       bgColor: 'bg-brand-50',
       textColor: 'text-brand-600',
@@ -77,7 +79,7 @@ export default function Dashboard() {
     },
     { 
       icon: ShoppingCart, 
-      label: 'Jami cheklar', 
+      label: t('Jami cheklar'), 
       value: stats.totalReceipts.toString(), 
       color: 'bg-accent-500',
       bgColor: 'bg-accent-50',
@@ -87,7 +89,7 @@ export default function Dashboard() {
     },
     { 
       icon: Receipt, 
-      label: "Eng faol vaqt", 
+      label: t("Eng faol vaqt"), 
       value: stats.peakHour || '-', 
       color: 'bg-warning-500',
       bgColor: 'bg-warning-50',
@@ -98,21 +100,21 @@ export default function Dashboard() {
   ];
 
   const inventory = [
-    { label: 'Jami mahsulotlar', value: stats.totalProducts, color: 'bg-surface-500', dotColor: 'bg-surface-400' },
-    { label: 'Kam qolgan', value: stats.lowStock, color: 'bg-warning-500', dotColor: 'bg-warning-500' },
-    { label: 'Tugagan', value: stats.outOfStock, color: 'bg-danger-500', dotColor: 'bg-danger-500' },
+    { label: t('Jami mahsulotlar'), value: stats.totalProducts, color: 'bg-surface-500', dotColor: 'bg-surface-400' },
+    { label: t('Kam qolgan'), value: stats.lowStock, color: 'bg-warning-500', dotColor: 'bg-warning-500' },
+    { label: t('Tugagan'), value: stats.outOfStock, color: 'bg-danger-500', dotColor: 'bg-danger-500' },
   ];
 
   return (
     <div className="min-h-screen bg-surface-50">
-      <Header title="Statistika" />
+      <Header title={t("Statistika")} />
       
       <div className="p-4 lg:p-6 space-y-6 pb-24 lg:pb-6">
         {/* Period Toggle */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-surface-900">Umumiy ko'rinish</h2>
-            <p className="text-sm text-surface-500 mt-0.5">Biznesingiz holati</p>
+            <h2 className="text-xl font-semibold text-surface-900">{t("Umumiy ko'rinish")}</h2>
+            <p className="text-sm text-surface-500 mt-0.5">{t("Biznesingiz holati")}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex p-1 bg-surface-100 rounded-xl">
@@ -122,7 +124,7 @@ export default function Dashboard() {
                   period === 'today' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
                 }`}
               >
-                Bugun
+                {t("Bugun")}
               </button>
               <button 
                 onClick={() => setPeriod('week')}
@@ -130,13 +132,13 @@ export default function Dashboard() {
                   period === 'week' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-500 hover:text-surface-700'
                 }`}
               >
-                Hafta
+                {t("Hafta")}
               </button>
             </div>
             <button 
               onClick={fetchStats} 
               className="btn-icon"
-              title="Yangilash"
+              title={t("Yangilash")}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -188,8 +190,8 @@ export default function Dashboard() {
                     <Package className="w-5 h-5 text-surface-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-surface-900">Ombor holati</h3>
-                    <p className="text-sm text-surface-500">Mahsulotlar statistikasi</p>
+                    <h3 className="font-semibold text-surface-900">{t("Ombor holati")}</h3>
+                    <p className="text-sm text-surface-500">{t("Mahsulotlar statistikasi")}</p>
                   </div>
                 </div>
               </div>
@@ -219,10 +221,10 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-surface-900">
-                    {period === 'today' ? 'Bugungi daromad' : 'Haftalik daromad'}
+                    {period === 'today' ? t('Bugungi daromad') : t('Haftalik daromad')}
                   </h3>
                   <p className="text-sm text-surface-500">
-                    {period === 'today' ? 'Soatlik dinamika' : 'Sotuv dinamikasi'}
+                    {period === 'today' ? t('Soatlik dinamika') : t('Sotuv dinamikasi')}
                   </p>
                 </div>
               </div>
@@ -248,7 +250,7 @@ export default function Dashboard() {
                         boxShadow: '0 4px 12px -2px rgb(0 0 0 / 0.06)'
                       }}
                       labelStyle={{ color: '#18181b', fontWeight: 600 }}
-                      formatter={(value: number) => [`${formatNumber(value)} so'm`, 'Sotuv']}
+                      formatter={(value: number) => [`${formatNumber(value)} ${t("so'm")}`, t('Sotuv')]}
                     />
                     <Area 
                       type="monotone" 
@@ -264,7 +266,7 @@ export default function Dashboard() {
                   <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
                     <TrendingUp className="w-8 h-8 text-surface-300" />
                   </div>
-                  <p className="font-medium">Ma'lumot topilmadi</p>
+                  <p className="font-medium">{t("Ma'lumot topilmadi")}</p>
                 </div>
               )}
             </div>
@@ -278,8 +280,8 @@ export default function Dashboard() {
                   <Package className="w-5 h-5 text-accent-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-surface-900">Top mahsulotlar</h3>
-                  <p className="text-sm text-surface-500">Eng ko'p sotilgan</p>
+                  <h3 className="font-semibold text-surface-900">{t("Top mahsulotlar")}</h3>
+                  <p className="text-sm text-surface-500">{t("Eng ko'p sotilgan")}</p>
                 </div>
               </div>
             </div>
@@ -287,8 +289,8 @@ export default function Dashboard() {
               <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
                 <Clock className="w-8 h-8 text-surface-300" />
               </div>
-              <p className="font-medium">Ma'lumot topilmadi</p>
-              <p className="text-sm text-surface-400 mt-1">Sotuvlar boshlanishi kerak</p>
+              <p className="font-medium">{t("Ma'lumot topilmadi")}</p>
+              <p className="text-sm text-surface-400 mt-1">{t("Sotuvlar boshlanishi kerak")}</p>
             </div>
           </div>
         </div>

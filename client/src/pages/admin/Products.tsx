@@ -6,10 +6,12 @@ import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { QRCodeSVG } from 'qrcode.react';
+import { useLanguage } from '../../context/LanguageContext';
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 export default function Products() {
+  const { t } = useLanguage();
   const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
@@ -84,7 +86,7 @@ export default function Products() {
     
     const remainingSlots = 8 - images.length;
     if (remainingSlots <= 0) {
-      showAlert('Maksimum 8 ta rasm yuklash mumkin', 'Ogohlantirish', 'warning');
+      showAlert(t('Maksimum 8 ta rasm yuklash mumkin'), t('Ogohlantirish'), 'warning');
       return;
     }
 
@@ -100,7 +102,7 @@ export default function Products() {
       setImages([...images, ...res.data.images]);
     } catch (err) {
       console.error('Error uploading images:', err);
-      showAlert('Rasmlarni yuklashda xatolik', 'Xatolik', 'danger');
+      showAlert(t('Rasmlarni yuklashda xatolik'), t('Xatolik'), 'danger');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -164,7 +166,7 @@ export default function Products() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm("Tovarni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    const confirmed = await showConfirm(t("Tovarni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     try {
       await api.delete(`/products/${id}`);
@@ -402,10 +404,10 @@ export default function Products() {
   });
 
   const statItems = [
-    { label: 'Jami tovarlar', value: stats.total, icon: Package, color: 'brand', filter: 'all' },
-    { label: 'Kam qolgan', value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
-    { label: 'Tugagan', value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
-    { label: 'Jami qiymat', value: `${formatNumber(stats.totalValue)} so'm`, icon: DollarSign, color: 'success', filter: null },
+    { label: t('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
+    { label: t('Kam qolgan'), value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
+    { label: t('Tugagan'), value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
+    { label: t('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${t("so'm")}`, icon: DollarSign, color: 'success', filter: null },
   ];
 
   const getProductImage = (product: any) => {
@@ -419,19 +421,19 @@ export default function Products() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title="Tovarlar (Asosiy ombor)"
+        title={t("Tovarlar (Asosiy ombor)")}
         showSearch 
         onSearch={setSearchQuery}
         actions={
           <button onClick={openAddModal} className="btn-primary">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Yangi tovar</span>
+            <span className="hidden sm:inline">{t("Yangi tovar")}</span>
           </button>
         }
       />
 
       <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {statItems.map((stat, i) => (
             <div 
               key={i} 
@@ -440,13 +442,13 @@ export default function Products() {
                 stockFilter === stat.filter ? 'ring-2 ring-brand-500' : ''
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-2 lg:mb-3">
                 <div className={`stat-icon bg-${stat.color}-50`}>
                   <stat.icon className={`w-5 h-5 text-${stat.color}-600`} />
                 </div>
               </div>
-              <p className="stat-value">{stat.value}</p>
-              <p className="stat-label">{stat.label}</p>
+              <p className="text-lg lg:text-2xl font-bold text-surface-900">{stat.value}</p>
+              <p className="text-xs lg:text-sm text-surface-500">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -889,6 +891,14 @@ export default function Products() {
           </div>
         </div>
       )}
+
+      {/* Mobile FAB */}
+      <button
+        onClick={openAddModal}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

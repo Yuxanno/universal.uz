@@ -6,8 +6,10 @@ import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { QRCodeSVG } from 'qrcode.react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Warehouses() {
+  const { t } = useLanguage();
   const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -109,7 +111,7 @@ export default function Warehouses() {
   };
 
   const handleDeleteProduct = async (id: string) => {
-    const confirmed = await showConfirm("Tovarni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    const confirmed = await showConfirm(t("Tovarni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     if (!selectedWarehouse) return;
     try {
@@ -119,7 +121,7 @@ export default function Warehouses() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm("Omborni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    const confirmed = await showConfirm(t("Omborni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     try {
       await api.delete(`/warehouses/${id}`);
@@ -341,11 +343,11 @@ export default function Warehouses() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title="Omborlar"
+        title={t("Omborlar")}
         actions={
           <button onClick={() => setShowModal(true)} className="btn-primary">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Yangi ombor</span>
+            <span className="hidden sm:inline">{t("Yangi ombor")}</span>
           </button>
         }
       />
@@ -360,9 +362,9 @@ export default function Warehouses() {
             <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
               <WarehouseIcon className="w-8 h-8 text-surface-400" />
             </div>
-            <h3 className="text-lg font-semibold text-surface-900 mb-2">Omborlar yo'q</h3>
-            <p className="text-surface-500 mb-6">Birinchi omborni qo'shing</p>
-            <button onClick={() => setShowModal(true)} className="btn-primary">Ombor qo'shish</button>
+            <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Omborlar yo'q")}</h3>
+            <p className="text-surface-500 mb-6">{t("Birinchi omborni qo'shing")}</p>
+            <button onClick={() => setShowModal(true)} className="btn-primary">{t("Ombor qo'shish")}</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -381,7 +383,7 @@ export default function Warehouses() {
                       <h3 className="font-semibold text-surface-900">{warehouse.name}</h3>
                       <div className="flex items-center gap-1 text-sm text-surface-500">
                         <MapPin className="w-3 h-3" />
-                        <span>{warehouse.address || 'Manzil ko\'rsatilmagan'}</span>
+                        <span>{warehouse.address || t("Manzil ko'rsatilmagan")}</span>
                       </div>
                     </div>
                   </div>
@@ -396,7 +398,7 @@ export default function Warehouses() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-surface-500 pt-3 border-t border-surface-100">
                   <Package className="w-4 h-4" />
-                  <span>{(warehouse as any).productCount || 0} ta tovar</span>
+                  <span>{(warehouse as any).productCount || 0} {t("ta tovar")}</span>
                 </div>
               </div>
             ))}
@@ -763,6 +765,14 @@ export default function Warehouses() {
           </div>
         </div>
       )}
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

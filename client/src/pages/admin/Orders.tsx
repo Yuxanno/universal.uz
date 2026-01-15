@@ -3,8 +3,10 @@ import Header from '../../components/Header';
 import { ShoppingBag, Package, Clock, Truck, CheckCircle2, XCircle, User } from 'lucide-react';
 import { Order } from '../../types';
 import api from '../../utils/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Orders() {
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -27,15 +29,15 @@ export default function Orders() {
   };
 
   const statusConfig = {
-    new: { color: 'brand', label: 'Yangi', icon: Clock },
-    processing: { color: 'warning', label: 'Jarayonda', icon: Package },
-    shipped: { color: 'accent', label: "Yo'lda", icon: Truck },
-    delivered: { color: 'success', label: 'Yetkazildi', icon: CheckCircle2 },
-    cancelled: { color: 'danger', label: 'Bekor qilindi', icon: XCircle },
+    new: { color: 'brand', label: t('Yangi'), icon: Clock },
+    processing: { color: 'warning', label: t('Jarayonda'), icon: Package },
+    shipped: { color: 'accent', label: t("Yo'lda"), icon: Truck },
+    delivered: { color: 'success', label: t('Yetkazildi'), icon: CheckCircle2 },
+    cancelled: { color: 'danger', label: t('Bekor qilindi'), icon: XCircle },
   };
 
   const filterOptions = [
-    { value: 'all', label: 'Barchasi' },
+    { value: 'all', label: t('Barchasi') },
     ...Object.entries(statusConfig).map(([key, val]) => ({ value: key, label: val.label }))
   ];
 
@@ -44,7 +46,7 @@ export default function Orders() {
   return (
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       <Header 
-        title="Buyurtmalar"
+        title={t("Buyurtmalar")}
         filterOptions={filterOptions}
         filterValue={filter}
         onFilterChange={setFilter}
@@ -62,8 +64,8 @@ export default function Orders() {
               <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
                 <ShoppingBag className="w-8 h-8 text-surface-400" />
               </div>
-              <h3 className="text-lg font-semibold text-surface-900 mb-2">Buyurtmalar topilmadi</h3>
-              <p className="text-surface-500">Hozircha buyurtmalar yo'q</p>
+              <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Buyurtmalar topilmadi")}</h3>
+              <p className="text-surface-500">{t("Hozircha buyurtmalar yo'q")}</p>
             </div>
           ) : (
             <div className="divide-y divide-surface-100">
@@ -79,10 +81,10 @@ export default function Orders() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <h4 className="font-semibold text-surface-900">Buyurtma #{order._id.slice(-6)}</h4>
+                            <h4 className="font-semibold text-surface-900">{t("Buyurtma")} #{order._id.slice(-6)}</h4>
                             <div className="flex items-center gap-2 text-sm text-surface-500 mt-1">
                               <User className="w-4 h-4" />
-                              <span>{order.customer?.name || 'Noma\'lum mijoz'}</span>
+                              <span>{order.customer?.name || t("Noma'lum mijoz")}</span>
                             </div>
                           </div>
                           <select
@@ -97,10 +99,10 @@ export default function Orders() {
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 text-sm text-surface-500">
-                            <span>{order.items.length} ta mahsulot</span>
+                            <span>{order.items.length} {t("ta mahsulot")}</span>
                             <span>{new Date(order.createdAt).toLocaleDateString('uz-UZ')}</span>
                           </div>
-                          <p className="font-bold text-surface-900">{(order.total || 0).toLocaleString()} so'm</p>
+                          <p className="font-bold text-surface-900">{(order.total || 0).toLocaleString()} {t("so'm")}</p>
                         </div>
                       </div>
                     </div>

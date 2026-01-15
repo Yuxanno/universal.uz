@@ -5,8 +5,10 @@ import { User as UserType } from '../../types';
 import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
 import { formatPhone, getRawPhone, displayPhone } from '../../utils/format';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Helpers() {
+  const { t } = useLanguage();
   const { showConfirm, AlertComponent } = useAlert();
   const [helpers, setHelpers] = useState<UserType[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -83,11 +85,11 @@ export default function Helpers() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title="Yordamchilar"
+        title={t("Yordamchilar")}
         actions={
           <button onClick={() => setShowModal(true)} className="btn-primary">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Yangi yordamchi</span>
+            <span className="hidden sm:inline">{t("Yangi yordamchi")}</span>
           </button>
         }
       />
@@ -102,10 +104,10 @@ export default function Helpers() {
             <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mb-4">
               <UserPlus className="w-8 h-8 text-surface-400" />
             </div>
-            <h3 className="text-lg font-semibold text-surface-900 mb-2">Yordamchilar yo'q</h3>
-            <p className="text-surface-500 mb-6">Birinchi yordamchini qo'shing</p>
+            <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Yordamchilar yo'q")}</h3>
+            <p className="text-surface-500 mb-6">{t("Birinchi yordamchini qo'shing")}</p>
             <button onClick={() => setShowModal(true)} className="btn-primary">
-              Yordamchi qo'shish
+              {t("Yordamchi qo'shish")}
             </button>
           </div>
         ) : (
@@ -129,9 +131,9 @@ export default function Helpers() {
                 </div>
                 <span className={`badge ${helper.role === 'cashier' ? 'badge-success' : 'badge-primary'}`}>
                   {helper.role === 'cashier' ? (
-                    <><ShoppingCart className="w-3 h-3" /> Kassir</>
+                    <><ShoppingCart className="w-3 h-3" /> {t("Kassir")}</>
                   ) : (
-                    <><Shield className="w-3 h-3" /> Yordamchi</>
+                    <><Shield className="w-3 h-3" /> {t("Yordamchi")}</>
                   )}
                 </span>
               </div>
@@ -140,6 +142,14 @@ export default function Helpers() {
         )}
       </div>
 
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -147,7 +157,7 @@ export default function Helpers() {
           <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-surface-900">
-                {editingUser ? 'Tahrirlash' : 'Yangi yordamchi'}
+                {editingUser ? t('Tahrirlash') : t('Yangi yordamchi')}
               </h3>
               <button onClick={closeModal} className="btn-icon-sm">
                 <X className="w-5 h-5" />
@@ -155,15 +165,15 @@ export default function Helpers() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Ism</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Ism")}</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input type="text" className="input pl-12" placeholder="Yordamchi ismi" value={formData.name}
+                  <input type="text" className="input pl-12" placeholder={t("Yordamchi ismi")} value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})} required />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Telefon raqam</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Telefon raqam")}</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                   <input type="tel" className="input pl-12" placeholder="+998 (XX) XXX-XX-XX" value={formData.phone}
@@ -172,16 +182,16 @@ export default function Helpers() {
               </div>
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">
-                  {editingUser ? 'Yangi parol (ixtiyoriy)' : 'Parol'}
+                  {editingUser ? t('Yangi parol (ixtiyoriy)') : t('Parol')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input type="password" className="input pl-12" placeholder={editingUser ? "O'zgartirmaslik uchun bo'sh qoldiring" : "Parol"} value={formData.password}
+                  <input type="password" className="input pl-12" placeholder={editingUser ? t("O'zgartirmaslik uchun bo'sh qoldiring") : t("Parol")} value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})} {...(!editingUser && { required: true, minLength: 6 })} />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-3 block">Rol</label>
+                <label className="text-sm font-medium text-surface-700 mb-3 block">{t("Rol")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -193,8 +203,8 @@ export default function Helpers() {
                     }`}
                   >
                     <ShoppingCart className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'cashier' ? 'text-success-600' : 'text-surface-400'}`} />
-                    <p className="font-medium text-surface-900">Kassir</p>
-                    <p className="text-xs text-surface-500">Kassa, qarzlar</p>
+                    <p className="font-medium text-surface-900">{t("Kassir")}</p>
+                    <p className="text-xs text-surface-500">{t("Kassa, qarzlar")}</p>
                   </button>
                   <button
                     type="button"
@@ -206,14 +216,14 @@ export default function Helpers() {
                     }`}
                   >
                     <Shield className={`w-6 h-6 mx-auto mb-2 ${formData.role === 'helper' ? 'text-brand-600' : 'text-surface-400'}`} />
-                    <p className="font-medium text-surface-900">Yordamchi</p>
-                    <p className="text-xs text-surface-500">QR skaner</p>
+                    <p className="font-medium text-surface-900">{t("Yordamchi")}</p>
+                    <p className="text-xs text-surface-500">{t("QR skaner")}</p>
                   </button>
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
-                <button type="submit" className="btn-primary flex-1">Saqlash</button>
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1">{t("Bekor qilish")}</button>
+                <button type="submit" className="btn-primary flex-1">{t("Saqlash")}</button>
               </div>
             </form>
           </div>

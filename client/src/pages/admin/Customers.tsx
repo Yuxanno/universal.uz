@@ -6,8 +6,10 @@ import api from '../../utils/api';
 import { formatNumber, formatPhone, displayPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { regions, regionNames } from '../../data/regions';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Customers() {
+  const { t } = useLanguage();
   const { showConfirm, AlertComponent } = useAlert();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function Customers() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm("Mijozni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    const confirmed = await showConfirm(t("Mijozni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     try {
       await api.delete(`/customers/${id}`);
@@ -98,7 +100,7 @@ export default function Customers() {
   });
 
   const getFilterLabel = () => {
-    if (!filterRegion) return 'Barcha hududlar';
+    if (!filterRegion) return t('Barcha hududlar');
     if (!filterDistrict) return filterRegion;
     return `${filterRegion}, ${filterDistrict}`;
   };
@@ -112,7 +114,7 @@ export default function Customers() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header
-        title="Mijozlar"
+        title={t("Mijozlar")}
         showSearch
         onSearch={setSearchQuery}
         actions={
@@ -135,10 +137,10 @@ export default function Customers() {
                   <div className="fixed inset-0 z-40" onClick={() => setShowRegionFilter(false)} />
                   <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-lg border border-surface-200 z-50 p-3">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-surface-700">Hudud bo'yicha filter</span>
+                      <span className="text-sm font-medium text-surface-700">{t("Hudud bo'yicha filter")}</span>
                       {filterRegion && (
                         <button onClick={clearFilter} className="text-xs text-brand-600 hover:text-brand-700">
-                          Tozalash
+                          {t("Tozalash")}
                         </button>
                       )}
                     </div>
@@ -147,7 +149,7 @@ export default function Customers() {
                       value={filterRegion}
                       onChange={e => { setFilterRegion(e.target.value); setFilterDistrict(''); }}
                     >
-                      <option value="">Barcha viloyatlar</option>
+                      <option value="">{t("Barcha viloyatlar")}</option>
                       {regionNames.map(region => (
                         <option key={region} value={region}>{region}</option>
                       ))}
@@ -158,7 +160,7 @@ export default function Customers() {
                         value={filterDistrict}
                         onChange={e => setFilterDistrict(e.target.value)}
                       >
-                        <option value="">Barcha tumanlar</option>
+                        <option value="">{t("Barcha tumanlar")}</option>
                         {regions[filterRegion]?.map(district => (
                           <option key={district} value={district}>{district}</option>
                         ))}
@@ -171,7 +173,7 @@ export default function Customers() {
             
             <button onClick={() => setShowModal(true)} className="btn-primary">
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Yangi mijoz</span>
+              <span className="hidden sm:inline">{t("Yangi mijoz")}</span>
             </button>
           </div>
         }
@@ -190,25 +192,25 @@ export default function Customers() {
             {filterRegion ? (
               <>
                 <h3 className="text-lg font-semibold text-surface-900 mb-2">
-                  Bu hududda mijozlar yo'q
+                  {t("Bu hududda mijozlar yo'q")}
                 </h3>
                 <p className="text-surface-500 mb-2 text-center">
-                  <span className="font-medium text-brand-600">{filterDistrict ? `${filterRegion}, ${filterDistrict}` : filterRegion}</span> da hech qanday mijoz topilmadi
+                  <span className="font-medium text-brand-600">{filterDistrict ? `${filterRegion}, ${filterDistrict}` : filterRegion}</span> {t("da hech qanday mijoz topilmadi")}
                 </p>
                 <button 
                   onClick={clearFilter} 
                   className="btn-primary mt-4"
                 >
                   <X className="w-4 h-4" />
-                  Filterni tozalash
+                  {t("Filterni tozalash")}
                 </button>
               </>
             ) : (
               <>
-                <h3 className="text-lg font-semibold text-surface-900 mb-2">Mijozlar yo'q</h3>
-                <p className="text-surface-500 mb-6">Birinchi mijozni qo'shing</p>
+                <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Mijozlar yo'q")}</h3>
+                <p className="text-surface-500 mb-6">{t("Birinchi mijozni qo'shing")}</p>
                 <button onClick={() => setShowModal(true)} className="btn-primary">
-                  Mijoz qo'shish
+                  {t("Mijoz qo'shish")}
                 </button>
               </>
             )}
@@ -219,12 +221,12 @@ export default function Customers() {
             <div className="hidden lg:block">
               <div className="table-header">
                 <div className="grid grid-cols-12 gap-4 px-6 py-4">
-                  <span className="table-header-cell col-span-2">Ism</span>
-                  <span className="table-header-cell col-span-2">Telefon</span>
-                  <span className="table-header-cell col-span-3">Manzil</span>
-                  <span className="table-header-cell col-span-2">Xaridlar</span>
-                  <span className="table-header-cell col-span-2">Qarz</span>
-                  <span className="table-header-cell col-span-1 text-center">Amallar</span>
+                  <span className="table-header-cell col-span-2">{t("Ism")}</span>
+                  <span className="table-header-cell col-span-2">{t("Telefon")}</span>
+                  <span className="table-header-cell col-span-3">{t("Manzil")}</span>
+                  <span className="table-header-cell col-span-2">{t("Xaridlar")}</span>
+                  <span className="table-header-cell col-span-2">{t("Qarz")}</span>
+                  <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
                 </div>
               </div>
               <div className="divide-y divide-surface-100">
@@ -242,13 +244,13 @@ export default function Customers() {
                     </div>
                     <div className="col-span-2">
                       <span className="text-brand-600 font-medium">
-                        {formatNumber((customer as any).totalPurchases || 0)} so'm
+                        {formatNumber((customer as any).totalPurchases || 0)} {t("so'm")}
                       </span>
-                      <p className="text-xs text-surface-400">{(customer as any).purchaseCount || 0} ta xarid</p>
+                      <p className="text-xs text-surface-400">{(customer as any).purchaseCount || 0} {t("ta xarid")}</p>
                     </div>
                     <div className="col-span-2">
                       <span className={customer.debt > 0 ? 'text-danger-600 font-medium' : 'text-success-600'}>
-                        {formatNumber(customer.debt)} so'm
+                        {formatNumber(customer.debt)} {t("so'm")}
                       </span>
                     </div>
                     <div className="col-span-1 flex items-center justify-center gap-2">
@@ -294,14 +296,14 @@ export default function Customers() {
                         {(customer as any).totalPurchases > 0 && (
                           <div className="bg-brand-50 rounded-xl p-2 inline-block">
                             <span className="text-sm font-semibold text-brand-600">
-                              Xarid: {formatNumber((customer as any).totalPurchases)} so'm
+                              {t("Xarid")}: {formatNumber((customer as any).totalPurchases)} {t("so'm")}
                             </span>
                           </div>
                         )}
                         {customer.debt > 0 && (
                           <div className="bg-danger-50 rounded-xl p-2 inline-block">
                             <span className="text-sm font-semibold text-danger-600">
-                              Qarz: {formatNumber(customer.debt)} so'm
+                              {t("Qarz")}: {formatNumber(customer.debt)} {t("so'm")}
                             </span>
                           </div>
                         )}
@@ -322,7 +324,7 @@ export default function Customers() {
           <div className="modal w-full max-w-md p-6 relative z-10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-surface-900">
-                {editingCustomer ? 'Mijozni tahrirlash' : 'Yangi mijoz'}
+                {editingCustomer ? t('Mijozni tahrirlash') : t('Yangi mijoz')}
               </h3>
               <button onClick={closeModal} className="btn-icon-sm">
                 <X className="w-5 h-5" />
@@ -330,12 +332,12 @@ export default function Customers() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Ism</label>
-                <input className="input" placeholder="Mijoz ismi" value={formData.name}
+                <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Ism")}</label>
+                <input className="input" placeholder={t("Mijoz ismi")} value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               </div>
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Telefon</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Telefon")}</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                   <input className="input pl-12" placeholder="+998 (XX) XXX-XX-XX" value={formData.phone}
@@ -343,13 +345,13 @@ export default function Customers() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Viloyat</label>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Viloyat")}</label>
                 <select 
                   className="select" 
                   value={formData.region}
                   onChange={e => setFormData({ ...formData, region: e.target.value, district: '' })}
                 >
-                  <option value="">Viloyatni tanlang</option>
+                  <option value="">{t("Viloyatni tanlang")}</option>
                   {regionNames.map(region => (
                     <option key={region} value={region}>{region}</option>
                   ))}
@@ -357,13 +359,13 @@ export default function Customers() {
               </div>
               {formData.region && (
                 <div>
-                  <label className="text-sm font-medium text-surface-700 mb-2 block">Tuman</label>
+                  <label className="text-sm font-medium text-surface-700 mb-2 block">{t("Tuman")}</label>
                   <select 
                     className="select" 
                     value={formData.district}
                     onChange={e => setFormData({ ...formData, district: e.target.value })}
                   >
-                    <option value="">Tumanni tanlang</option>
+                    <option value="">{t("Tumanni tanlang")}</option>
                     {regions[formData.region]?.map(district => (
                       <option key={district} value={district}>{district}</option>
                     ))}
@@ -371,13 +373,21 @@ export default function Customers() {
                 </div>
               )}
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
-                <button type="submit" className="btn-primary flex-1">Saqlash</button>
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1">{t("Bekor qilish")}</button>
+                <button type="submit" className="btn-primary flex-1">{t("Saqlash")}</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

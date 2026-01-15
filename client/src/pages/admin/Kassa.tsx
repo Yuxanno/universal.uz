@@ -40,11 +40,36 @@ export default function Kassa() {
   const [showSavedReceipts, setShowSavedReceipts] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [printReceipt, setPrintReceipt] = useState<PrintReceipt | null>(null);
+  const [workerReceiptIds, setWorkerReceiptIds] = useState<string[]>([]);
+  const [localPrices, setLocalPrices] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     fetchProducts();
     loadSavedReceipts();
+    loadWorkerItems();
   }, []);
+
+  // Load items from worker (StaffReceipts - "Kassaga yuklash")
+  const loadWorkerItems = () => {
+    const kassaItems = localStorage.getItem('kassaItems');
+    const receiptId = localStorage.getItem('kassaReceiptId');
+    
+    if (kassaItems) {
+      try {
+        const items = JSON.parse(kassaItems);
+        setCart(items);
+        // Save receipt IDs to delete after payment
+        if (receiptId) {
+          setWorkerReceiptIds(receiptId.split(','));
+        }
+        // Clear localStorage after loading
+        localStorage.removeItem('kassaItems');
+        localStorage.removeItem('kassaReceiptId');
+      } catch (err) {
+        console.error('Error loading worker items:', err);
+      }
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -60,7 +85,11 @@ export default function Kassa() {
     if (saved) setSavedReceipts(JSON.parse(saved));
   };
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
+  const total = cart.reduce((sum, item) => {
+    const localPrice = localPrices[item._id];
+    const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
+    return sum + price * item.cartQuantity;
+  }, 0);
 
   const handleNumpadClick = (value: string) => {
     if (value === 'C') setInputValue('');
@@ -183,17 +212,23 @@ export default function Kassa() {
   const handlePayment = async (method: 'cash' | 'card') => {
     if (cart.length === 0) return;
     
-    const saleItems = cart.map(item => ({
-      product: item._id,
-      name: item.name,
-      code: item.code,
-      price: item.price,
-      quantity: item.cartQuantity
-    }));
+    const saleItems = cart.map(item => {
+      const localPrice = localPrices[item._id];
+      const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
+      return {
+        product: item._id,
+        name: item.name,
+        code: item.code,
+        price: price,
+        quantity: item.cartQuantity
+      };
+    });
+
+    const finalTotal = saleItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const receiptData: PrintReceipt = {
       items: saleItems,
-      total,
+      total: finalTotal,
       paymentMethod: method,
       date: new Date().toLocaleString('uz-UZ'),
       receiptNumber: Date.now().toString().slice(-8)
@@ -202,12 +237,25 @@ export default function Kassa() {
     try {
       await api.post('/receipts', {
         items: saleItems,
-        total,
+        total: finalTotal,
         paymentMethod: method,
         isReturn: isReturnMode
       });
       
+      // Delete worker receipts if they exist
+      if (workerReceiptIds.length > 0) {
+        for (const id of workerReceiptIds) {
+          try {
+            await api.delete(`/receipts/${id}`);
+          } catch (err) {
+            console.error('Error deleting worker receipt:', err);
+          }
+        }
+        setWorkerReceiptIds([]);
+      }
+      
       setCart([]);
+      setLocalPrices({});
       setShowPayment(false);
       setIsReturnMode(false);
       setPrintReceipt(receiptData);
@@ -439,11 +487,39 @@ ${itemsHtml}
                         />
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className="text-sm text-surface-900">{item.price.toLocaleString()}</span>
+                        <input
+                          type="text"
+                          value={localPrices[item._id] !== undefined ? localPrices[item._id] : item.price.toLocaleString()}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\s/g, '');
+                            if (val === '' || /^\d+$/.test(val)) {
+                              setLocalPrices(prev => ({
+                                ...prev,
+                                [item._id]: val
+                              }));
+                            }
+                          }}
+                          onBlur={() => {
+                            const val = localPrices[item._id];
+                            if (val === '' || val === '0') {
+                              // Restore original price if empty
+                              setLocalPrices(prev => {
+                                const newPrices = { ...prev };
+                                delete newPrices[item._id];
+                                return newPrices;
+                              });
+                            }
+                          }}
+                          className="w-24 h-9 text-right text-sm font-medium border border-surface-200 rounded-xl px-2 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                        />
                       </div>
                       <div className="col-span-1 text-right">
                         <span className="text-sm font-semibold text-surface-900">
-                          {(item.price * item.cartQuantity).toLocaleString()}
+                          {(() => {
+                            const localPrice = localPrices[item._id];
+                            const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
+                            return (price * item.cartQuantity).toLocaleString();
+                          })()}
                         </span>
                       </div>
                       <div className="col-span-1 flex justify-center">

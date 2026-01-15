@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Phone, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { formatPhone, getRawPhone } from '../utils/format';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Login() {
+  const { t } = useLanguage();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +29,7 @@ export default function Login() {
       await login(rawPhone, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Xatolik yuz berdi');
+      setError(err.response?.data?.message || t('Xatolik yuz berdi'));
     } finally {
       setLoading(false);
     }
@@ -46,11 +48,11 @@ export default function Login() {
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-surface-900 mb-2">Universal.uz</h1>
-          <p className="text-surface-500">Biznes boshqaruv tizimi</p>
+          <p className="text-surface-500">{t("Biznes boshqaruv tizimi")}</p>
         </div>
 
         <div className="card-glass p-8 animate-fade-up">
-          <h2 className="text-xl font-semibold text-surface-900 text-center mb-6">Tizimga kirish</h2>
+          <h2 className="text-xl font-semibold text-surface-900 text-center mb-6">{t("Tizimga kirish")}</h2>
 
           {error && (
             <div className="alert-danger mb-6 animate-fade-in">
@@ -63,7 +65,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-surface-700">Telefon raqam</label>
+              <label className="text-sm font-medium text-surface-700">{t("Telefon raqam")}</label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
                 <input
@@ -78,7 +80,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-surface-700">Parol</label>
+              <label className="text-sm font-medium text-surface-700">{t("Parol")}</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
                 <input
@@ -104,7 +106,7 @@ export default function Login() {
                 <div className="spinner" />
               ) : (
                 <>
-                  <span>Kirish</span>
+                  <span>{t("Kirish")}</span>
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </>
               )}
@@ -112,13 +114,13 @@ export default function Login() {
           </form>
 
           <p className="text-center text-sm text-surface-500 mt-6">
-            Parolni unutdingizmi?{' '}
-            <button className="text-brand-600 hover:text-brand-700 font-medium">Tiklash</button>
+            {t("Parolni unutdingizmi?")}{' '}
+            <button className="text-brand-600 hover:text-brand-700 font-medium">{t("Tiklash")}</button>
           </p>
         </div>
 
         <p className="text-center text-sm text-surface-400 mt-6 animate-fade-up">
-          2025 Universal.uz. Barcha huquqlar himoyalangan.
+          2025 Universal.uz. {t("Barcha huquqlar himoyalangan")}.
         </p>
       </div>
     </div>

@@ -10,8 +10,10 @@ import { formatNumber, formatInputNumber, parseNumber, formatPhone, displayPhone
 import { useAlert } from '../../hooks/useAlert';
 import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function Debts() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { showConfirm, AlertComponent } = useAlert();
@@ -104,7 +106,7 @@ export default function Debts() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm("Qarzni o'chirishni tasdiqlaysizmi?", "O'chirish");
+    const confirmed = await showConfirm(t("Qarzni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     try {
       await api.delete(`/debts/${id}`);
@@ -172,16 +174,16 @@ export default function Debts() {
   });
 
   const statItems = [
-    { label: 'Kutilmoqda', value: stats.pending, icon: Clock, color: 'warning', filter: 'pending' },
-    { label: "Bugun to'lanadigan", value: stats.today, icon: Calendar, color: 'brand', filter: 'today' },
-    { label: "To'langan", value: stats.paid, icon: CheckCircle2, color: 'success', filter: 'paid' },
-    { label: "Muddati o'tgan", value: stats.overdue, icon: AlertCircle, color: 'danger', filter: 'overdue' },
-    { label: 'Jami qarz', value: `${formatNumber(stats.totalAmount)} so'm`, icon: Wallet, color: 'accent', filter: null },
+    { label: t('Kutilmoqda'), value: stats.pending, icon: Clock, color: 'warning', filter: 'pending' },
+    { label: t("Bugun to'lanadigan"), value: stats.today, icon: Calendar, color: 'brand', filter: 'today' },
+    { label: t("To'langan"), value: stats.paid, icon: CheckCircle2, color: 'success', filter: 'paid' },
+    { label: t("Muddati o'tgan"), value: stats.overdue, icon: AlertCircle, color: 'danger', filter: 'overdue' },
+    { label: t('Jami qarz'), value: `${formatNumber(stats.totalAmount)} ${t("so'm")}`, icon: Wallet, color: 'accent', filter: null },
   ];
 
   const getDebtorName = (debt: Debt) => {
     if (debt.customer?.name) return debt.customer.name;
-    return (debt as any).creditorName || 'Noma\'lum';
+    return (debt as any).creditorName || t("Noma'lum mijoz");
   };
 
   const getDebtorPhone = (debt: Debt) => {
@@ -192,13 +194,13 @@ export default function Debts() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title="Qarz daftarcha"
+        title={t("Qarz daftarcha")}
         showSearch
         onSearch={setSearchQuery}
         actions={
           <button onClick={() => setShowModal(true)} className="btn-primary">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Yangi qarz</span>
+            <span className="hidden sm:inline">{t("Yangi qarz")}</span>
           </button>
         }
       />
@@ -217,7 +219,7 @@ export default function Debts() {
                 }`}
               >
                 <ArrowDownLeft className="w-4 h-4" />
-                Menga qarzdor
+                {t("Menga qarzdor")}
               </button>
               <button
                 onClick={() => { setDebtType('payable'); setStatusFilter('all'); }}
@@ -228,29 +230,29 @@ export default function Debts() {
                 }`}
               >
                 <ArrowUpRight className="w-4 h-4" />
-                Men qarzdorman
+                {t("Men qarzdorman")}
             </button>
           </div>
         </div>
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="flex gap-3 lg:gap-4 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-5">
           {statItems.map((stat, i) => (
             <div 
               key={i} 
               onClick={() => stat.filter && setStatusFilter(stat.filter)}
-              className={`stat-card ${stat.filter ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${
+              className={`stat-card flex-shrink-0 w-28 lg:w-auto ${stat.filter ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${
                 statusFilter === stat.filter ? 'ring-2 ring-brand-500' : ''
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-2 lg:mb-3">
                 <div className={`stat-icon bg-${stat.color}-50`}>
                   <stat.icon className={`w-5 h-5 text-${stat.color}-600`} />
                 </div>
               </div>
-              <p className="stat-value">{stat.value}</p>
-              <p className="stat-label">{stat.label}</p>
+              <p className="text-lg lg:text-2xl font-bold text-surface-900">{stat.value}</p>
+              <p className="text-xs lg:text-sm text-surface-500">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -632,6 +634,14 @@ export default function Debts() {
           </div>
         </div>
       )}
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 }

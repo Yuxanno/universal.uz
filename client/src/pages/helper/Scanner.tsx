@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircle, Loader2, Trash2, Tag } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Product, CartItem } from '../../types';
 import api from '../../utils/api';
 import { formatNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 
+interface CartItemWithOriginalPrice extends CartItem {
+  originalPrice?: number;
+}
+
 export default function HelperScanner() {
   const { showAlert, AlertComponent } = useAlert();
   const [scanning, setScanning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItemWithOriginalPrice[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
@@ -24,13 +28,22 @@ export default function HelperScanner() {
   const isFirstLoad = useRef(true);
 
   useEffect(() => {
-    fetchProducts();
-    loadDraft();
+    const init = async () => {
+      try {
+        const res = await api.get('/products');
+        setProducts(res.data);
+        loadDraft(res.data);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        loadDraft([]);
+      }
+    };
+    init();
     
     // Периодически проверяем обновления с сервера (только если нет локальных изменений)
     const interval = setInterval(() => {
       if (!hasLocalChanges.current) {
-        loadDraft();
+        loadDraft(products);
       }
     }, 2000);
     
@@ -46,7 +59,7 @@ export default function HelperScanner() {
   }, []);
 
   // Загрузка draft с сервера
-  const loadDraft = async () => {
+  const loadDraft = async (productsList: Product[]) => {
     try {
       const res = await api.get('/receipts/draft');
       if (res.data) {
@@ -55,16 +68,25 @@ export default function HelperScanner() {
         if (res.data.items) {
           const serverCartJson = JSON.stringify(res.data.items);
           
-          // Обновляем только если данные изменились и нет локальных изменений
-          if (serverCartJson !== lastSyncedCart && !hasLocalChanges.current) {
-            const cartItems: CartItem[] = res.data.items.map((item: any) => ({
-              _id: item.product,
-              name: item.name,
-              code: item.code,
-              price: item.price,
-              cartQuantity: item.quantity,
-              quantity: 0
-            }));
+          // Если статус pending - всегда показываем данные с сервера (кассир мог изменить)
+          // Если статус draft - обновляем только если нет локальных изменений
+          const shouldUpdate = res.data.status === 'pending' || 
+            (serverCartJson !== lastSyncedCart && !hasLocalChanges.current);
+          
+          if (shouldUpdate) {
+            const cartItems: CartItemWithOriginalPrice[] = res.data.items.map((item: any) => {
+              // Находим оригинальную цену из списка продуктов
+              const product = productsList.find(p => p._id === item.product);
+              return {
+                _id: item.product,
+                name: item.name,
+                code: item.code,
+                price: item.price,
+                originalPrice: product?.price || item.price,
+                cartQuantity: item.quantity,
+                quantity: 0
+              };
+            });
             setCart(cartItems);
             setLastSyncedCart(serverCartJson);
           }
@@ -77,7 +99,7 @@ export default function HelperScanner() {
   };
 
   // Синхронизация корзины на сервер
-  const syncToServer = useCallback(async (items: CartItem[]) => {
+  const syncToServer = useCallback(async (items: CartItemWithOriginalPrice[]) => {
     if (receiptStatus === 'pending') return;
     
     setSyncing(true);
@@ -212,7 +234,8 @@ export default function HelperScanner() {
       if (existing) {
         return prev.map(p => p._id === product._id ? { ...p, cartQuantity: p.cartQuantity + 1 } : p);
       }
-      return [...prev, { ...product, cartQuantity: 1 }];
+      // Add with empty price (0), store original price separately
+      return [...prev, { ...product, cartQuantity: 1, price: 0, originalPrice: product.price }];
     });
     setSearchQuery('');
     setSearchResults([]);
@@ -252,7 +275,15 @@ export default function HelperScanner() {
     }
   };
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
+  const total = cart.reduce((sum, item) => sum + (item.price || 0) * item.cartQuantity, 0);
+
+  // Функция для вставки оригинальной цены
+  const fillOriginalPrice = (id: string) => {
+    if (receiptStatus === 'pending') return;
+    setCart(prev => prev.map(item => 
+      item._id === id ? { ...item, price: item.originalPrice || 0 } : item
+    ));
+  };
 
   return (
     <div className="space-y-4">
@@ -301,8 +332,7 @@ export default function HelperScanner() {
             <div>
               <p className="font-semibold text-surface-900 text-lg">{scannedProduct.name}</p>
               <p className="text-sm text-surface-500">Kod: {scannedProduct.code}</p>
-              <p className="text-sm text-surface-500">Tan narxi: {formatNumber((scannedProduct as any).costPrice || 0)} so'm</p>
-              <p className="text-brand-600 font-bold mt-1">Optom: {formatNumber(scannedProduct.price)} so'm</p>
+              <p className="text-sm text-surface-500">Mavjud: {scannedProduct.quantity} dona</p>
             </div>
             <button onClick={() => addToCart(scannedProduct)} className="btn-success">
               <Plus className="w-4 h-4" />
@@ -332,9 +362,7 @@ export default function HelperScanner() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-surface-400">Tan: {formatNumber((product as any).costPrice || 0)}</p>
-                  <p className="font-bold text-brand-600">Optom: {formatNumber(product.price)}</p>
-                  <p className="text-xs text-surface-400">{product.quantity} dona</p>
+                  <p className="text-sm text-surface-500">{product.quantity} dona</p>
                 </div>
               </button>
             ))}
@@ -392,34 +420,36 @@ export default function HelperScanner() {
                     <p className="text-xs text-surface-500">Kod: {item.code?.length > 10 ? item.code.slice(-6) : item.code}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => fillOriginalPrice(item._id)}
+                      disabled={receiptStatus === 'pending'}
+                      className="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                      title="Optom narxni qo'yish"
+                    >
+                      <Tag className="w-4 h-4" />
+                    </button>
                     <input
                       type="text"
-                      value={item.price === '' ? '' : formatNumber(item.price)}
+                      value={item.price === 0 ? '' : formatNumber(item.price)}
+                      placeholder="Narx"
                       onFocus={(e) => {
-                        // Сохраняем текущее значение при входе
                         e.target.dataset.prevValue = String(item.price);
                       }}
                       onChange={(e) => {
                         if (receiptStatus === 'pending') return;
                         const val = e.target.value.replace(/\s/g, '');
                         if (val === '' || /^\d+$/.test(val)) {
-                          const newPrice = val === '' ? '' : parseInt(val);
+                          const newPrice = val === '' ? 0 : parseInt(val);
                           setCart(prev => prev.map(p => 
-                            p._id === item._id ? { ...p, price: newPrice as any } : p
+                            p._id === item._id ? { ...p, price: newPrice } : p
                           ));
                         }
                       }}
                       onBlur={(e) => {
-                        // Если пусто - восстанавливаем предыдущее значение
-                        if (item.price === '' || item.price === 0) {
-                          const prevValue = parseInt(e.target.dataset.prevValue || '0') || 1;
-                          setCart(prev => prev.map(p => 
-                            p._id === item._id ? { ...p, price: prevValue } : p
-                          ));
-                        }
+                        // Если пусто - оставляем 0 (пустым)
                       }}
                       disabled={receiptStatus === 'pending'}
-                      className="w-20 h-8 text-right text-sm font-medium border border-surface-200 rounded-lg px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                      className="w-20 h-8 text-right text-sm font-medium border border-surface-200 rounded-lg px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300"
                     />
                     <span className="text-surface-400">×</span>
                     <input
@@ -432,14 +462,14 @@ export default function HelperScanner() {
                         if (receiptStatus === 'pending') return;
                         const val = e.target.value;
                         if (val === '' || /^\d+$/.test(val)) {
-                          const newQty = val === '' ? '' : parseInt(val);
+                          const newQty = val === '' ? 0 : parseInt(val);
                           setCart(prev => prev.map(p => 
-                            p._id === item._id ? { ...p, cartQuantity: newQty as any } : p
+                            p._id === item._id ? { ...p, cartQuantity: newQty } : p
                           ));
                         }
                       }}
                       onBlur={(e) => {
-                        if (item.cartQuantity === '' || !item.cartQuantity || item.cartQuantity < 1) {
+                        if (!item.cartQuantity || item.cartQuantity < 1) {
                           const prevValue = parseInt(e.target.dataset.prevValue || '1') || 1;
                           setCart(prev => prev.map(p => 
                             p._id === item._id ? { ...p, cartQuantity: prevValue } : p
@@ -450,7 +480,7 @@ export default function HelperScanner() {
                       className="w-12 h-8 text-center text-sm font-semibold border border-surface-200 rounded-lg focus:outline-none focus:border-brand-500 disabled:opacity-50"
                     />
                     <span className="w-20 text-right font-semibold text-surface-900 text-sm whitespace-nowrap">
-                      {formatNumber(item.price * item.cartQuantity)}
+                      {formatNumber((item.price || 0) * item.cartQuantity)}
                     </span>
                     <button 
                       onClick={() => removeFromCart(item._id)} 

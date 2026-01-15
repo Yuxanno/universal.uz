@@ -1,22 +1,24 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  ShoppingCart, 
   Package, 
   Receipt, 
-  FileText
+  Users,
+  Warehouse
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function BottomNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const navItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Bosh sahifa', exact: true },
-    { path: '/admin/kassa', icon: ShoppingCart, label: 'Kassa' },
+    { path: '/admin', icon: LayoutDashboard, label: 'Statistika', exact: true },
     { path: '/admin/products', icon: Package, label: 'Tovarlar' },
+    { path: '/admin/warehouses', icon: Warehouse, label: 'Omborlar' },
     { path: '/admin/debts', icon: Receipt, label: 'Qarzlar' },
-    { path: '/admin/staff-receipts', icon: FileText, label: 'Cheklar' }
+    { path: '/admin/customers', icon: Users, label: 'Mijozlar' }
   ];
 
   const isActive = (path: string, exact?: boolean) => {
@@ -25,7 +27,7 @@ export default function BottomNavigation() {
   };
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-surface-200/60 z-50 safe-bottom">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-surface-200/60 z-40 safe-bottom">
       <div className="grid grid-cols-5 h-16">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -35,7 +37,7 @@ export default function BottomNavigation() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
                 active 
                   ? 'text-brand-600' 
                   : 'text-surface-400 active:text-surface-600'
@@ -46,8 +48,8 @@ export default function BottomNavigation() {
               }`}>
                 <Icon className={`w-5 h-5 transition-transform duration-200 ${active ? 'scale-110' : ''}`} />
               </div>
-              <span className={`text-[10px] font-medium ${active ? 'text-brand-600' : 'text-surface-500'}`}>
-                {item.label}
+              <span className={`text-[10px] font-medium leading-tight ${active ? 'text-brand-600' : 'text-surface-500'}`}>
+                {t(item.label)}
               </span>
             </button>
           );

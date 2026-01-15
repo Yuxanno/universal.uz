@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users, 
-  CreditCard, ShoppingBag, UserPlus, Receipt, Menu, X, LogOut, Sparkles, Edit, Phone, Lock, User, Printer
+  CreditCard, ShoppingBag, UserPlus, Receipt, Menu, X, LogOut, Sparkles, Edit, Phone, Lock, User
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../utils/api';
 import { formatPhone } from '../utils/format';
 
@@ -23,6 +24,7 @@ interface SidebarProps {
 
 export default function Sidebar({ items, basePath, collapsed = false, setCollapsed }: SidebarProps) {
   const { user, logout, updateUser } = useAuth();
+  const { script, setScript, t } = useLanguage();
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', password: '' });
 
@@ -72,7 +74,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1 overflow-y-auto h-[calc(100vh-180px)]">
+      <nav className="p-3 space-y-1 overflow-y-auto h-[calc(100vh-220px)]">
         {items.map((item, i) => (
           <NavLink
             key={i}
@@ -86,16 +88,51 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
                 : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
               }
             `}
-            title={collapsed ? item.label : undefined}
+            title={collapsed ? t(item.label) : undefined}
           >
             <span className="flex-shrink-0">{item.icon}</span>
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="truncate">{t(item.label)}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* User Section */}
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-surface-100 bg-white">
+        {/* Language Switcher - Desktop (above account) */}
+        {!collapsed && (
+          <div className="flex items-center gap-1 px-3 py-2 mb-2">
+            <button
+              onClick={() => setScript('latin')}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                script === 'latin' 
+                  ? 'bg-brand-500 text-white' 
+                  : 'bg-surface-100 text-surface-600 hover:bg-surface-200'
+              }`}
+            >
+              Lotin
+            </button>
+            <button
+              onClick={() => setScript('cyrillic')}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                script === 'cyrillic' 
+                  ? 'bg-brand-500 text-white' 
+                  : 'bg-surface-100 text-surface-600 hover:bg-surface-200'
+              }`}
+            >
+              Кирил
+            </button>
+          </div>
+        )}
+        {collapsed && (
+          <button
+            onClick={() => setScript(script === 'latin' ? 'cyrillic' : 'latin')}
+            className="w-full mb-2 py-2 text-xs font-medium bg-surface-100 text-surface-600 rounded-lg hover:bg-surface-200 transition-all"
+            title={script === 'latin' ? 'Кирилга ўтиш' : "Lotinga o'tish"}
+          >
+            {script === 'latin' ? 'Лот' : 'Кир'}
+          </button>
+        )}
+        
         {!collapsed && (
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="w-9 h-9 bg-gradient-to-br from-surface-200 to-surface-300 rounded-xl flex items-center justify-center">
@@ -111,7 +148,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
               <button
                 onClick={openEditModal}
                 className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600"
-                title="Tahrirlash"
+                title={t("Tahrirlash")}
               >
                 <Edit className="w-4 h-4" />
               </button>
@@ -123,10 +160,10 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
           className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-surface-500 hover:bg-danger-50 hover:text-danger-600 transition-all duration-200 ${
             collapsed ? 'justify-center' : ''
           }`}
-          title={collapsed ? 'Chiqish' : undefined}
+          title={collapsed ? t('Chiqish') : undefined}
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span className="font-medium">Chiqish</span>}
+          {!collapsed && <span className="font-medium">{t("Chiqish")}</span>}
         </button>
       </div>
 
@@ -136,7 +173,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowEditModal(false)} />
           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative z-10 shadow-xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">Profilni tahrirlash</h3>
+              <h3 className="text-lg font-semibold text-surface-900">{t("Profilni tahrirlash")}</h3>
               <button onClick={() => setShowEditModal(false)} className="btn-icon-sm">
                 <X className="w-5 h-5" />
               </button>
@@ -186,7 +223,6 @@ export const adminMenuItems: MenuItem[] = [
   { icon: <CreditCard className="w-5 h-5" />, label: 'Qarz daftarcha', path: '/debts' },
   { icon: <ShoppingBag className="w-5 h-5" />, label: 'Buyurtmalar', path: '/orders' },
   { icon: <UserPlus className="w-5 h-5" />, label: "Yordamchilar", path: '/helpers' },
-  { icon: <Printer className="w-5 h-5" />, label: "Printer sozlamalari", path: '/printer-settings' },
 ];
 
 export const cashierMenuItems: MenuItem[] = [

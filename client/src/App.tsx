@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import Login from './pages/Login';
 import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -11,7 +12,6 @@ import Debts from './pages/admin/Debts';
 import Orders from './pages/admin/Orders';
 import Helpers from './pages/admin/Helpers';
 import StaffReceipts from './pages/admin/StaffReceipts';
-import PrinterSettings from './pages/admin/PrinterSettings';
 import CashierLayout from './layouts/CashierLayout';
 import HelperLayout from './layouts/HelperLayout';
 import HelperScanner from './pages/helper/Scanner';
@@ -47,40 +47,41 @@ const RoleRedirect = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<RoleRedirect />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminLayout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="kassa" element={<Kassa />} />
-            <Route path="products" element={<Products />} />
-            <Route path="warehouses" element={<Warehouses />} />
-            <Route path="customers" element={<Customers />} />
-            <Route path="debts" element={<Debts />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="helpers" element={<Helpers />} />
-            <Route path="staff-receipts" element={<StaffReceipts />} />
-            <Route path="printer-settings" element={<PrinterSettings />} />
-          </Route>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<RoleRedirect />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="kassa" element={<Kassa />} />
+              <Route path="products" element={<Products />} />
+              <Route path="warehouses" element={<Warehouses />} />
+              <Route path="customers" element={<Customers />} />
+              <Route path="debts" element={<Debts />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="helpers" element={<Helpers />} />
+              <Route path="staff-receipts" element={<StaffReceipts />} />
+            </Route>
 
-          {/* Cashier Routes */}
-          <Route path="/cashier" element={<ProtectedRoute roles={['cashier']}><CashierLayout /></ProtectedRoute>}>
-            <Route index element={<Kassa />} />
-            <Route path="debts" element={<Debts />} />
-            <Route path="staff-receipts" element={<StaffReceipts />} />
-          </Route>
+            {/* Cashier Routes */}
+            <Route path="/cashier" element={<ProtectedRoute roles={['cashier']}><CashierLayout /></ProtectedRoute>}>
+              <Route index element={<Kassa />} />
+              <Route path="debts" element={<Debts />} />
+              <Route path="staff-receipts" element={<StaffReceipts />} />
+            </Route>
 
-          {/* Helper Routes */}
-          <Route path="/helper" element={<ProtectedRoute roles={['helper']}><HelperLayout /></ProtectedRoute>}>
-            <Route index element={<HelperScanner />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* Helper Routes */}
+            <Route path="/helper" element={<ProtectedRoute roles={['helper']}><HelperLayout /></ProtectedRoute>}>
+              <Route index element={<HelperScanner />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 
