@@ -47,10 +47,31 @@ router.get('/', auth, async (req, res) => {
         { code: { $regex: search, $options: 'i' } }
       ];
     }
-    if (warehouse) query.warehouse = warehouse;
+    
+    // Фильтрация по складу - поддержка как ID, так и названия склада
+    if (warehouse) {
+      // Проверяем, является ли warehouse ObjectId или названием
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(warehouse);
+      if (isObjectId) {
+        query.warehouse = warehouse;
+      } else {
+        // Ищем склад по названию
+        const warehouseDoc = await Warehouse.findOne({ name: warehouse });
+        if (warehouseDoc) {
+          query.warehouse = warehouseDoc._id;
+        } else {
+          // Если склад не найден, возвращаем пустой массив
+          return res.json([]);
+        }
+      }
+    }
+    
     if (mainOnly === 'true') query.isMainWarehouse = true;
 
-    const products = await Product.find(query).populate('warehouse', 'name');
+    // Сортировка по количеству продаж (от большего к меньшему)
+    const products = await Product.find(query)
+      .populate('warehouse', 'name')
+      .sort({ soldCount: -1, createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -113,6 +134,36 @@ router.delete('/delete-image', auth, authorize('admin'), async (req, res) => {
       fs.unlinkSync(fullPath);
     }
     res.json({ message: 'Rasm o\'chirildi' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Check stock availability for items
+router.post('/check-stock', auth, async (req, res) => {
+  try {
+    const { items } = req.body;
+    const errors = [];
+    
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        errors.push({
+          name: item.name,
+          available: 0,
+          requested: item.quantity,
+          message: 'Tovar topilmadi'
+        });
+      } else if (product.quantity < item.quantity) {
+        errors.push({
+          name: product.name,
+          available: product.quantity,
+          requested: item.quantity
+        });
+      }
+    }
+    
+    res.json({ success: errors.length === 0, errors });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }

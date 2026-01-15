@@ -68,7 +68,7 @@ export default function Orders() {
           ) : (
             <div className="divide-y divide-surface-100">
               {filteredOrders.map(order => {
-                const config = statusConfig[order.status as keyof typeof statusConfig];
+                const config = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.new;
                 const StatusIcon = config.icon;
                 return (
                   <div key={order._id} className="p-4 lg:p-6 hover:bg-surface-50 transition-colors">
@@ -100,7 +100,7 @@ export default function Orders() {
                             <span>{order.items.length} ta mahsulot</span>
                             <span>{new Date(order.createdAt).toLocaleDateString('uz-UZ')}</span>
                           </div>
-                          <p className="font-bold text-surface-900">{order.total.toLocaleString()} so'm</p>
+                          <p className="font-bold text-surface-900">{(order.total || 0).toLocaleString()} so'm</p>
                         </div>
                       </div>
                     </div>

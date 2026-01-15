@@ -38,9 +38,10 @@ export const formatPhone = (value: string): string => {
   return '+998 (' + phone.slice(3, 5) + ') ' + phone.slice(5, 8) + '-' + phone.slice(8, 10) + '-' + phone.slice(10);
 };
 
-// Get raw phone digits
+// Get raw phone with + prefix
 export const getRawPhone = (formatted: string): string => {
-  return formatted.replace(/\D/g, '');
+  const digits = formatted.replace(/\D/g, '');
+  return digits ? '+' + digits : '';
 };
 
 // Display formatted phone from stored value

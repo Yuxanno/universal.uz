@@ -11,5 +11,10 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.67.0"
   }
 }

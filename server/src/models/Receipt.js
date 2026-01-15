@@ -13,7 +13,7 @@ const receiptSchema = new mongoose.Schema({
   total: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['cash', 'card'], default: 'cash' },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-  status: { type: String, enum: ['pending', 'approved', 'rejected', 'completed'], default: 'completed' },
+  status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected', 'completed'], default: 'completed' },
   isReturn: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

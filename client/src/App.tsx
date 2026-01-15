@@ -11,6 +11,7 @@ import Debts from './pages/admin/Debts';
 import Orders from './pages/admin/Orders';
 import Helpers from './pages/admin/Helpers';
 import StaffReceipts from './pages/admin/StaffReceipts';
+import PrinterSettings from './pages/admin/PrinterSettings';
 import CashierLayout from './layouts/CashierLayout';
 import HelperLayout from './layouts/HelperLayout';
 import HelperScanner from './pages/helper/Scanner';
@@ -63,6 +64,7 @@ function App() {
             <Route path="orders" element={<Orders />} />
             <Route path="helpers" element={<Helpers />} />
             <Route path="staff-receipts" element={<StaffReceipts />} />
+            <Route path="printer-settings" element={<PrinterSettings />} />
           </Route>
 
           {/* Cashier Routes */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { Plus, Warehouse as WarehouseIcon, X, Package, Edit, Trash2, MapPin, Search, QrCode, Download } from 'lucide-react';
+import { Plus, Warehouse as WarehouseIcon, X, Package, Edit, Trash2, MapPin, Search, QrCode, Download, Printer } from 'lucide-react';
 import { Warehouse, Product } from '../../types';
 import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
@@ -22,6 +22,9 @@ export default function Warehouses() {
   const [warehouseSearchQuery, setWarehouseSearchQuery] = useState('');
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrProduct, setQrProduct] = useState<Product | null>(null);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printProduct, setPrintProduct] = useState<Product | null>(null);
+  const [printQuantity, setPrintQuantity] = useState('1');
   const [formData, setFormData] = useState({ name: '', address: '' });
   const [productFormData, setProductFormData] = useState({
     code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''
@@ -200,6 +203,114 @@ export default function Warehouses() {
   const openQRModal = (product: Product) => {
     setQrProduct(product);
     setShowQRModal(true);
+  };
+
+  const openPrintModal = async (product: Product) => {
+    setPrintProduct(product);
+    setPrintQuantity('1');
+    setSelectedPrinter('');
+    setPrinting(false);
+    setShowPrintModal(true);
+    
+    // Загружаем список принтеров
+    try {
+      const res = await api.get('/printers');
+      setPrinters(res.data || []);
+      // Выбираем принтер по умолчанию
+      const defaultPrinter = res.data.find((p: any) => p.isDefault);
+      if (defaultPrinter) {
+        setSelectedPrinter(defaultPrinter.name);
+      } else if (res.data.length > 0) {
+        setSelectedPrinter(res.data[0].name);
+      }
+    } catch (err) {
+      console.error('Error fetching printers:', err);
+      setPrinters([]);
+    }
+  };
+
+  // Печать ценника через браузер
+  const handlePrint = () => {
+    if (!printProduct) return;
+    
+    const qty = Number(printQuantity) || 1;
+    
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+      showAlert('Popup bloklangan. Ruxsat bering.', 'Xatolik', 'danger');
+      return;
+    }
+    
+    const qrData = JSON.stringify({ id: printProduct._id, code: printProduct.code, name: printProduct.name });
+    
+    const labelsHtml = Array(qty).fill(`
+      <div class="label">
+        <div class="info">
+          <div class="name">${printProduct.name}</div>
+          <div class="code">Kod: ${printProduct.code}</div>
+        </div>
+        <div class="qr-container">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}" alt="QR" />
+        </div>
+      </div>
+    `).join('');
+    
+    const printHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ценник - ${printProduct.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page { size: 58mm 40mm; margin: 0; }
+    @media print {
+      body { width: 58mm; }
+      .label { page-break-after: always; }
+      .label:last-child { page-break-after: auto; }
+    }
+    body { font-family: Arial, sans-serif; background: white; }
+    .label { 
+      width: 58mm; height: 40mm; padding: 2mm;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .info { flex: 1; }
+    .name { font-size: 14pt; font-weight: bold; margin-bottom: 2mm; line-height: 1.1; }
+    .code { font-size: 12pt; color: #333; }
+    .qr-container { width: 22mm; height: 22mm; flex-shrink: 0; }
+    .qr-container img { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  ${labelsHtml}
+  <script>
+    window.onload = function() {
+      var imgs = document.querySelectorAll('img');
+      var loaded = 0;
+      imgs.forEach(function(img) {
+        if (img.complete) {
+          loaded++;
+          if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+        } else {
+          img.onload = function() {
+            loaded++;
+            if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+          };
+          img.onerror = function() {
+            loaded++;
+            if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+          };
+        }
+      });
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+    
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    setShowPrintModal(false);
   };
 
   const downloadQR = () => {
@@ -400,6 +511,9 @@ export default function Warehouses() {
                           <button onClick={() => openQRModal(product)} className="btn-icon-sm hover:bg-surface-200" title="QR kod">
                             <QrCode className="w-4 h-4" />
                           </button>
+                          <button onClick={() => openPrintModal(product)} className="btn-icon-sm hover:bg-surface-200" title="Ценник чоп этиш">
+                            <Printer className="w-4 h-4" />
+                          </button>
                           <button onClick={() => openEditProductModal(product)} className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600">
                             <Edit className="w-4 h-4" />
                           </button>
@@ -546,6 +660,105 @@ export default function Warehouses() {
                 <Download className="w-4 h-4" />
                 Yuklab olish
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Modal */}
+      {showPrintModal && printProduct && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="overlay" onClick={() => !printing && setShowPrintModal(false)} />
+          <div className="modal w-full max-w-md p-6 relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-surface-900">Ценник чоп этиш</h3>
+              <button onClick={() => !printing && setShowPrintModal(false)} className="btn-icon-sm" disabled={printing}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Product info with QR code */}
+              <div className="bg-surface-50 rounded-xl p-3 flex items-center justify-center gap-6">
+                <div>
+                  <p className="font-semibold text-surface-900">{printProduct.name}</p>
+                  <p className="text-sm text-surface-500">Код: {printProduct.code}</p>
+                </div>
+                <div className="bg-white p-1 rounded-lg border border-surface-200">
+                  <QRCodeSVG
+                    value={JSON.stringify({
+                      id: printProduct._id,
+                      code: printProduct.code,
+                      name: printProduct.name,
+                      price: printProduct.price
+                    })}
+                    size={80}
+                    level="H"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Сони</label>
+                <input 
+                  type="number" 
+                  className="input text-center" 
+                  min="1"
+                  max="50"
+                  value={printQuantity}
+                  onChange={e => setPrintQuantity(e.target.value)}
+                  disabled={printing}
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Принтер</label>
+                <select 
+                  className="input"
+                  value={selectedPrinter}
+                  onChange={e => setSelectedPrinter(e.target.value)}
+                  disabled={printing}
+                >
+                  {printers.length === 0 ? (
+                    <option value="">Принтерлар юкланмоқда...</option>
+                  ) : (
+                    printers.map(p => (
+                      <option key={p.name} value={p.name}>
+                        {p.name} {p.isDefault ? '(асосий)' : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setShowPrintModal(false)} 
+                  className="btn-secondary flex-1"
+                  disabled={printing}
+                >
+                  Бекор қилиш
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handlePrint} 
+                  className="btn-primary flex-1"
+                  disabled={printing || !selectedPrinter}
+                >
+                  {printing ? (
+                    <>
+                      <div className="spinner w-4 h-4" />
+                      Юборилмоқда...
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="w-4 h-4" />
+                      Чоп этиш
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

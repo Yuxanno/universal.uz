@@ -13,12 +13,15 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
   }
 });
 
-router.get('/helpers', auth, authorize('admin'), async (req, res) => {
+router.get('/helpers', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
-    const helpers = await User.find({ 
-      createdBy: req.user._id,
-      role: { $in: ['cashier', 'helper'] }
-    }).select('-password');
+    // For admin - show their created helpers
+    // For cashier - show all helpers in the system
+    const query = req.user.role === 'admin' 
+      ? { createdBy: req.user._id, role: { $in: ['cashier', 'helper'] } }
+      : { role: { $in: ['cashier', 'helper'] } };
+    
+    const helpers = await User.find(query).select('-password');
     res.json(helpers);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });

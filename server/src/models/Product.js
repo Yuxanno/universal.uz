@@ -6,6 +6,7 @@ const productSchema = new mongoose.Schema({
   costPrice: { type: Number, default: 0 },
   price: { type: Number, required: true },
   quantity: { type: Number, default: 0 },
+  soldCount: { type: Number, default: 0 }, // Количество проданных единиц
   warehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse' },
   isMainWarehouse: { type: Boolean, default: false },
   category: String,

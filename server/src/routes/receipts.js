@@ -21,16 +21,216 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Get or create draft receipt for helper
+router.get('/draft', auth, authorize('helper'), async (req, res) => {
+  try {
+    // First check for pending receipt (already submitted, may be edited by cashier)
+    let receipt = await Receipt.findOne({ 
+      createdBy: req.user._id, 
+      status: 'pending' 
+    });
+    
+    // If no pending, check for draft
+    if (!receipt) {
+      receipt = await Receipt.findOne({ 
+        createdBy: req.user._id, 
+        status: 'draft' 
+      });
+    }
+    
+    // If no draft either, create new one
+    if (!receipt) {
+      receipt = new Receipt({
+        items: [],
+        total: 0,
+        status: 'draft',
+        createdBy: req.user._id
+      });
+      await receipt.save();
+    }
+    
+    res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Update draft receipt (add/remove items) - only for draft status
+router.put('/draft', auth, authorize('helper'), async (req, res) => {
+  try {
+    const { items } = req.body;
+    
+    let draft = await Receipt.findOne({ 
+      createdBy: req.user._id, 
+      status: 'draft' 
+    });
+    
+    if (!draft) {
+      draft = new Receipt({
+        items: [],
+        total: 0,
+        status: 'draft',
+        createdBy: req.user._id
+      });
+    }
+    
+    draft.items = items;
+    draft.total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    await draft.save();
+    
+    res.json(draft);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Submit draft (change status to pending)
+router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
+  try {
+    const draft = await Receipt.findOne({ 
+      createdBy: req.user._id, 
+      status: 'draft' 
+    });
+    
+    if (!draft) {
+      return res.status(404).json({ message: 'Draft topilmadi' });
+    }
+    
+    if (draft.items.length === 0) {
+      return res.status(400).json({ message: 'Savat bo\'sh' });
+    }
+    
+    draft.status = 'pending';
+    await draft.save();
+    
+    res.json(draft);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { status } = req.query;
-    const query = { status: { $in: ['pending', 'approved', 'rejected'] } };
+    // Include draft, pending, approved statuses for real-time view
+    const query = { status: { $in: ['draft', 'pending', 'approved'] } };
     if (status && status !== 'all') query.status = status;
     
     const receipts = await Receipt.find(query)
       .populate('createdBy', 'name role')
       .sort({ createdAt: -1 });
     res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Load worker receipt to kassa (complete it)
+router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    if (receipt.status !== 'pending' && receipt.status !== 'approved' && receipt.status !== 'draft') {
+      return res.status(400).json({ message: 'Bu chek allaqachon yuklangan' });
+    }
+
+    // Check stock availability
+    for (const item of receipt.items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return res.status(400).json({ message: `Tovar topilmadi: ${item.name}` });
+      }
+      if (product.quantity < item.quantity) {
+        return res.status(400).json({ 
+          message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${product.quantity}, So'ralgan: ${item.quantity}` 
+        });
+      }
+    }
+
+    // Update stock and soldCount
+    for (const item of receipt.items) {
+      await Product.findByIdAndUpdate(item.product, { 
+        $inc: { quantity: -item.quantity, soldCount: item.quantity } 
+      });
+    }
+
+    receipt.status = 'completed';
+    receipt.processedBy = req.user._id;
+    await receipt.save();
+    
+    res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Remove item from receipt
+router.put('/:id/remove-item/:itemIndex', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    if (receipt.status === 'completed') {
+      return res.status(400).json({ message: 'Yakunlangan chekni o\'zgartirish mumkin emas' });
+    }
+
+    const itemIndex = parseInt(req.params.itemIndex);
+    if (itemIndex < 0 || itemIndex >= receipt.items.length) {
+      return res.status(400).json({ message: 'Noto\'g\'ri tovar indeksi' });
+    }
+
+    receipt.items.splice(itemIndex, 1);
+    receipt.total = receipt.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    
+    // If no items left, delete the receipt
+    if (receipt.items.length === 0) {
+      await Receipt.findByIdAndDelete(req.params.id);
+      return res.json({ message: 'Chek o\'chirildi', deleted: true });
+    }
+    
+    await receipt.save();
+    res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Update item in receipt (price or quantity)
+router.put('/:id/update-item/:itemIndex', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    if (receipt.status === 'completed') {
+      return res.status(400).json({ message: 'Yakunlangan chekni o\'zgartirish mumkin emas' });
+    }
+
+    const itemIndex = parseInt(req.params.itemIndex);
+    if (itemIndex < 0 || itemIndex >= receipt.items.length) {
+      return res.status(400).json({ message: 'Noto\'g\'ri tovar indeksi' });
+    }
+
+    const { price, quantity } = req.body;
+    
+    if (price !== undefined) {
+      receipt.items[itemIndex].price = price;
+    }
+    if (quantity !== undefined) {
+      if (quantity <= 0) {
+        // Remove item if quantity is 0
+        receipt.items.splice(itemIndex, 1);
+      } else {
+        receipt.items[itemIndex].quantity = quantity;
+      }
+    }
+    
+    receipt.total = receipt.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    
+    if (receipt.items.length === 0) {
+      await Receipt.findByIdAndDelete(req.params.id);
+      return res.json({ message: 'Chek o\'chirildi', deleted: true });
+    }
+    
+    await receipt.save();
+    res.json(receipt);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }

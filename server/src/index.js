@@ -13,6 +13,11 @@ const orderRoutes = require('./routes/orders');
 const receiptRoutes = require('./routes/receipts');
 const userRoutes = require('./routes/users');
 const statsRoutes = require('./routes/stats');
+const printerRoutes = require('./routes/printers');
+const printRoutes = require('./routes/print');
+
+// Telegram Bot
+const { initBot } = require('./telegram/bot');
 
 const app = express();
 
@@ -32,6 +37,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/printers', printerRoutes);
+app.use('/api/print', printRoutes);
+app.use('/api', printerRoutes); // Also mount at /api for /api/print-label
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal_uz')
@@ -46,6 +54,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal
     } catch (e) {
       // Indexes might not exist, ignore
     }
+    
+    // Initialize Telegram Bot after MongoDB connection
+    initBot();
   })
   .catch(err => console.error('MongoDB connection error:', err));
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { QrCode, Search, Send, Plus, Minus, X, Package, ShoppingCart, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Product, CartItem } from '../../types';
 import api from '../../utils/api';
@@ -15,52 +15,172 @@ export default function HelperScanner() {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [sending, setSending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [receiptStatus, setReceiptStatus] = useState<'draft' | 'pending'>('draft');
+  const [lastSyncedCart, setLastSyncedCart] = useState<string>('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasLocalChanges = useRef(false);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     fetchProducts();
+    loadDraft();
+    
+    // Периодически проверяем обновления с сервера (только если нет локальных изменений)
+    const interval = setInterval(() => {
+      if (!hasLocalChanges.current) {
+        loadDraft();
+      }
+    }, 2000);
+    
     return () => {
+      clearInterval(interval);
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
       }
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Загрузка draft с сервера
+  const loadDraft = async () => {
+    try {
+      const res = await api.get('/receipts/draft');
+      if (res.data) {
+        setReceiptStatus(res.data.status || 'draft');
+        
+        if (res.data.items) {
+          const serverCartJson = JSON.stringify(res.data.items);
+          
+          // Обновляем только если данные изменились и нет локальных изменений
+          if (serverCartJson !== lastSyncedCart && !hasLocalChanges.current) {
+            const cartItems: CartItem[] = res.data.items.map((item: any) => ({
+              _id: item.product,
+              name: item.name,
+              code: item.code,
+              price: item.price,
+              cartQuantity: item.quantity,
+              quantity: 0
+            }));
+            setCart(cartItems);
+            setLastSyncedCart(serverCartJson);
+          }
+        }
+        isFirstLoad.current = false;
+      }
+    } catch (err) {
+      console.error('Error loading draft:', err);
+    }
+  };
+
+  // Синхронизация корзины на сервер
+  const syncToServer = useCallback(async (items: CartItem[]) => {
+    if (receiptStatus === 'pending') return;
+    
+    setSyncing(true);
+    try {
+      const serverItems = items.map(item => ({
+        product: item._id,
+        name: item.name,
+        code: item.code,
+        price: item.price,
+        quantity: item.cartQuantity
+      }));
+      
+      await api.put('/receipts/draft', { items: serverItems });
+      
+      // Сохраняем что синхронизировали
+      setLastSyncedCart(JSON.stringify(serverItems));
+      hasLocalChanges.current = false;
+    } catch (err) {
+      console.error('Error syncing draft:', err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [receiptStatus]);
+
+  // Отложенная синхронизация при изменении корзины
+  useEffect(() => {
+    // Пропускаем первую загрузку
+    if (isFirstLoad.current) return;
+    if (receiptStatus === 'pending') return;
+    
+    // Отмечаем что есть локальные изменения
+    hasLocalChanges.current = true;
+    
+    // Отменяем предыдущий таймер
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    
+    // Синхронизируем через 3 секунды
+    syncTimeoutRef.current = setTimeout(() => {
+      syncToServer(cart);
+    }, 3000);
+    
+  }, [cart, syncToServer, receiptStatus]);
 
   const fetchProducts = async () => {
     try {
       const res = await api.get('/products');
       setProducts(res.data);
-    } catch (err) { console.error('Error fetching products:', err); }
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    }
   };
 
   const startScanner = async () => {
     setScannedProduct(null);
     setSearchQuery('');
     setSearchResults([]);
-    try {
-      const html5QrCode = new Html5Qrcode('qr-reader');
-      scannerRef.current = html5QrCode;
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 200, height: 200 } },
-        (decodedText) => {
-          const product = products.find(p => p.code === decodedText);
-          if (product) setScannedProduct(product);
-          else showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
-          stopScanner();
-        },
-        () => {}
-      );
-      setScanning(true);
-    } catch (err) {
-      console.error('Scanner error:', err);
-      showAlert('Kamerani ishga tushirishda xatolik', 'Xatolik', 'danger');
-    }
+    setScanning(true);
+
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode('qr-reader');
+        scannerRef.current = html5QrCode;
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 200, height: 200 } },
+          (decodedText) => {
+            let product = null;
+
+            try {
+              const parsed = JSON.parse(decodedText);
+              if (parsed.code) {
+                product = products.find(p => p.code === parsed.code);
+              } else if (parsed._id || parsed.id) {
+                product = products.find(p => p._id === (parsed._id || parsed.id));
+              }
+            } catch {
+              product = products.find(p => p.code === decodedText);
+            }
+
+            if (product) {
+              setScannedProduct(product);
+            } else {
+              showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
+            }
+            stopScanner();
+          },
+          () => {}
+        );
+      } catch (err) {
+        console.error('Scanner error:', err);
+        showAlert('Kamerani ishga tushirishda xatolik', 'Xatolik', 'danger');
+        setScanning(false);
+      }
+    }, 100);
   };
 
   const stopScanner = async () => {
     if (scannerRef.current) {
-      try { await scannerRef.current.stop(); } catch (err) {}
+      try {
+        await scannerRef.current.stop();
+      } catch (err) {}
       scannerRef.current = null;
     }
     setScanning(false);
@@ -81,6 +201,12 @@ export default function HelperScanner() {
   };
 
   const addToCart = (product: Product) => {
+    // Don't allow adding if receipt is pending
+    if (receiptStatus === 'pending') {
+      showAlert('Chek yuborilgan, o\'zgartirish mumkin emas', 'Ogohlantirish', 'warning');
+      return;
+    }
+    
     setCart(prev => {
       const existing = prev.find(p => p._id === product._id);
       if (existing) {
@@ -94,12 +220,18 @@ export default function HelperScanner() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    // Don't allow editing if receipt is pending
+    if (receiptStatus === 'pending') return;
+    
     setCart(prev => prev.map(item =>
       item._id === id ? { ...item, cartQuantity: Math.max(1, item.cartQuantity + delta) } : item
     ));
   };
 
   const removeFromCart = (id: string) => {
+    // Don't allow removing if receipt is pending
+    if (receiptStatus === 'pending') return;
+    
     setCart(prev => prev.filter(item => item._id !== id));
   };
 
@@ -107,21 +239,14 @@ export default function HelperScanner() {
     if (cart.length === 0) return;
     setSending(true);
     try {
-      await api.post('/receipts', {
-        items: cart.map(item => ({
-          product: item._id,
-          name: item.name,
-          code: item.code,
-          price: item.price,
-          quantity: item.cartQuantity
-        })),
-        total
-      });
+      // Submit the draft (changes status from draft to pending)
+      await api.put('/receipts/draft/submit');
       showAlert("Chek kassirga yuborildi!", 'Muvaffaqiyat', 'success');
-      setCart([]);
-    } catch (err) {
+      setReceiptStatus('pending');
+      // Don't clear cart - let it show with pending status
+    } catch (err: any) {
       console.error('Error sending receipt:', err);
-      showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
+      showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
     } finally {
       setSending(false);
     }
@@ -229,9 +354,26 @@ export default function HelperScanner() {
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-brand-600" />
             <span className="font-semibold text-surface-900">Savat</span>
+            {syncing && <Loader2 className="w-4 h-4 text-brand-500 animate-spin" />}
+            {hasLocalChanges.current && !syncing && (
+              <span className="w-2 h-2 bg-warning-500 rounded-full animate-pulse" />
+            )}
           </div>
-          <span className="badge-primary">{cart.length} ta</span>
+          <div className="flex items-center gap-2">
+            {receiptStatus === 'pending' && (
+              <span className="badge bg-warning-100 text-warning-700 text-xs">Yuborilgan</span>
+            )}
+            <span className="badge-primary">{cart.length} ta</span>
+          </div>
         </div>
+
+        {receiptStatus === 'pending' && (
+          <div className="bg-warning-50 border border-warning-200 rounded-xl p-3 mb-4">
+            <p className="text-warning-700 text-sm text-center">
+              ⏳ Chek kassirga yuborilgan. Kassir narx va miqdorni o'zgartirishi mumkin.
+            </p>
+          </div>
+        )}
 
         {cart.length === 0 ? (
           <div className="text-center py-8">
@@ -241,27 +383,84 @@ export default function HelperScanner() {
             <p className="text-surface-500">Savat bo'sh</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {cart.map(item => (
-              <div key={item._id} className="flex items-center gap-3 p-3 bg-surface-50 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-surface-900 truncate">{item.name}</p>
-                  <p className="text-sm text-brand-600 font-medium">
-                    {formatNumber(item.price * item.cartQuantity)} so'm
-                  </p>
+              <div key={item._id} className="p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors overflow-x-auto">
+                <div className="flex items-center gap-3 min-w-max">
+                  <div className="min-w-[100px] max-w-[120px]">
+                    <p className="font-medium text-surface-900 truncate text-sm">{item.name}</p>
+                    <p className="text-xs text-surface-500">Kod: {item.code?.length > 10 ? item.code.slice(-6) : item.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={item.price === '' ? '' : formatNumber(item.price)}
+                      onFocus={(e) => {
+                        // Сохраняем текущее значение при входе
+                        e.target.dataset.prevValue = String(item.price);
+                      }}
+                      onChange={(e) => {
+                        if (receiptStatus === 'pending') return;
+                        const val = e.target.value.replace(/\s/g, '');
+                        if (val === '' || /^\d+$/.test(val)) {
+                          const newPrice = val === '' ? '' : parseInt(val);
+                          setCart(prev => prev.map(p => 
+                            p._id === item._id ? { ...p, price: newPrice as any } : p
+                          ));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Если пусто - восстанавливаем предыдущее значение
+                        if (item.price === '' || item.price === 0) {
+                          const prevValue = parseInt(e.target.dataset.prevValue || '0') || 1;
+                          setCart(prev => prev.map(p => 
+                            p._id === item._id ? { ...p, price: prevValue } : p
+                          ));
+                        }
+                      }}
+                      disabled={receiptStatus === 'pending'}
+                      className="w-20 h-8 text-right text-sm font-medium border border-surface-200 rounded-lg px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                    />
+                    <span className="text-surface-400">×</span>
+                    <input
+                      type="text"
+                      value={item.cartQuantity}
+                      onFocus={(e) => {
+                        e.target.dataset.prevValue = String(item.cartQuantity);
+                      }}
+                      onChange={(e) => {
+                        if (receiptStatus === 'pending') return;
+                        const val = e.target.value;
+                        if (val === '' || /^\d+$/.test(val)) {
+                          const newQty = val === '' ? '' : parseInt(val);
+                          setCart(prev => prev.map(p => 
+                            p._id === item._id ? { ...p, cartQuantity: newQty as any } : p
+                          ));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (item.cartQuantity === '' || !item.cartQuantity || item.cartQuantity < 1) {
+                          const prevValue = parseInt(e.target.dataset.prevValue || '1') || 1;
+                          setCart(prev => prev.map(p => 
+                            p._id === item._id ? { ...p, cartQuantity: prevValue } : p
+                          ));
+                        }
+                      }}
+                      disabled={receiptStatus === 'pending'}
+                      className="w-12 h-8 text-center text-sm font-semibold border border-surface-200 rounded-lg focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                    />
+                    <span className="w-20 text-right font-semibold text-surface-900 text-sm whitespace-nowrap">
+                      {formatNumber(item.price * item.cartQuantity)}
+                    </span>
+                    <button 
+                      onClick={() => removeFromCart(item._id)} 
+                      disabled={receiptStatus === 'pending'}
+                      className="p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 bg-white rounded-lg border border-surface-200 p-1">
-                  <button onClick={() => updateQuantity(item._id, -1)} className="btn-icon-sm">
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-8 text-center font-semibold">{item.cartQuantity}</span>
-                  <button onClick={() => updateQuantity(item._id, 1)} className="btn-icon-sm">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <button onClick={() => removeFromCart(item._id)} className="btn-icon-sm text-danger-500 hover:bg-danger-50">
-                  <X className="w-4 h-4" />
-                </button>
               </div>
             ))}
           </div>
@@ -273,16 +472,23 @@ export default function HelperScanner() {
               <span className="text-surface-500">Jami:</span>
               <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
             </div>
-            <button onClick={sendToCashier} disabled={sending} className="btn-primary w-full py-4 text-lg">
-              {sending ? (
-                <div className="spinner" />
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  Kassaga yuborish
-                </>
-              )}
-            </button>
+            {receiptStatus === 'draft' ? (
+              <button onClick={sendToCashier} disabled={sending || syncing} className="btn-primary w-full py-4 text-lg">
+                {sending ? (
+                  <div className="spinner" />
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Kassaga yuborish
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="text-center text-surface-500 py-2">
+                <CheckCircle className="w-6 h-6 text-warning-500 mx-auto mb-2" />
+                <p>Kassir javobini kutmoqda...</p>
+              </div>
+            )}
           </div>
         )}
       </div>

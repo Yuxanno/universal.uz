@@ -277,11 +277,12 @@ export const getUnsyncedSales = async (): Promise<OfflineSale[]> => {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORES.SALES], 'readonly');
     const store = transaction.objectStore(STORES.SALES);
-    const index = store.index('synced');
-    const request = index.getAll(IDBKeyRange.only(false));
+    const request = store.getAll();
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      const allSales = request.result || [];
+      const unsynced = allSales.filter((sale: OfflineSale) => sale.synced === false);
+      resolve(unsynced);
     };
 
     request.onerror = () => {
