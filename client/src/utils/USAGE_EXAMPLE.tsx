@@ -30,7 +30,7 @@ export function ProductList({ products }: { products: Array<{ _id: string; name:
   
   return (
     <div>
-      <p>Текущий язык: {script === 'latin' ? 'Lotin' : 'Кирилл'}</p>
+      <p>Текущий язык: {script === 'lat' ? 'Lotin' : 'Кирилл'}</p>
       <ul>
         {products.map(product => (
           <li key={product._id}>

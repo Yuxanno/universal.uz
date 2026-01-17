@@ -20,6 +20,7 @@ interface LanguageContextType {
   setScript: (script: Script) => void;
   tKey: (key: string) => string; // Перевод UI-ключей через словарь
   uz: (text: string) => string;  // Конвертация узбекского текста из БД
+  t: (key: string) => string;    // Алиас для tKey (для обратной совместимости)
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -99,7 +100,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const t = tKey;
 
   return (
-    <LanguageContext.Provider value={{ script, uzScript, setScript, tKey, uz, t } as any}>
+    <LanguageContext.Provider value={{ script, uzScript, setScript, tKey, uz, t }}>
       {children}
     </LanguageContext.Provider>
   );
