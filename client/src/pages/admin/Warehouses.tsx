@@ -208,7 +208,7 @@ export default function Warehouses() {
     setShowQRModal(true);
   };
 
-  const openPrintModal = async (product: Product) => {
+  const openPrintModal = (product: Product) => {
     setPrintProduct(product);
     setPrintQuantity('1');
     setPrinting(false);
