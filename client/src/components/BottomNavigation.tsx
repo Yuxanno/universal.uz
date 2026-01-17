@@ -11,7 +11,7 @@ import { useLanguage } from '../context/LanguageContext';
 export default function BottomNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { tKey } = useLanguage();
 
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Statistika', exact: true },
@@ -49,7 +49,7 @@ export default function BottomNavigation() {
                 <Icon className={`w-5 h-5 transition-transform duration-200 ${active ? 'scale-110' : ''}`} />
               </div>
               <span className={`text-[10px] font-medium leading-tight ${active ? 'text-brand-600' : 'text-surface-500'}`}>
-                {t(item.label)}
+                {tKey(item.label)}
               </span>
             </button>
           );

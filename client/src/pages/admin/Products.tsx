@@ -11,7 +11,7 @@ import { useLanguage } from '../../context/LanguageContext';
 const API_URL = 'https://pos.universalbozor.uz';
 
 export default function Products() {
-  const { t } = useLanguage();
+  const { tKey, uz } = useLanguage();
   const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
@@ -86,7 +86,7 @@ export default function Products() {
     
     const remainingSlots = 8 - images.length;
     if (remainingSlots <= 0) {
-      showAlert(t('Maksimum 8 ta rasm yuklash mumkin'), t('Ogohlantirish'), 'warning');
+      showAlert(tKey('Maksimum 8 ta rasm yuklash mumkin'), tKey('Ogohlantirish'), 'warning');
       return;
     }
 
@@ -102,7 +102,7 @@ export default function Products() {
       setImages([...images, ...res.data.images]);
     } catch (err) {
       console.error('Error uploading images:', err);
-      showAlert(t('Rasmlarni yuklashda xatolik'), t('Xatolik'), 'danger');
+      showAlert(tKey('Rasmlarni yuklashda xatolik'), tKey('Xatolik'), 'danger');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -166,7 +166,7 @@ export default function Products() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm(t("Tovarni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
+    const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
     if (!confirmed) return;
     try {
       await api.delete(`/products/${id}`);
@@ -404,10 +404,10 @@ export default function Products() {
   });
 
   const statItems = [
-    { label: t('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
-    { label: t('Kam qolgan'), value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
-    { label: t('Tugagan'), value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
-    { label: t('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${t("so'm")}`, icon: DollarSign, color: 'success', filter: null },
+    { label: tKey('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
+    { label: tKey('Kam qolgan'), value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
+    { label: tKey('Tugagan'), value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
+    { label: tKey('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${tKey("so'm")}`, icon: DollarSign, color: 'success', filter: null },
   ];
 
   const getProductImage = (product: any) => {
@@ -421,13 +421,13 @@ export default function Products() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title={t("Tovarlar (Asosiy ombor)")}
+        title={tKey("Tovarlar (Asosiy ombor)")}
         showSearch 
         onSearch={setSearchQuery}
         actions={
           <button onClick={openAddModal} className="btn-primary">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t("Yangi tovar")}</span>
+            <span className="hidden sm:inline">{tKey("Yangi tovar")}</span>
           </button>
         }
       />
@@ -500,7 +500,7 @@ export default function Products() {
                         <span className="font-mono text-sm bg-surface-100 px-2 py-1 rounded-lg">{product.code}</span>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-medium text-surface-900">{product.name}</p>
+                        <p className="font-medium text-surface-900">{uz(product.name)}</p>
                       </div>
                       <div className="col-span-2">
                         <p className="font-semibold text-surface-900">{formatNumber((product as any).costPrice || 0)}</p>
@@ -548,7 +548,7 @@ export default function Products() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <h4 className="font-medium text-surface-900 truncate">{product.name}</h4>
+                            <h4 className="font-medium text-surface-900 truncate">{uz(product.name)}</h4>
                             <p className="text-sm text-surface-500">Kod: {product.code}</p>
                           </div>
                           <div className="flex gap-1">
@@ -716,7 +716,7 @@ export default function Products() {
                 />
               </div>
               <div className="text-center mb-4">
-                <p className="font-semibold text-surface-900">{selectedProduct.name}</p>
+                <p className="font-semibold text-surface-900">{uz(selectedProduct.name)}</p>
                 <p className="text-sm text-surface-500">Kod: {selectedProduct.code}</p>
                 <p className="text-sm text-surface-500">Tan narxi: {formatNumber((selectedProduct as any).costPrice || 0)} so'm</p>
                 <p className="text-sm text-surface-500">Optom: {formatNumber(selectedProduct.price)} so'm</p>
@@ -811,7 +811,7 @@ export default function Products() {
               {/* Product info with QR code */}
               <div className="bg-surface-50 rounded-xl p-3 flex items-center justify-center gap-20">
                 <div>
-                  <p className="font-semibold font-size text-surface-900">{printProduct.name}</p>
+                  <p className="font-semibold font-size text-surface-900">{uz(printProduct.name)}</p>
                   <p className="font-semibold text-surface-900">Code: {printProduct.code}</p>
                 </div>
                 <div className="bg-white p-1 rounded-lg border border-surface-200">

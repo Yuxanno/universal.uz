@@ -3,9 +3,14 @@ const router = express.Router();
 const { exec, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const puppeteer = require('puppeteer');
 const QRCode = require('qrcode');
 const PrinterSettings = require('../models/PrinterSettings');
+
+// Определяем платформу
+const isWindows = os.platform() === 'win32';
+const isLinux = os.platform() === 'linux';
 
 // Директория для временных файлов
 const TEMP_DIR = path.join(__dirname, '../../temp');
@@ -47,7 +52,7 @@ const ESCPOS = {
 // ============ ПРОВЕРКА СТАТУСА ПРИНТЕРА ============
 
 /**
- * Проверяет статус принтера через Windows PowerShell
+ * Проверяет статус принтера (кросс-платформенно)
  * Возвращает объект с информацией о принтере
  */
 async function checkPrinterStatus(printerName) {
@@ -56,8 +61,18 @@ async function checkPrinterStatus(printerName) {
       return resolve({ connected: false, error: 'Printer name not specified' });
     }
 
-    // Простая проверка существования принтера
-    const cmd = `powershell -Command "Get-Printer -Name '${printerName}' -ErrorAction SilentlyContinue | Select-Object Name, PrinterStatus, PortName | ConvertTo-Json"`;
+    let cmd;
+    
+    if (isWindows) {
+      // Windows: PowerShell
+      cmd = `powershell -Command "Get-Printer -Name '${printerName}' -ErrorAction SilentlyContinue | Select-Object Name, PrinterStatus, PortName | ConvertTo-Json"`;
+    } else if (isLinux) {
+      // Linux: lpstat
+      cmd = `lpstat -p "${printerName}" 2>/dev/null`;
+    } else {
+      // Неподдерживаемая платформа
+      return resolve({ connected: false, error: 'Платформа не поддерживается' });
+    }
 
     exec(cmd, { encoding: 'utf8', timeout: 5000 }, (error, stdout, stderr) => {
       if (error) {
@@ -66,28 +81,45 @@ async function checkPrinterStatus(printerName) {
       }
       
       try {
-        const trimmed = stdout.trim();
-        if (!trimmed || trimmed === '' || trimmed === 'null') {
-          return resolve({ connected: false, error: 'Принтер топилмади' });
+        if (isWindows) {
+          // Парсинг Windows JSON
+          const trimmed = stdout.trim();
+          if (!trimmed || trimmed === '' || trimmed === 'null') {
+            return resolve({ connected: false, error: 'Принтер топилмади' });
+          }
+          
+          const result = JSON.parse(trimmed);
+          if (!result || !result.Name) {
+            return resolve({ connected: false, error: 'Принтер топилмади' });
+          }
+          
+          // PrinterStatus: 0 = Normal, 1 = Paused, 2 = Error, 3 = Pending Deletion
+          const statusNum = typeof result.PrinterStatus === 'number' ? result.PrinterStatus : 0;
+          const isReady = statusNum === 0;
+          
+          resolve({
+            connected: true,
+            ready: isReady,
+            name: result.Name,
+            port: result.PortName || '',
+            status: statusNum,
+            jobCount: 0
+          });
+        } else if (isLinux) {
+          // Парсинг Linux lpstat
+          // Формат: printer XPrinter is idle. enabled since ...
+          const isIdle = stdout.includes('idle') || stdout.includes('enabled');
+          const isError = stdout.includes('disabled') || stdout.includes('stopped');
+          
+          resolve({
+            connected: true,
+            ready: isIdle && !isError,
+            name: printerName,
+            port: '',
+            status: isError ? 2 : 0,
+            jobCount: 0
+          });
         }
-        
-        const result = JSON.parse(trimmed);
-        if (!result || !result.Name) {
-          return resolve({ connected: false, error: 'Принтер топилмади' });
-        }
-        
-        // PrinterStatus: 0 = Normal, 1 = Paused, 2 = Error, 3 = Pending Deletion
-        const statusNum = typeof result.PrinterStatus === 'number' ? result.PrinterStatus : 0;
-        const isReady = statusNum === 0;
-        
-        resolve({
-          connected: true,
-          ready: isReady,
-          name: result.Name,
-          port: result.PortName || '',
-          status: statusNum,
-          jobCount: 0
-        });
       } catch (e) {
         console.log('[PRINTER STATUS] Parse error:', e.message);
         // Если не удалось распарсить, но stdout не пустой - принтер есть
@@ -102,27 +134,42 @@ async function checkPrinterStatus(printerName) {
 }
 
 /**
- * Проверяет очередь печати на ошибки
+ * Проверяет очередь печати на ошибки (кросс-платформенно)
  */
 async function checkPrinterQueue(printerName) {
   return new Promise((resolve) => {
-    const cmd = `powershell -Command "Get-PrintJob -PrinterName '${printerName}' -ErrorAction SilentlyContinue | Select-Object JobStatus | ConvertTo-Json"`;
+    let cmd;
+    
+    if (isWindows) {
+      cmd = `powershell -Command "Get-PrintJob -PrinterName '${printerName}' -ErrorAction SilentlyContinue | Select-Object JobStatus | ConvertTo-Json"`;
+    } else if (isLinux) {
+      cmd = `lpq -P "${printerName}" 2>/dev/null`;
+    } else {
+      return resolve({ hasErrors: false, jobs: [] });
+    }
     
     exec(cmd, { encoding: 'utf8', timeout: 3000 }, (error, stdout) => {
       if (error) {
         return resolve({ hasErrors: false, jobs: [] });
       }
       try {
-        const trimmed = stdout.trim();
-        if (!trimmed || trimmed === '' || trimmed === 'null') {
-          return resolve({ hasErrors: false, jobs: [] });
+        if (isWindows) {
+          const trimmed = stdout.trim();
+          if (!trimmed || trimmed === '' || trimmed === 'null') {
+            return resolve({ hasErrors: false, jobs: [] });
+          }
+          const jobs = JSON.parse(trimmed);
+          const jobArray = Array.isArray(jobs) ? jobs : [jobs];
+          const hasErrors = jobArray.some(j => 
+            j && j.JobStatus && (String(j.JobStatus).includes('Error') || String(j.JobStatus).includes('Offline'))
+          );
+          resolve({ hasErrors, jobs: jobArray });
+        } else if (isLinux) {
+          // Парсинг lpq output
+          const hasErrors = stdout.includes('error') || stdout.includes('stopped');
+          const lines = stdout.split('\n').filter(l => l.trim());
+          resolve({ hasErrors, jobs: lines });
         }
-        const jobs = JSON.parse(trimmed);
-        const jobArray = Array.isArray(jobs) ? jobs : [jobs];
-        const hasErrors = jobArray.some(j => 
-          j && j.JobStatus && (String(j.JobStatus).includes('Error') || String(j.JobStatus).includes('Offline'))
-        );
-        resolve({ hasErrors, jobs: jobArray });
       } catch (e) {
         resolve({ hasErrors: false, jobs: [] });
       }
@@ -241,11 +288,17 @@ async function sendRawToPrinter(data, printerName) {
   fs.writeFileSync(tempPath, data, 'utf8');
   
   try {
-    await printViaWindowsCommand(tempPath, printerName);
+    if (isWindows) {
+      await printViaWindowsCommand(tempPath, printerName);
+    } else if (isLinux) {
+      await printViaLinuxCommand(tempPath, printerName);
+    } else {
+      throw new Error('Платформа не поддерживается');
+    }
     cleanupTempFile(tempPath);
-    return { success: true, method: 'windows' };
+    return { success: true, method: isWindows ? 'windows' : 'linux' };
   } catch (err) {
-    console.log('[PRINT] Windows command failed:', err.message);
+    console.log('[PRINT] Command failed:', err.message);
   }
   
   cleanupTempFile(tempPath);
@@ -299,6 +352,38 @@ function printViaWindowsCommand(filePath, printerName) {
   });
 }
 
+/**
+ * Печать через Linux команды (lp/lpr)
+ */
+function printViaLinuxCommand(filePath, printerName) {
+  return new Promise((resolve, reject) => {
+    // Метод 1: lp (более современный)
+    const cmd1 = `lp -d "${printerName}" "${filePath}"`;
+    
+    exec(cmd1, { encoding: 'utf8', timeout: 10000 }, (err1) => {
+      if (!err1) {
+        console.log('[PRINT] lp command success');
+        resolve({ success: true });
+        return;
+      }
+      
+      console.log('[PRINT] lp failed, trying lpr...');
+      
+      // Метод 2: lpr (старый, но надежный)
+      const cmd2 = `lpr -P "${printerName}" "${filePath}"`;
+      
+      exec(cmd2, { encoding: 'utf8', timeout: 10000 }, (err2) => {
+        if (!err2) {
+          console.log('[PRINT] lpr command success');
+          resolve({ success: true });
+        } else {
+          reject(new Error('Все методы печати не сработали'));
+        }
+      });
+    });
+  });
+}
+
 function cleanupTempFile(filePath) {
   setTimeout(() => {
     try { fs.unlinkSync(filePath); } catch (e) {}
@@ -347,16 +432,25 @@ async function verifyPrintResult(printerName, startTime) {
 
 // ============ API ROUTES ============
 
-// GET /api/printers - Список принтеров с расширенным статусом
+// GET /api/printers - Список принтеров с расширенным статусом (кросс-платформенно)
 router.get('/', async (req, res) => {
-  exec('powershell -Command "Get-Printer | Select-Object Name, Default, PrinterStatus | ConvertTo-Json"', 
-    { encoding: 'utf8', timeout: 10000 }, 
-    (error, stdout, stderr) => {
-      if (error) {
-        console.error('[PRINTERS] error:', error.message);
-        return res.json([]);
-      }
-      try {
+  let cmd;
+  
+  if (isWindows) {
+    cmd = 'powershell -Command "Get-Printer | Select-Object Name, Default, PrinterStatus | ConvertTo-Json"';
+  } else if (isLinux) {
+    cmd = 'lpstat -p -d 2>/dev/null';
+  } else {
+    return res.json([]);
+  }
+  
+  exec(cmd, { encoding: 'utf8', timeout: 10000 }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('[PRINTERS] error:', error.message);
+      return res.json([]);
+    }
+    try {
+      if (isWindows) {
         const data = JSON.parse(stdout.trim());
         const printers = Array.isArray(data) ? data : [data];
         const result = printers.map(p => ({
@@ -366,12 +460,34 @@ router.get('/', async (req, res) => {
         }));
         console.log('[PRINTERS] Found:', result.length);
         res.json(result);
-      } catch (e) {
-        console.error('[PRINTERS] parse error:', e.message);
-        res.json([]);
+      } else if (isLinux) {
+        // Парсинг lpstat output
+        // Формат: printer XPrinter is idle. enabled since ...
+        const lines = stdout.split('\n').filter(l => l.trim() && l.startsWith('printer'));
+        const defaultMatch = stdout.match(/system default destination: (.+)/);
+        const defaultPrinter = defaultMatch ? defaultMatch[1].trim() : null;
+        
+        const result = lines.map(line => {
+          const nameMatch = line.match(/printer (.+?) /);
+          const name = nameMatch ? nameMatch[1] : '';
+          const isIdle = line.includes('idle') || line.includes('enabled');
+          const isError = line.includes('disabled') || line.includes('stopped');
+          
+          return {
+            name: name,
+            isDefault: name === defaultPrinter,
+            status: (isIdle && !isError) ? 'ready' : 'offline'
+          };
+        });
+        
+        console.log('[PRINTERS] Found:', result.length);
+        res.json(result);
       }
+    } catch (e) {
+      console.error('[PRINTERS] parse error:', e.message);
+      res.json([]);
     }
-  );
+  });
 });
 
 // GET /api/printers/status/:name - Детальный статус принтера
@@ -727,27 +843,59 @@ async function printHtmlDirect(html, printerName, labelSettings = {}) {
   }
 }
 
-// Печать PDF файла
+// Печать PDF файла (кросс-платформенно)
 function printPdfFile(pdfPath, printerName) {
   return new Promise((resolve, reject) => {
-    const normalizedPath = pdfPath.replace(/\\/g, '\\\\');
-    
-    let cmd;
-    if (printerName) {
-      cmd = `powershell -Command "Start-Process -FilePath '${normalizedPath}' -Verb PrintTo -ArgumentList '${printerName}' -WindowStyle Hidden; Start-Sleep -Seconds 3"`;
-    } else {
-      cmd = `powershell -Command "Start-Process -FilePath '${normalizedPath}' -Verb Print -WindowStyle Hidden; Start-Sleep -Seconds 3"`;
-    }
-    
-    exec(cmd, { encoding: 'utf8', windowsHide: true, timeout: 30000 }, (error) => {
-      if (error) {
-        console.error('[PRINT] PDF print error:', error.message);
-        reject(error);
+    if (isWindows) {
+      const normalizedPath = pdfPath.replace(/\\/g, '\\\\');
+      
+      let cmd;
+      if (printerName) {
+        cmd = `powershell -Command "Start-Process -FilePath '${normalizedPath}' -Verb PrintTo -ArgumentList '${printerName}' -WindowStyle Hidden; Start-Sleep -Seconds 3"`;
       } else {
-        console.log('[PRINT] PDF sent to printer');
-        resolve();
+        cmd = `powershell -Command "Start-Process -FilePath '${normalizedPath}' -Verb Print -WindowStyle Hidden; Start-Sleep -Seconds 3"`;
       }
-    });
+      
+      exec(cmd, { encoding: 'utf8', windowsHide: true, timeout: 30000 }, (error) => {
+        if (error) {
+          console.error('[PRINT] PDF print error:', error.message);
+          reject(error);
+        } else {
+          console.log('[PRINT] PDF sent to printer');
+          resolve();
+        }
+      });
+    } else if (isLinux) {
+      // Linux: используем lp или lpr для печати PDF
+      const cmd = printerName 
+        ? `lp -d "${printerName}" "${pdfPath}"`
+        : `lp "${pdfPath}"`;
+      
+      exec(cmd, { encoding: 'utf8', timeout: 30000 }, (error) => {
+        if (error) {
+          console.error('[PRINT] PDF print error:', error.message);
+          // Пробуем lpr как fallback
+          const cmd2 = printerName 
+            ? `lpr -P "${printerName}" "${pdfPath}"`
+            : `lpr "${pdfPath}"`;
+          
+          exec(cmd2, { encoding: 'utf8', timeout: 30000 }, (error2) => {
+            if (error2) {
+              console.error('[PRINT] lpr also failed:', error2.message);
+              reject(error2);
+            } else {
+              console.log('[PRINT] PDF sent to printer via lpr');
+              resolve();
+            }
+          });
+        } else {
+          console.log('[PRINT] PDF sent to printer via lp');
+          resolve();
+        }
+      });
+    } else {
+      reject(new Error('Платформа не поддерживается'));
+    }
   });
 }
 

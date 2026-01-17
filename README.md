@@ -34,6 +34,21 @@ npm run install:all
 npm run dev
 ```
 
+## Deploy (Linux Server)
+
+```bash
+# Deploy qilish
+bash deploy/deploy.sh
+
+# Printerlarni sozlash (agar kerak bo'lsa)
+sudo bash deploy/setup-printer.sh
+```
+
+**⚠️ Muhim:** Linux serverda printerlar ishlamasa, ko'rsatmaga qarang:
+- O'zbek: `PRINTER_FIX_UZ.md`
+- Русский: `PRINTER_FIX_README.md`
+- Tezkor: `QUICK_FIX.md`
+
 ## Texnologiyalar
 
 - **Frontend:** React, TypeScript, Tailwind CSS, Recharts

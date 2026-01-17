@@ -24,7 +24,7 @@ interface SidebarProps {
 
 export default function Sidebar({ items, basePath, collapsed = false, setCollapsed }: SidebarProps) {
   const { user, logout, updateUser } = useAuth();
-  const { script, setScript, t } = useLanguage();
+  const { script, setScript, tKey } = useLanguage();
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', password: '' });
 
@@ -88,10 +88,10 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
                 : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
               }
             `}
-            title={collapsed ? t(item.label) : undefined}
+            title={collapsed ? tKey(item.label) : undefined}
           >
             <span className="flex-shrink-0">{item.icon}</span>
-            {!collapsed && <span className="truncate">{t(item.label)}</span>}
+            {!collapsed && <span className="truncate">{tKey(item.label)}</span>}
           </NavLink>
         ))}
       </nav>
@@ -148,7 +148,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
               <button
                 onClick={openEditModal}
                 className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600"
-                title={t("Tahrirlash")}
+                title={tKey("Tahrirlash")}
               >
                 <Edit className="w-4 h-4" />
               </button>
@@ -160,10 +160,10 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
           className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-surface-500 hover:bg-danger-50 hover:text-danger-600 transition-all duration-200 ${
             collapsed ? 'justify-center' : ''
           }`}
-          title={collapsed ? t('Chiqish') : undefined}
+          title={collapsed ? tKey('Chiqish') : undefined}
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span className="font-medium">{t("Chiqish")}</span>}
+          {!collapsed && <span className="font-medium">{tKey("Chiqish")}</span>}
         </button>
       </div>
 
@@ -173,7 +173,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowEditModal(false)} />
           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative z-10 shadow-xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">{t("Profilni tahrirlash")}</h3>
+              <h3 className="text-lg font-semibold text-surface-900">{tKey("Profilni tahrirlash")}</h3>
               <button onClick={() => setShowEditModal(false)} className="btn-icon-sm">
                 <X className="w-5 h-5" />
               </button>
