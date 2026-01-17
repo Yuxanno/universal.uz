@@ -21,8 +21,6 @@ export default function Products() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
-  const [selectedPrinter, setSelectedPrinter] = useState('');
-  const [printers, setPrinters] = useState<{name: string, isDefault: boolean}[]>([]);
   const [printing, setPrinting] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -258,25 +256,8 @@ export default function Products() {
   const openPrintModal = async (product: Product) => {
     setPrintProduct(product);
     setPrintQuantity('1');
-    setSelectedPrinter('');
     setPrinting(false);
     setShowPrintModal(true);
-    
-    // Загружаем список принтеров
-    try {
-      const res = await api.get('/printers');
-      setPrinters(res.data || []);
-      // Выбираем принтер по умолчанию
-      const defaultPrinter = res.data.find((p: any) => p.isDefault);
-      if (defaultPrinter) {
-        setSelectedPrinter(defaultPrinter.name);
-      } else if (res.data.length > 0) {
-        setSelectedPrinter(res.data[0].name);
-      }
-    } catch (err) {
-      console.error('Error fetching printers:', err);
-      setPrinters([]);
-    }
   };
 
   // Печать ценника через браузер
@@ -839,26 +820,6 @@ export default function Products() {
                 />
               </div>
               
-              <div>
-                <label className="text-sm font-medium text-surface-700 mb-2 block">Принтер</label>
-                <select 
-                  className="input"
-                  value={selectedPrinter}
-                  onChange={e => setSelectedPrinter(e.target.value)}
-                  disabled={printing}
-                >
-                  {printers.length === 0 ? (
-                    <option value="">Принтерлар юкланмоқда...</option>
-                  ) : (
-                    printers.map(p => (
-                      <option key={p.name} value={p.name}>
-                        {p.name} {p.isDefault ? '(асосий)' : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-              
               <div className="flex gap-3 pt-2">
                 <button 
                   type="button" 
@@ -872,7 +833,7 @@ export default function Products() {
                   type="button" 
                   onClick={handlePrint} 
                   className="btn-primary flex-1"
-                  disabled={printing || !selectedPrinter}
+                  disabled={printing}
                 >
                   {printing ? (
                     <>

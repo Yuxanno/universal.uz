@@ -44,7 +44,31 @@ bash deploy/deploy.sh
 sudo bash deploy/setup-printer.sh
 ```
 
-**⚠️ Muhim:** Linux serverda printerlar ishlamasa, ko'rsatmaga qarang:
+## 🖨️ Printer sozlash
+
+### Variant 1: QZ Tray (tavsiya etiladi)
+
+**QZ Tray** - brauzerdan to'g'ridan-to'g'ri chop etish uchun professional yechim.
+
+1. **Yuklab oling:** https://qz.io/download/
+2. **O'rnating** (bir marta)
+3. **Tayyor!** Chop etish avtomatik ishlaydi
+
+📖 Ko'rsatma: `QZ_TRAY_SETUP.md`
+
+### Variant 2: Server orqali (Linux)
+
+Agar QZ Tray o'rnatilmagan bo'lsa:
+
+```bash
+sudo bash deploy/setup-printer.sh
+```
+
+**⚠️ Muhim:** 
+- **QZ Tray:** Istalgan kompyuterda ishlaydi ✅
+- **Server:** Faqat serverga ulangan printerlar ❌
+
+📖 Ko'rsatmalar:
 - O'zbek: `PRINTER_FIX_UZ.md`
 - Русский: `PRINTER_FIX_README.md`
 - Tezkor: `QUICK_FIX.md`
