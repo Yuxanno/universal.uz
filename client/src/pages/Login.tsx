@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Phone, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, ArrowRight } from 'lucide-react';
 import { formatPhone, getRawPhone } from '../utils/format';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -44,8 +44,8 @@ export default function Login() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8 animate-fade-up">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl shadow-lg shadow-brand-500/25 mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg shadow-brand-500/25 mb-4 overflow-hidden">
+            <img src="/logo.jpg" alt="Universal" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-surface-900 mb-2">Universal.uz</h1>
           <p className="text-surface-500">{t("Biznes boshqaruv tizimi")}</p>
