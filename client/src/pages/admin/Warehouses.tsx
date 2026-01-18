@@ -74,10 +74,6 @@ export default function Warehouses() {
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedWarehouse) return;
-    if (codeError) {
-      showAlert(codeError, 'Xatolik', 'danger');
-      return;
-    }
     
     let finalQuantity = 0;
     let finalCostPrice = Number(productFormData.costPrice) || 0;
@@ -178,7 +174,8 @@ export default function Warehouses() {
 
   const openAddProductModal = async () => {
     try {
-      const res = await api.get('/products/next-code');
+      const warehouseParam = selectedWarehouse?._id ? `?warehouseId=${selectedWarehouse._id}` : '';
+      const res = await api.get(`/products/next-code${warehouseParam}`);
       setProductFormData({ ...productFormData, code: res.data.code, name: '', costPrice: '', wholesalePrice: '', quantity: '' });
     } catch (err) {
       console.error('Error getting next code:', err);
@@ -190,16 +187,31 @@ export default function Warehouses() {
 
   const checkCodeExists = async (code: string) => {
     if (!code) return;
-    try {
-      const excludeId = editingProduct?._id || '';
-      const res = await api.get(`/products/check-code/${code}${excludeId ? `?excludeId=${excludeId}` : ''}`);
-      if (res.data.exists) {
-        setCodeError(`Kod "${code}" allaqachon mavjud`);
-      } else {
-        setCodeError('');
+    // При редактировании проверяем дубликаты
+    if (editingProduct) {
+      try {
+        const excludeId = editingProduct._id;
+        const res = await api.get(`/products/check-code/${code}?excludeId=${excludeId}`);
+        if (res.data.exists) {
+          setCodeError(`Kod "${code}" allaqachon mavjud`);
+        } else {
+          setCodeError('');
+        }
+      } catch (err) {
+        console.error('Error checking code:', err);
       }
-    } catch (err) {
-      console.error('Error checking code:', err);
+    } else {
+      // При добавлении нового товара просто показываем предупреждение, но не блокируем
+      try {
+        const res = await api.get(`/products/check-code/${code}`);
+        if (res.data.exists) {
+          setCodeError(`Kod "${code}" band. Saqlashda avtomatik bo'sh kod tanlanadi.`);
+        } else {
+          setCodeError('');
+        }
+      } catch (err) {
+        console.error('Error checking code:', err);
+      }
     }
   };
 
@@ -536,14 +548,18 @@ export default function Warehouses() {
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Kod</label>
                 <input 
                   type="text" 
-                  className={`input ${codeError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
+                  className={`input ${codeError && editingProduct ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : codeError ? 'border-warning-500 focus:border-warning-500 focus:ring-warning-500/20' : ''}`}
                   placeholder="000001" 
                   value={productFormData.code}
                   onChange={e => setProductFormData({...productFormData, code: e.target.value})}
                   onBlur={e => checkCodeExists(e.target.value)}
                   required 
                 />
-                {codeError && <p className="text-sm text-danger-600 mt-1">{codeError}</p>}
+                {codeError && (
+                  <p className={`text-sm mt-1 ${editingProduct ? 'text-danger-600' : 'text-warning-600'}`}>
+                    {codeError}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Nomi</label>
@@ -606,7 +622,9 @@ export default function Warehouses() {
               
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeAddProductModal} className="btn-secondary flex-1">Bekor qilish</button>
-                <button type="submit" className="btn-primary flex-1" disabled={!!codeError}>Saqlash</button>
+                <button type="submit" className="btn-primary flex-1" disabled={editingProduct && !!codeError}>
+                  {!editingProduct && codeError ? "Bo'sh kod bilan saqlash" : "Saqlash"}
+                </button>
               </div>
             </form>
           </div>

@@ -81,15 +81,39 @@ router.get('/', auth, async (req, res) => {
 // Get next auto-generated code
 router.get('/next-code', auth, async (req, res) => {
   try {
-    const lastProduct = await Product.findOne().sort({ createdAt: -1 });
-    let nextNum = 1;
-    if (lastProduct && lastProduct.code) {
-      const match = lastProduct.code.match(/(\d+)$/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
+    const { warehouseId } = req.query;
+    
+    // Determine the starting code based on warehouse
+    let baseCode = 1;
+    if (warehouseId) {
+      const warehouse = await Warehouse.findById(warehouseId);
+      if (warehouse && warehouse.name !== 'Asosiy ombor') {
+        // Get warehouse index (excluding main warehouse)
+        const allWarehouses = await Warehouse.find().sort({ createdAt: 1 });
+        const nonMainWarehouses = allWarehouses.filter(w => w.name !== 'Asosiy ombor');
+        const warehouseIndex = nonMainWarehouses.findIndex(w => w._id.toString() === warehouseId);
+        if (warehouseIndex >= 0) {
+          baseCode = (warehouseIndex + 1) * 100000;
+        }
       }
     }
-    res.json({ code: String(nextNum) });
+    
+    // Find all existing codes in numeric format
+    const allProducts = await Product.find();
+    const usedCodes = new Set(
+      allProducts
+        .map(p => parseInt(p.code))
+        .filter(code => !isNaN(code))
+    );
+    
+    // Find the first available code starting from baseCode
+    let nextCode = baseCode;
+    const maxCode = baseCode + 100000; // Limit search range
+    while (usedCodes.has(nextCode) && nextCode < maxCode) {
+      nextCode++;
+    }
+    
+    res.json({ code: String(nextCode) });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -190,24 +214,52 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
     const { warehouse, code, packageInfo, ...rest } = req.body;
     
-    // Auto-generate code if not provided
+    // Auto-generate code if not provided OR if provided code already exists
     let productCode = code;
-    if (!productCode) {
-      const lastProduct = await Product.findOne().sort({ createdAt: -1 });
-      let nextNum = 1;
-      if (lastProduct && lastProduct.code) {
-        const match = lastProduct.code.match(/(\d+)$/);
-        if (match) {
-          nextNum = parseInt(match[1]) + 1;
+    
+    // Determine the starting code based on warehouse
+    let baseCode = 1;
+    if (warehouse) {
+      const warehouseDoc = await Warehouse.findById(warehouse);
+      if (warehouseDoc && warehouseDoc.name !== 'Asosiy ombor') {
+        // Get warehouse index (excluding main warehouse)
+        const allWarehouses = await Warehouse.find().sort({ createdAt: 1 });
+        const nonMainWarehouses = allWarehouses.filter(w => w.name !== 'Asosiy ombor');
+        const warehouseIndex = nonMainWarehouses.findIndex(w => w._id.toString() === warehouse);
+        if (warehouseIndex >= 0) {
+          baseCode = (warehouseIndex + 1) * 100000;
         }
       }
-      productCode = String(nextNum);
     }
     
-    // Check if code already exists
-    const existingProduct = await Product.findOne({ code: productCode });
-    if (existingProduct) {
-      return res.status(400).json({ message: `Kod "${productCode}" allaqachon mavjud` });
+    // Find all existing codes in numeric format
+    const allProducts = await Product.find();
+    const usedCodes = new Set(
+      allProducts
+        .map(p => parseInt(p.code))
+        .filter(code => !isNaN(code))
+    );
+    
+    // If code is provided, check if it exists
+    if (productCode) {
+      const codeNum = parseInt(productCode);
+      if (!isNaN(codeNum) && usedCodes.has(codeNum)) {
+        // Code is taken, find first available starting from 1
+        let nextCode = 1;
+        const maxCode = 1000000; // Limit search range
+        while (usedCodes.has(nextCode) && nextCode < maxCode) {
+          nextCode++;
+        }
+        productCode = String(nextCode);
+      }
+    } else {
+      // No code provided, find the first available code starting from baseCode
+      let nextCode = baseCode;
+      const maxCode = baseCode + 100000; // Limit search range
+      while (usedCodes.has(nextCode) && nextCode < maxCode) {
+        nextCode++;
+      }
+      productCode = String(nextCode);
     }
     
     // Check if warehouse is "Asosiy ombor"
