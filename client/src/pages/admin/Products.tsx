@@ -682,7 +682,7 @@ export default function Products() {
               
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeModal} className="btn-secondary flex-1">Bekor qilish</button>
-                <button type="submit" className="btn-primary flex-1" disabled={editingProduct && !!codeError}>
+                <button type="submit" className="btn-primary flex-1" disabled={!!(editingProduct && codeError)}>
                   {!editingProduct && codeError ? "Bo'sh kod bilan saqlash" : "Saqlash"}
                 </button>
               </div>
