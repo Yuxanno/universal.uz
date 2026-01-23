@@ -1,0 +1,483 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   🎨 UNIVERSAL.UZ DESIGN SYSTEM 2025
+   Modern • Professional • Consistent • WCAG AA
+   ============================================ */
+
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply font-sans bg-gray-50 text-gray-900;
+    @apply dark:bg-gray-900 dark:text-gray-100;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Modern Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full transition-colors;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-600;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary-100 text-primary-900;
+    @apply dark:bg-primary-900 dark:text-primary-100;
+  }
+}
+
+@layer components {
+  /* ============================================
+     🔘 BUTTONS - WCAG AA Compliant (min 44x44px)
+     ============================================ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg;
+    @apply min-h-[44px] px-6 py-3 text-sm;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* Primary - Main actions */
+  .btn-primary {
+    @apply btn;
+    @apply bg-primary-600 text-white shadow-sm;
+    @apply hover:bg-primary-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-primary-800 active:translate-y-0;
+    @apply focus-visible:ring-primary-500;
+  }
+
+  /* Secondary - Supporting actions */
+  .btn-secondary {
+    @apply btn;
+    @apply bg-gray-100 text-gray-900 border border-gray-200;
+    @apply hover:bg-gray-200 hover:border-gray-300;
+    @apply active:bg-gray-300;
+    @apply focus-visible:ring-gray-400;
+    @apply dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700;
+    @apply dark:hover:bg-gray-700;
+  }
+
+  /* Ghost - Minimal emphasis */
+  .btn-ghost {
+    @apply btn;
+    @apply bg-transparent text-gray-600;
+    @apply hover:bg-gray-100 hover:text-gray-900;
+    @apply active:bg-gray-200;
+    @apply dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100;
+  }
+
+  /* Success - Positive actions */
+  .btn-success {
+    @apply btn;
+    @apply bg-success-600 text-white shadow-sm;
+    @apply hover:bg-success-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-success-800 active:translate-y-0;
+    @apply focus-visible:ring-success-500;
+  }
+
+  /* Danger - Destructive actions */
+  .btn-danger {
+    @apply btn;
+    @apply bg-danger-600 text-white shadow-sm;
+    @apply hover:bg-danger-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-danger-800 active:translate-y-0;
+    @apply focus-visible:ring-danger-500;
+  }
+
+  /* Warning - Caution actions */
+  .btn-warning {
+    @apply btn;
+    @apply bg-warning-600 text-white shadow-sm;
+    @apply hover:bg-warning-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-warning-800 active:translate-y-0;
+    @apply focus-visible:ring-warning-500;
+  }
+
+  /* Icon Button - Min 44x44px */
+  .btn-icon {
+    @apply inline-flex items-center justify-center;
+    @apply w-11 h-11 rounded-lg;
+    @apply bg-transparent text-gray-500;
+    @apply hover:bg-gray-100 hover:text-gray-700;
+    @apply active:bg-gray-200;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500;
+    @apply dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300;
+  }
+
+  /* Small Icon Button - Min 40x40px (for dense UIs) */
+  .btn-icon-sm {
+    @apply inline-flex items-center justify-center;
+    @apply w-10 h-10 rounded-lg;
+    @apply bg-transparent text-gray-500;
+    @apply hover:bg-gray-100 hover:text-gray-700;
+    @apply active:bg-gray-200;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500;
+  }
+
+  /* ============================================
+     📝 INPUTS - Professional Form Inputs
+     ============================================ */
+  .input {
+    @apply w-full px-4 py-3 text-sm text-gray-900 bg-white;
+    @apply border border-gray-300 rounded-lg;
+    @apply placeholder:text-gray-400;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10;
+    @apply disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
+    @apply dark:focus:border-primary-400 dark:focus:ring-primary-400/10;
+  }
+
+  .input-error {
+    @apply input border-danger-300 focus:border-danger-500 focus:ring-danger-500/10;
+  }
+
+  .input-success {
+    @apply input border-success-300 focus:border-success-500 focus:ring-success-500/10;
+  }
+
+  /* Select */
+  .select {
+    @apply input appearance-none cursor-pointer pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+  }
+
+  /* Textarea */
+  .textarea {
+    @apply input min-h-[120px] resize-y;
+  }
+
+  /* ============================================
+     📦 CARDS - Consistent Card System
+     ============================================ */
+  .card {
+    @apply bg-white rounded-xl p-6 border border-gray-200 shadow-sm;
+    @apply dark:bg-gray-800 dark:border-gray-700;
+    @apply transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card;
+    @apply hover:shadow-lg hover:border-gray-300 hover:-translate-y-1;
+    @apply dark:hover:border-gray-600;
+    @apply cursor-pointer;
+  }
+
+  .card-interactive {
+    @apply card-hover;
+    @apply active:translate-y-0 active:shadow-md;
+  }
+
+  /* ============================================
+     🏷️ BADGES - Status Indicators
+     ============================================ */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300;
+  }
+
+  .badge-secondary {
+    @apply badge bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-300;
+  }
+
+  /* ============================================
+     📊 STAT CARDS - Dashboard Components
+     ============================================ */
+  .stat-card {
+    @apply bg-white rounded-xl p-5 border border-gray-200 shadow-sm;
+    @apply transition-all duration-200;
+    @apply hover:shadow-md hover:border-gray-300;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:hover:border-gray-600;
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900 dark:text-gray-100;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-500 dark:text-gray-400 font-medium;
+  }
+
+  /* ============================================
+     🔔 ALERTS - Notification System
+     ============================================ */
+  .alert {
+    @apply flex items-start gap-3 p-4 rounded-xl border;
+  }
+
+  .alert-info {
+    @apply alert bg-primary-50 border-primary-200 text-primary-800;
+    @apply dark:bg-primary-900/20 dark:border-primary-800 dark:text-primary-200;
+  }
+
+  .alert-success {
+    @apply alert bg-success-50 border-success-200 text-success-800;
+    @apply dark:bg-success-900/20 dark:border-success-800 dark:text-success-200;
+  }
+
+  .alert-warning {
+    @apply alert bg-warning-50 border-warning-200 text-warning-800;
+    @apply dark:bg-warning-900/20 dark:border-warning-800 dark:text-warning-200;
+  }
+
+  .alert-danger {
+    @apply alert bg-danger-50 border-danger-200 text-danger-800;
+    @apply dark:bg-danger-900/20 dark:border-danger-800 dark:text-danger-200;
+  }
+
+  /* ============================================
+     📋 TABLE - Data Table Styles
+     ============================================ */
+  .table-header {
+    @apply bg-gray-50 border-b-2 border-gray-200;
+    @apply dark:bg-gray-800 dark:border-gray-700;
+  }
+
+  .table-header-cell {
+    @apply text-sm font-semibold text-gray-900;
+    @apply dark:text-gray-100;
+  }
+
+  .table-row {
+    @apply transition-colors;
+    @apply hover:bg-gray-50;
+    @apply dark:hover:bg-gray-800;
+  }
+
+  .table-cell {
+    @apply text-sm text-gray-900;
+    @apply dark:text-gray-100;
+  }
+
+  /* ============================================
+     ⏳ LOADING STATES
+     ============================================ */
+  .skeleton {
+    @apply bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 w-full;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 w-3/4;
+  }
+
+  .spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+
+  /* ============================================
+     🎯 FOCUS STATES - Accessibility
+     ============================================ */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+}
+
+@layer utilities {
+  /* ============================================
+     🎬 ANIMATIONS
+     ============================================ */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-out-right {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  .animate-slide-out-right {
+    animation: slide-out-right 0.3s ease-in;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  .animate-fade-out {
+    animation: fade-out 0.2s ease-in;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  /* ============================================
+     📱 RESPONSIVE UTILITIES
+     ============================================ */
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .grid-responsive {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .grid-responsive-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  .text-responsive {
+    @apply text-sm lg:text-base;
+  }
+
+  .heading-responsive {
+    @apply text-xl lg:text-2xl;
+  }
+
+  .section-spacing {
+    @apply py-6 lg:py-8;
+  }
+
+  .card-spacing {
+    @apply p-4 lg:p-6;
+  }
+
+  /* Safe area for mobile */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Active scale effect */
+  .active\\:scale-98:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ============================================
+   📱 MOBILE OPTIMIZATIONS
+   ============================================ */
+@media (max-width: 768px) {
+  .card {
+    @apply p-4 rounded-lg;
+  }
+
+  .btn {
+    @apply min-h-[48px]; /* Larger touch targets on mobile */
+  }
+
+  .btn-icon {
+    @apply w-12 h-12; /* 48px on mobile */
+  }
+
+  .stat-card {
+    @apply p-4;
+  }
+
+  .stat-icon {
+    @apply w-10 h-10;
+  }
+
+  .stat-value {
+    @apply text-xl;
+  }
+}
+
+/* ============================================
+   🌙 DARK MODE ENHANCEMENTS
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
