@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const Product = require('../models/Product');
 const Warehouse = require('../models/Warehouse');
+const WarehouseInventory = require('../models/WarehouseInventory');
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -244,7 +245,7 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const { warehouse, code, packageInfo, name, price, costPrice, ...rest } = req.body;
+    let { warehouse, code, packageInfo, name, price, costPrice, ...rest } = req.body;
     
     // Trim and normalize inputs
     const normalizedName = name ? name.trim() : '';
@@ -263,6 +264,59 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
         message: 'Mahsulot kodi kiritilishi shart',
         field: 'code'
       });
+    }
+    
+    // CRITICAL: Handle warehouse - support both ID and name
+    if (warehouse) {
+      // Check if warehouse is a name (string) instead of ObjectId
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(warehouse);
+      if (!isObjectId) {
+        // It's a name, find the warehouse by name
+        const warehouseDoc = await Warehouse.findOne({ name: warehouse });
+        if (warehouseDoc) {
+          warehouse = warehouseDoc._id;
+          console.log(`✅ Found warehouse "${warehouseDoc.name}" with ID: ${warehouse}`);
+        } else {
+          // Warehouse name not found, create it if it's "Asosiy ombor"
+          if (warehouse === 'Asosiy ombor') {
+            const newWarehouse = await Warehouse.create({
+              name: 'Asosiy ombor',
+              address: '',
+              type: 'main',
+              isMain: true
+            });
+            warehouse = newWarehouse._id;
+            console.log(`✅ Created "Asosiy ombor" warehouse with ID: ${warehouse}`);
+          } else {
+            return res.status(400).json({ 
+              message: `Ombor "${warehouse}" topilmadi`,
+              field: 'warehouse'
+            });
+          }
+        }
+      }
+    } else {
+      // No warehouse provided, use or create "Asosiy ombor"
+      let mainWarehouse = await Warehouse.findOne({ 
+        $or: [
+          { name: 'Asosiy ombor' },
+          { isMain: true }
+        ]
+      });
+      
+      if (!mainWarehouse) {
+        // Create "Asosiy ombor" if it doesn't exist
+        mainWarehouse = await Warehouse.create({
+          name: 'Asosiy ombor',
+          address: '',
+          type: 'main',
+          isMain: true
+        });
+        console.log('✅ Created "Asosiy ombor" warehouse');
+      }
+      
+      warehouse = mainWarehouse._id;
+      console.log(`✅ Using "Asosiy ombor" (${warehouse}) for new product`);
     }
     
     // CRITICAL: Check for duplicates BEFORE attempting to save
@@ -399,6 +453,20 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
     // Create and save product
     const product = new Product(productData);
     await product.save();
+    
+    // CRITICAL: Create WarehouseInventory for the product
+    try {
+      await WarehouseInventory.create({
+        product: product._id,
+        warehouse: warehouse,
+        quantity: productData.quantity || 0,
+        minStock: productData.minStock || 5
+      });
+      console.log(`✅ Created inventory for product: ${product.code} - ${product.name}`);
+    } catch (invError) {
+      console.error(`⚠️  Failed to create inventory for product ${product.code}:`, invError.message);
+      // Don't fail the whole request if inventory creation fails
+    }
     
     res.status(201).json(product);
   } catch (error) {

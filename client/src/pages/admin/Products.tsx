@@ -168,7 +168,6 @@ export default function Products() {
   const { showAlert, showConfirm, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('all');
   const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -208,12 +207,10 @@ export default function Products() {
   }, []);
 
   useEffect(() => {
-    if (selectedWarehouse && selectedWarehouse !== 'all') {
+    if (mainWarehouse) {
       fetchProducts();
-    } else if (selectedWarehouse === 'all') {
-      fetchAllProducts();
     }
-  }, [selectedWarehouse]);
+  }, [mainWarehouse]);
 
   const fetchMainWarehouse = async () => {
     try {
@@ -222,11 +219,9 @@ export default function Products() {
       const main = res.data.find((w: Warehouse) => w.name === 'Asosiy ombor');
       if (main) {
         setMainWarehouse(main);
-        setSelectedWarehouse(main._id);
       } else {
         const newMain = await api.post('/warehouses', { name: 'Asosiy ombor', address: '' });
         setMainWarehouse(newMain.data);
-        setSelectedWarehouse(newMain.data._id);
         setWarehouses([...res.data, newMain.data]);
       }
     } catch (err) {
@@ -236,20 +231,29 @@ export default function Products() {
   };
 
   const fetchProducts = async () => {
-    if (!selectedWarehouse || selectedWarehouse === 'all') return;
+    if (!mainWarehouse) return;
     
     try {
       setLoading(true);
-      // Fetch from WarehouseInventory system instead of old Product model
-      const res = await api.get(`/inventory/warehouse/${selectedWarehouse}`);
+      // Fetch from WarehouseInventory system for main warehouse
+      const res = await api.get(`/inventory/warehouse/${mainWarehouse._id}`);
       // Map inventory items to products format
       const productsData = res.data.map((inv: any) => ({
         ...inv.product,
         quantity: inv.quantity,
         minStock: inv.minStock,
-        _inventoryId: inv._id, // Keep inventory ID for updates
-        _warehouseName: inv.warehouse?.name || 'Noma\'lum'
+        _inventoryId: inv._id,
+        _warehouseName: inv.warehouse?.name || 'Asosiy ombor',
+        _warehouseId: mainWarehouse._id
       }));
+      
+      // Sort by code (numeric) - DESCENDING (1023 -> 1)
+      productsData.sort((a: any, b: any) => {
+        const codeA = parseInt(a.code) || 0;
+        const codeB = parseInt(b.code) || 0;
+        return codeB - codeA; // Reversed for descending order
+      });
+      
       setProducts(productsData);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -258,18 +262,32 @@ export default function Products() {
     }
   };
 
-  const fetchAllProducts = async () => {
-    try {
-      setLoading(true);
-      // Fetch products directly from /products endpoint
-      const res = await api.get('/products');
-      setProducts(res.data);
-    } catch (err) {
-      console.error('Error fetching all products:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Memoize formatted values to prevent unnecessary recalculations
+  const formattedQuantity = useMemo(() => formatInputNumber(formData.quantity), [formData.quantity]);
+  const formattedCostPrice = useMemo(() => formatInputNumber(formData.costPrice), [formData.costPrice]);
+  const formattedWholesalePrice = useMemo(() => formatInputNumber(formData.wholesalePrice), [formData.wholesalePrice]);
+
+  // Optimized input handlers with useCallback
+  const handleCodeChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, code: value }));
+  }, []);
+
+  const handleNameChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, name: value }));
+    if (nameError) setNameError('');
+  }, [nameError]);
+
+  const handleCostPriceChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, costPrice: parseNumber(value) }));
+  }, []);
+
+  const handleWholesalePriceChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, wholesalePrice: parseNumber(value) }));
+  }, []);
+
+  const handleQuantityChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, quantity: parseNumber(value) }));
+  }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -300,14 +318,14 @@ export default function Products() {
     }
   };
 
-  const removeImage = async (imagePath: string) => {
+  const removeImage = useCallback(async (imagePath: string) => {
     try {
       await api.delete('/products/delete-image', { data: { imagePath } });
-      setImages(images.filter(img => img !== imagePath));
+      setImages(prev => prev.filter(img => img !== imagePath));
     } catch (err) {
       console.error('Error deleting image:', err);
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -337,6 +355,12 @@ export default function Products() {
       return;
     }
     
+    // Ensure mainWarehouse is available
+    if (!mainWarehouse) {
+      showAlert('Asosiy ombor topilmadi. Iltimos, sahifani yangilang.', 'Xatolik', 'danger');
+      return;
+    }
+    
     let finalQuantity = Number(formData.quantity);
     let finalCostPrice = Number(formData.costPrice);
     let packageInfo = null;
@@ -361,7 +385,7 @@ export default function Products() {
         costPrice: finalCostPrice,
         price: Number(formData.wholesalePrice),
         quantity: finalQuantity,
-        warehouse: mainWarehouse?._id,
+        warehouse: mainWarehouse._id, // Always use mainWarehouse._id
         images,
         packageInfo
       };
@@ -434,6 +458,13 @@ export default function Products() {
   };
 
   const openEditModal = (product: Product) => {
+    // Close other modals first
+    setShowQRModal(false);
+    setShowPrintModal(false);
+    setShowQuantityModal(false);
+    setShowTransferModal(false);
+    
+    // Open edit modal
     setEditingProduct(product);
     setFormData({
       code: product.code,
@@ -463,6 +494,13 @@ export default function Products() {
 
   // ✅ TRANSFER FUNCTIONS
   const openTransferModal = (product: Product) => {
+    // Close other modals first
+    setShowQRModal(false);
+    setShowPrintModal(false);
+    setShowModal(false);
+    setShowQuantityModal(false);
+    
+    // Open transfer modal
     setTransferProduct(product);
     setTransferToWarehouse('');
     setTransferQuantity('1');
@@ -493,8 +531,8 @@ export default function Products() {
       return;
     }
 
-    // Get current warehouse from product
-    const currentWarehouseId = (transferProduct as any)._warehouseId || selectedWarehouse;
+    // Get current warehouse from product (should be main warehouse)
+    const currentWarehouseId = (transferProduct as any)._warehouseId || mainWarehouse?._id;
     
     if (currentWarehouseId === transferToWarehouse) {
       showAlert('Bir xil omborga o\'tkazish mumkin emas', 'Xatolik', 'danger');
@@ -521,12 +559,8 @@ export default function Products() {
       showAlert('Transfer muvaffaqiyatli!', 'Muvaffaqiyat', 'success');
       closeTransferModal();
       
-      // Refresh products
-      if (selectedWarehouse && selectedWarehouse !== 'all') {
-        fetchProducts();
-      } else if (selectedWarehouse === 'all') {
-        fetchAllProducts();
-      }
+      // Refresh products from main warehouse
+      fetchProducts();
     } catch (err: any) {
       showAlert(err.response?.data?.message || 'Transfer xatosi', 'Xatolik', 'danger');
     } finally {
@@ -554,6 +588,12 @@ export default function Products() {
   };
 
   const openAddModal = async () => {
+    // Close other modals first
+    setShowQRModal(false);
+    setShowPrintModal(false);
+    setShowQuantityModal(false);
+    setShowTransferModal(false);
+    
     try {
       const warehouseParam = mainWarehouse?._id ? `?warehouseId=${mainWarehouse._id}` : '';
       const res = await api.get(`/products/next-code${warehouseParam}`);
@@ -629,11 +669,25 @@ export default function Products() {
   };
 
   const openQRModal = (product: Product) => {
+    // Close other modals first
+    setShowPrintModal(false);
+    setShowModal(false);
+    setShowQuantityModal(false);
+    setShowTransferModal(false);
+    
+    // Open QR modal
     setSelectedProduct(product);
     setShowQRModal(true);
   };
 
   const openPrintModal = (product: Product) => {
+    // Close other modals first
+    setShowQRModal(false);
+    setShowModal(false);
+    setShowQuantityModal(false);
+    setShowTransferModal(false);
+    
+    // Open print modal
     setPrintProduct(product);
     setPrintQuantity('1');
     setPrinting(false);
@@ -786,15 +840,9 @@ export default function Products() {
     <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
       {AlertComponent}
       <Header 
-        title={tKey("Tovarlar")}
+        title={tKey("Tovarlar (Asosiy ombor)")}
         showSearch 
         onSearch={setSearchQuery}
-        filterOptions={[
-          { value: 'all', label: tKey('Barcha omborlar') },
-          ...warehouses.map(w => ({ value: w._id, label: w.name }))
-        ]}
-        filterValue={selectedWarehouse}
-        onFilterChange={setSelectedWarehouse}
         actions={
           <button onClick={openAddModal} className="btn-primary">
             <Plus className="w-4 h-4" />
@@ -977,7 +1025,7 @@ export default function Products() {
                     className={`input font-mono text-base font-bold ${codeError && editingProduct ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : codeError ? 'border-warning-500 focus:border-warning-500 focus:ring-warning-500/20' : 'border-2 focus:ring-4'}`}
                     placeholder="1" 
                     value={formData.code} 
-                    onChange={e => setFormData({...formData, code: e.target.value})}
+                    onChange={e => handleCodeChange(e.target.value)}
                     onBlur={e => checkCodeExists(e.target.value)}
                     required 
                   />
@@ -1002,7 +1050,7 @@ export default function Products() {
                       </button>
                     </div>
                   ) : (
-                    <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.quantity)} onChange={e => setFormData({...formData, quantity: parseNumber(e.target.value)})} required />
+                    <input type="text" className="input" placeholder="0" value={formattedQuantity} onChange={e => handleQuantityChange(e.target.value)} required />
                   )}
                 </div>
               </div>
@@ -1015,11 +1063,7 @@ export default function Products() {
                   className={`input ${nameError ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500/20' : ''}`}
                   placeholder="Tovar nomi" 
                   value={formData.name} 
-                  onChange={e => {
-                    setFormData({...formData, name: e.target.value});
-                    // Clear error when user starts typing
-                    if (nameError) setNameError('');
-                  }}
+                  onChange={e => handleNameChange(e.target.value)}
                   onBlur={e => checkNameExists(e.target.value)}
                   required 
                 />
@@ -1033,11 +1077,11 @@ export default function Products() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
-                  <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.costPrice)} onChange={e => setFormData({...formData, costPrice: parseNumber(e.target.value)})} required />
+                  <input type="text" className="input" placeholder="0" value={formattedCostPrice} onChange={e => handleCostPriceChange(e.target.value)} required />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
-                  <input type="text" className="input" placeholder="0" value={formatInputNumber(formData.wholesalePrice)} onChange={e => setFormData({...formData, wholesalePrice: parseNumber(e.target.value)})} required />
+                  <input type="text" className="input" placeholder="0" value={formattedWholesalePrice} onChange={e => handleWholesalePriceChange(e.target.value)} required />
                 </div>
               </div>
               
@@ -1107,14 +1151,14 @@ export default function Products() {
 
       {/* Quantity Adjustment Modal */}
       {showQuantityModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="overlay" onClick={() => setShowQuantityModal(false)} />
-          <div className="modal w-full max-w-sm p-6 relative z-10">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowQuantityModal(false)} />
+          <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-sm relative z-10 animate-scaleIn p-6 border-2 border-surface-100 dark:border-surface-700">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">
+              <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
                 {quantityMode === 'add' ? "Miqdor qo'shish" : "Miqdor ayirish"}
               </h3>
-              <button onClick={() => setShowQuantityModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 text-surface-700 transition-all hover:scale-110 hover:rotate-90 duration-200" title="Yopish">
+              <button onClick={() => setShowQuantityModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 text-surface-700 dark:text-surface-300 transition-all hover:scale-110 hover:rotate-90 duration-200" title="Yopish">
                 <X className="w-6 h-6" strokeWidth={3} />
               </button>
             </div>
@@ -1174,12 +1218,12 @@ export default function Products() {
 
       {/* Print Modal */}
       {showPrintModal && printProduct && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="overlay" onClick={() => !printing && setShowPrintModal(false)} />
-          <div className="modal w-full max-w-md p-6 relative z-10">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !printing && setShowPrintModal(false)} />
+          <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-scaleIn p-6 border-2 border-surface-100 dark:border-surface-700">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-surface-900">Ценник чоп этиш</h3>
-              <button onClick={() => !printing && setShowPrintModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 text-surface-700 transition-all hover:scale-110 hover:rotate-90 duration-200" disabled={printing} title="Yopish">
+              <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Ценник чоп этиш</h3>
+              <button onClick={() => !printing && setShowPrintModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 text-surface-700 dark:text-surface-300 transition-all hover:scale-110 hover:rotate-90 duration-200" disabled={printing} title="Yopish">
                 <X className="w-6 h-6" strokeWidth={3} />
               </button>
             </div>
@@ -1302,7 +1346,7 @@ export default function Products() {
                   Hozirgi ombor
                 </label>
                 <div className="bg-slate-100 rounded-xl px-4 py-3.5 font-bold text-slate-900 border-2 border-slate-200">
-                  {(transferProduct as any)._warehouseName || warehouses.find(w => w._id === selectedWarehouse)?.name || 'Noma\'lum'}
+                  {(transferProduct as any)._warehouseName || mainWarehouse?.name || 'Asosiy ombor'}
                 </div>
               </div>
 
@@ -1320,7 +1364,7 @@ export default function Products() {
                 >
                   <option value="">Omborni tanlang</option>
                   {warehouses
-                    .filter(w => w._id !== selectedWarehouse && w._id !== (transferProduct as any)._warehouseId)
+                    .filter(w => w._id !== mainWarehouse?._id && w._id !== (transferProduct as any)._warehouseId)
                     .map(w => (
                       <option key={w._id} value={w._id}>{w.name}</option>
                     ))
