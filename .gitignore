@@ -12,6 +12,7 @@ client/.env
 
 # Build outputs
 dist/
+build/
 
 # Logs
 logs/
