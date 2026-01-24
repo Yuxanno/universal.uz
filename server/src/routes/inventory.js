@@ -17,8 +17,7 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
 
     const inventory = await WarehouseInventory.find(query)
       .populate('product')
-      .populate('warehouse')
-      .sort({ 'product.name': 1 });
+      .populate('warehouse');
 
     // Filter out items where product was deleted
     let filtered = inventory.filter(item => item.product !== null);
@@ -38,6 +37,13 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
         item.quantity > 0 && item.quantity <= item.minStock
       );
     }
+
+    // Sort by product code (numeric) - DESCENDING (1023 -> 1)
+    filtered.sort((a, b) => {
+      const codeA = parseInt(a.product.code) || 0;
+      const codeB = parseInt(b.product.code) || 0;
+      return codeB - codeA; // Reversed for descending order
+    });
 
     res.json(filtered);
   } catch (err) {
