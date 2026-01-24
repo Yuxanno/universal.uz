@@ -49,3 +49,4 @@ server/uploads/
 *.sql
 *.dump
 backup/
+server/.env
