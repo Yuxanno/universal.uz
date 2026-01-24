@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Environment files - MAXFIY MA'LUMOTLAR!
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+server/.env
+client/.env
+
+# Build outputs
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+.npm/
+
+# Temporary files
+server/temp/
+*.tmp
+*.temp
+
+# Telegram data files
+server/.telegram_chat_id
+server/.telegram_chat_ids
+server/.telegram_customers.json
+server/.telegram_users.json
+
+# Uploads (user uploaded files)
+server/uploads/
+
+# Database backups
+*.sql
+*.dump
+backup/

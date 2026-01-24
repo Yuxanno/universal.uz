@@ -1,0 +1,499 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   🎨 UNIVERSAL.UZ DESIGN SYSTEM 2025
+   Logo-Based • White & Red • Professional
+   ============================================ */
+
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply font-sans bg-gray-50 text-gray-900;
+    @apply dark:bg-gray-900 dark:text-gray-100;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Modern Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full transition-colors;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-600;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-red-100 text-red-900;
+    @apply dark:bg-red-900 dark:text-red-100;
+  }
+}
+
+@layer components {
+  /* ============================================
+     🔘 BUTTONS - Consistent system
+     ============================================ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Primary - Main actions (RED from logo) */
+  .btn-primary {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-red-600 text-white shadow-sm;
+    @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-red-800 active:translate-y-0;
+    @apply focus-visible:ring-red-500;
+  }
+
+  /* Secondary - Supporting actions */
+  .btn-secondary {
+    @apply btn;
+    @apply bg-gray-100 text-gray-900 border border-gray-200;
+    @apply hover:bg-gray-200 hover:border-gray-300;
+    @apply active:bg-gray-300;
+    @apply focus-visible:ring-gray-400;
+    @apply dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700;
+    @apply dark:hover:bg-gray-700;
+  }
+
+  /* Ghost - Minimal emphasis */
+  .btn-ghost {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-transparent text-gray-600;
+    @apply hover:bg-gray-100 hover:text-gray-900;
+    @apply active:bg-gray-200;
+    @apply dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100;
+  }
+
+  /* Success - Positive actions - USING PRIMARY RED */
+  .btn-success {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-red-600 text-white shadow-sm;
+    @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-red-800 active:translate-y-0;
+    @apply focus-visible:ring-red-500;
+  }
+
+  /* Danger - Destructive actions - USING RED */
+  .btn-danger {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-red-600 text-white shadow-sm;
+    @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-red-800 active:translate-y-0;
+    @apply focus-visible:ring-red-500;
+  }
+
+  /* Warning - Caution actions - USING RED */
+  .btn-warning {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-red-500 text-white shadow-sm;
+    @apply hover:bg-red-600 hover:shadow-md hover:-translate-y-0.5;
+    @apply active:bg-red-700 active:translate-y-0;
+    @apply focus-visible:ring-red-500;
+  }
+
+  /* Icon Button - Small size */
+  .btn-icon-sm {
+    @apply inline-flex items-center justify-center p-2 rounded-lg;
+    @apply bg-transparent text-gray-500;
+    @apply hover:bg-gray-100 hover:text-gray-700;
+    @apply active:bg-gray-200;
+    @apply transition-all duration-200;
+    @apply dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300;
+  }
+
+  /* Icon Button */
+  .btn-icon {
+    @apply btn p-2 rounded-lg;
+    @apply bg-transparent text-gray-500;
+    @apply hover:bg-gray-100 hover:text-gray-700;
+    @apply active:bg-gray-200;
+    @apply dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300;
+  }
+
+  /* ============================================
+     📝 INPUTS - Consistent system
+     ============================================ */
+  .input {
+    @apply w-full px-4 py-2.5 text-sm text-gray-900 bg-white;
+    @apply border-2 border-gray-300 rounded-lg;
+    @apply placeholder:text-gray-400;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10;
+    @apply disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed;
+    @apply dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100;
+    @apply dark:focus:border-red-400 dark:focus:ring-red-400/10;
+    @apply dark:placeholder:text-gray-500;
+  }
+
+  .input-error {
+    @apply input border-red-300 focus:border-red-500 focus:ring-red-500/10;
+  }
+
+  /* Search Input - For modal headers with colored backgrounds */
+  .input-search {
+    @apply w-full px-4 py-2.5 text-sm text-gray-900 bg-white;
+    @apply border-2 border-gray-200 rounded-lg;
+    @apply placeholder:text-gray-400;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10;
+    @apply disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed;
+    @apply dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100;
+    @apply dark:focus:border-red-400 dark:focus:ring-red-400/10;
+    @apply dark:placeholder:text-gray-500;
+  }
+
+  /* Input on colored backgrounds (e.g., red modal headers) */
+  .input-on-colored {
+    @apply w-full px-4 py-2.5 text-sm text-gray-900 bg-white;
+    @apply border-2 border-gray-200 rounded-lg;
+    @apply placeholder:text-gray-400;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10;
+    @apply shadow-sm;
+  }
+
+  /* Select */
+  .select {
+    @apply input appearance-none cursor-pointer pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+  }
+
+  /* Select focus - qizil rang */
+  select {
+    accent-color: #ef4444; /* red-500 - brauzer native rangini o'zgartiradi */
+  }
+
+  select:focus {
+    @apply border-red-500 ring-4 ring-red-500/10 outline-none;
+  }
+
+  /* Select option hover va checked - qizil rang (barcha brauzerlar uchun) */
+  select option:checked,
+  select option:hover,
+  select option:focus,
+  select option:active {
+    background-color: #ef4444 !important; /* red-500 */
+    background: #ef4444 !important;
+    color: white !important;
+  }
+
+  /* Firefox uchun maxsus */
+  @-moz-document url-prefix() {
+    select option:checked,
+    select option:hover {
+      background-color: #ef4444 !important;
+      color: white !important;
+    }
+  }
+
+  /* Webkit brauzerlar (Chrome, Safari, Edge) uchun */
+  select option:checked {
+    background: linear-gradient(#ef4444, #ef4444) !important;
+    background-color: #ef4444 !important;
+    color: white !important;
+  }
+
+  select option:hover {
+    background: linear-gradient(#ef4444, #ef4444) !important;
+    background-color: #ef4444 !important;
+    color: white !important;
+  }
+
+  /* ============================================
+     📦 CARDS - White-first system
+     ============================================ */
+  .card {
+    @apply bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm;
+    @apply dark:bg-gray-800 dark:border-gray-700;
+    @apply transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card;
+    @apply hover:shadow-lg hover:border-gray-300 hover:-translate-y-0.5;
+    @apply dark:hover:border-gray-600;
+    @apply cursor-pointer;
+  }
+
+  .card-interactive {
+    @apply card-hover;
+    @apply active:translate-y-0 active:shadow-md;
+  }
+
+  /* ============================================
+     🏷️ BADGES - Consistent system
+     ============================================ */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full;
+  }
+
+  .badge-primary {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-secondary {
+    @apply badge bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300;
+  }
+
+  .badge-success {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-warning {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  /* ============================================
+     📊 STAT CARDS - Dashboard components
+     ============================================ */
+  .stat-card {
+    @apply bg-white rounded-xl p-5 border border-gray-100 shadow-sm;
+    @apply transition-all duration-200;
+    @apply hover:shadow-md hover:border-gray-200;
+    @apply dark:bg-gray-800 dark:border-gray-700;
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900 dark:text-gray-100;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-500 dark:text-gray-400 font-medium;
+  }
+
+  /* ============================================
+     🔔 ALERTS - Notification system
+     ============================================ */
+  .alert {
+    @apply flex items-start gap-3 p-4 rounded-xl border;
+  }
+
+  .alert-info {
+    @apply alert bg-gray-50 border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200;
+  }
+
+  .alert-success {
+    @apply alert bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200;
+  }
+
+  .alert-warning {
+    @apply alert bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200;
+  }
+
+  .alert-danger {
+    @apply alert bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200;
+  }
+
+  /* ============================================
+     ⏳ LOADING STATES
+     ============================================ */
+  .skeleton {
+    @apply bg-gray-200 rounded-lg animate-pulse;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 w-full;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 w-3/4;
+  }
+
+  .spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+}
+
+@layer utilities {
+  /* ============================================
+     🎬 ANIMATIONS
+     ============================================ */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-out-right {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      transform: scale(0.98);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.2s ease-out;
+  }
+
+  .animate-slide-out-right {
+    animation: slide-out-right 0.2s ease-in;
+  }
+
+  .animate-fadeIn {
+    animation: fade-in 0.15s ease-out;
+  }
+
+  .animate-fade-out {
+    animation: fade-out 0.15s ease-in;
+  }
+
+  .animate-scaleIn {
+    animation: scale-in 0.15s ease-out;
+  }
+}
+
+/* ============================================
+   📱 RESPONSIVE & MOBILE
+   ============================================ */
+   
+/* Container utilities */
+.container-responsive {
+  @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Grid utilities */
+.grid-responsive {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.grid-responsive-4 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+}
+
+/* Text utilities */
+.text-responsive {
+  @apply text-sm lg:text-base;
+}
+
+.heading-responsive {
+  @apply text-xl lg:text-2xl;
+}
+
+/* Spacing utilities */
+.section-spacing {
+  @apply py-6 lg:py-8;
+}
+
+.card-spacing {
+  @apply p-4 lg:p-6;
+}
+
+@media (max-width: 768px) {
+  .card {
+    @apply p-4 rounded-lg;
+  }
+
+  .btn {
+    @apply px-3 py-2;
+  }
+
+  .stat-card {
+    @apply p-4;
+  }
+
+  .stat-icon {
+    @apply w-10 h-10;
+  }
+
+  .stat-value {
+    @apply text-xl;
+  }
+}
+
+/* Safe area for mobile */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ============================================
+   📋 TABLE COMPONENTS
+   ============================================ */
+.table-header {
+  @apply bg-gray-50 border-b-2 border-gray-200;
+  @apply dark:bg-gray-800 dark:border-gray-700;
+}
+
+.table-header-cell {
+  @apply text-xs font-bold text-gray-600 uppercase tracking-wider;
+  @apply dark:text-gray-400;
+}
+
+/* ============================================
+   ⏳ SPINNER - Loading indicator
+   ============================================ */
+.spinner {
+  @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin;
+}
