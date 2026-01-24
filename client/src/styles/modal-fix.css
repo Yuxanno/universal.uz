@@ -75,7 +75,7 @@ div[class*="fixed"][class*="z-"] button.bg-orange-600 *,
 .modal button.bg-blue-600 *,
 .modal button.bg-red-600 *,
 .modal button.bg-orange-600 * {
-  color: #ffffff !important; /* white */
+  color: #000000 !important; /* white */
 }
 
 /* Modal sarlavhalari */
