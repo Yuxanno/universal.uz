@@ -3,7 +3,7 @@ import {
   Plus, AlertTriangle, X, DollarSign, Calendar, User, 
   Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, Phone, UserPlus, Edit, Banknote, Search
 } from 'lucide-react';
-import { Debt, Customer } from '../../types';
+import { Debt } from '../../types';
 import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber, formatPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';

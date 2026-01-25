@@ -73,7 +73,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       console.log(`✅ Loaded in ${endTime - startTime}ms`);
       
       // Limit size to prevent memory issues
-      const productsData = limitArraySize(res.data, 2000);
+      const productsData = limitArraySize(res.data, 2000) as Product[];
       
       // Update state IMMEDIATELY
       setProducts(productsData);

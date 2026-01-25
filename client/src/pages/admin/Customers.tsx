@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Header from '../../components/Header';
 import { Plus, Users, X, Phone, Edit, Trash2, MapPin, ChevronDown, Package } from 'lucide-react';
 import { Customer } from '../../types';
