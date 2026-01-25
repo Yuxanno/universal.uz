@@ -236,7 +236,7 @@ export default function CashierProducts() {
     
     // Формируем цену с кодом если он введен
     const displayPrice = printCodePrefix.trim() 
-      ? `${printCodePrefix.trim()} ${price.toLocaleString()}` 
+      ? `${printCodePrefix.trim()}${price.toString().replace(/\s/g, '')}` 
       : price.toLocaleString();
     
     const labelsHtml = Array(qty).fill(`
@@ -748,7 +748,7 @@ export default function CashierProducts() {
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {printCodePrefix.trim() 
-                    ? `Ценникда: ${printCodePrefix.trim()} ${printProduct.price.toLocaleString()} so'm` 
+                    ? `Ценникда: ${printCodePrefix.trim()}${printProduct.price.toString().replace(/\s/g, '')} so'm` 
                     : `Ценникda: ${printProduct.price.toLocaleString()} so'm`}
                 </p>
               </div>

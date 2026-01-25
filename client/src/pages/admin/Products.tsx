@@ -722,7 +722,7 @@ export default function Products() {
     
     // Формируем цену с кодом если он введен
     const displayPrice = printCodePrefix.trim() 
-      ? `${printCodePrefix.trim()} ${price.toLocaleString()}` 
+      ? `${printCodePrefix.trim()}${price.toString().replace(/\s/g, '')}` 
       : price.toLocaleString();
     
     const labelsHtml = Array(qty).fill(`
@@ -1330,7 +1330,7 @@ export default function Products() {
                 />
                 <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 text-center">
                   {printCodePrefix.trim() 
-                    ? `Ценникда: ${printCodePrefix.trim()} ${printProduct.price.toLocaleString()} so'm` 
+                    ? `Ценникда: ${printCodePrefix.trim()}${printProduct.price.toString().replace(/\s/g, '')} so'm` 
                     : `Ценникда: ${printProduct.price.toLocaleString()} so'm`}
                 </p>
               </div>
