@@ -111,6 +111,7 @@ export default function CashierProducts() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
+  const [printCodePrefix, setPrintCodePrefix] = useState('');
   const [showPriceOnLabel, setShowPriceOnLabel] = useState(() => {
     const saved = localStorage.getItem('showPriceOnLabel');
     return saved ? JSON.parse(saved) : true;
@@ -215,6 +216,7 @@ export default function CashierProducts() {
   const openPrintModal = useCallback((product: Product) => {
     setPrintProduct(product);
     setPrintQuantity('1');
+    setPrintCodePrefix('');
     setShowPrintModal(true);
   }, []);
 
@@ -232,9 +234,14 @@ export default function CashierProducts() {
     const qrData = JSON.stringify({ id: printProduct._id, code: printProduct.code, name: printProduct.name });
     const price = printProduct.price;
     
+    // Формируем цену с кодом если он введен
+    const displayPrice = printCodePrefix.trim() 
+      ? `${printCodePrefix.trim()} ${price.toLocaleString()}` 
+      : price.toLocaleString();
+    
     const labelsHtml = Array(qty).fill(`
       <div class="label">
-        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${price.toLocaleString()} so'm</div></div>` : ''}
+        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
         <div class="content-row">
           <div class="left-section">
             <div class="name">${printProduct.name}</div>
@@ -360,7 +367,7 @@ export default function CashierProducts() {
     printWindow.document.write(printHtml);
     printWindow.document.close();
     setShowPrintModal(false);
-  }, [printProduct, printQuantity, showAlert, showPriceOnLabel]);
+  }, [printProduct, printQuantity, printCodePrefix, showAlert, showPriceOnLabel]);
 
   const downloadQR = useCallback(() => {
     if (!selectedProduct) return;
@@ -723,6 +730,27 @@ export default function CashierProducts() {
               <div>
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{printProduct.name}</h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Kod: {printProduct.code}</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                  Narx: {printProduct.price.toLocaleString()} so'm
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Kod prefiksi (ixtiyoriy)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Masalan: 1, 2, 3..."
+                  value={printCodePrefix}
+                  onChange={e => setPrintCodePrefix(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {printCodePrefix.trim() 
+                    ? `Ценникда: ${printCodePrefix.trim()} ${printProduct.price.toLocaleString()} so'm` 
+                    : `Ценникda: ${printProduct.price.toLocaleString()} so'm`}
+                </p>
               </div>
               
               <div>
