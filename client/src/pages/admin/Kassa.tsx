@@ -4,7 +4,7 @@ import {
   Search, RotateCcw, Save, CreditCard, Trash2, X, 
   Package, Banknote, Delete, AlertTriangle, Printer, User, Phone
 } from 'lucide-react';
-import { CartItem, Product, Customer } from '../../types';
+import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -35,7 +35,7 @@ export default function Kassa() {
   const { tKey } = useLanguage();
   const location = useLocation();
   const { showAlert, AlertComponent } = useAlert();
-  const { displayedProducts, loading: loadingProducts } = useProducts();
+  const { displayedProducts } = useProducts();
   const { customers, addCustomer } = useCustomers();
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);

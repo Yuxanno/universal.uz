@@ -65,7 +65,7 @@ export default function Login() {
         <div className="relative">
           <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-red-600 rounded-3xl blur-sm opacity-20" />
           
-          <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border-2 border-gray-200 dark:border-slate-700">
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl border-2 border-gray-200 dark:border-slate-700">
             {/* Header */}
             <div className="text-center mb-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 dark:bg-red-600 rounded-full mb-4 border-2 border-red-700 dark:border-red-500 shadow-md">
@@ -93,7 +93,7 @@ export default function Login() {
               <div>
                 <label 
                   htmlFor="phone" 
-                  className="block text-base font-bold mb-2 text-slate-900 dark:text-white"
+                  className="block text-base font-bold mb-2 text-slate-800 dark:text-slate-200"
                 >
                   {t("Telefon raqam")}
                 </label>
@@ -115,7 +115,7 @@ export default function Login() {
               <div>
                 <label 
                   htmlFor="password" 
-                  className="block text-base font-bold mb-2 text-slate-900 dark:text-white"
+                  className="block text-base font-bold mb-2 text-slate-800 dark:text-slate-200"
                 >
                   {t("Parol")}
                 </label>

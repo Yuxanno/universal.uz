@@ -257,6 +257,9 @@ textarea:focus {
     @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
     @apply active:bg-red-800 active:translate-y-0;
     @apply focus-visible:ring-red-500;
+    @apply dark:bg-red-600 dark:text-white;
+    @apply dark:hover:bg-red-700;
+    @apply dark:active:bg-red-800;
   }
 
   /* Secondary - Supporting actions */
@@ -286,6 +289,8 @@ textarea:focus {
     @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
     @apply active:bg-red-800 active:translate-y-0;
     @apply focus-visible:ring-red-500;
+    @apply dark:bg-red-600 dark:text-white;
+    @apply dark:hover:bg-red-700;
   }
 
   /* Danger - Destructive actions - USING RED */
@@ -295,6 +300,8 @@ textarea:focus {
     @apply hover:bg-red-700 hover:shadow-md hover:-translate-y-0.5;
     @apply active:bg-red-800 active:translate-y-0;
     @apply focus-visible:ring-red-500;
+    @apply dark:bg-red-600 dark:text-white;
+    @apply dark:hover:bg-red-700;
   }
 
   /* Warning - Caution actions - USING RED */
@@ -304,6 +311,8 @@ textarea:focus {
     @apply hover:bg-red-600 hover:shadow-md hover:-translate-y-0.5;
     @apply active:bg-red-700 active:translate-y-0;
     @apply focus-visible:ring-red-500;
+    @apply dark:bg-red-500 dark:text-white;
+    @apply dark:hover:bg-red-600;
   }
 
   /* Icon Button - Small size */

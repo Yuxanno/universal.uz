@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { Search, Plus, Edit2, Trash2, Package, Image as ImageIcon, X, Printer, QrCode } from 'lucide-react';
 import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
@@ -190,7 +190,7 @@ export default function CashierProducts() {
       console.error('Error saving product:', err);
       showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
     }
-  }, [formData, editingProduct, showAlert, fetchProducts]);
+  }, [formData, editingProduct, showAlert, refreshProducts]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Mahsulotni o\'chirmoqchimisiz?')) return;
@@ -203,7 +203,7 @@ export default function CashierProducts() {
       console.error('Error deleting product:', err);
       showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
     }
-  }, [showAlert, fetchProducts]);
+  }, [showAlert, refreshProducts]);
 
   const closeModal = useCallback(() => setShowModal(false), []);
 
