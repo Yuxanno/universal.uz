@@ -15,7 +15,7 @@ const Icon = forwardRef<HTMLDivElement, IconProps>(
     };
     
     const variants = {
-      default: 'text-gray-500',
+      default: 'text-neutral-500',
       primary: 'text-primary-600',
       success: 'text-success-600',
       warning: 'text-warning-600',

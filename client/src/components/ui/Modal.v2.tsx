@@ -93,7 +93,7 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
           className={`
             relative bg-white rounded-2xl shadow-2xl w-full
             max-h-[90vh] overflow-hidden
-            dark:bg-gray-800
+            dark:bg-neutral-800
             animate-scale-in
             ${sizes[size]}
             ${className}
@@ -102,18 +102,18 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-start justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
               <div className="flex-1 pr-4">
                 {title && (
                   <h3 
                     id="modal-title"
-                    className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+                    className="text-lg font-semibold text-neutral-900 dark:text-neutral-100"
                   >
                     {title}
                   </h3>
                 )}
                 {description && (
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                     {description}
                   </p>
                 )}
@@ -123,9 +123,9 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
                 <button
                   onClick={onClose}
                   className="
-                    flex-shrink-0 p-2 rounded-lg text-gray-400
-                    hover:text-gray-600 hover:bg-gray-100
-                    dark:hover:bg-gray-700 dark:hover:text-gray-300
+                    flex-shrink-0 p-2 rounded-lg text-neutral-400
+                    hover:text-neutral-600 hover:bg-neutral-100
+                    dark:hover:bg-neutral-700 dark:hover:text-neutral-300
                     transition-colors
                     focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500
                   "

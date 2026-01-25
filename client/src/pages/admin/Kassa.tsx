@@ -263,11 +263,6 @@ export default function Kassa() {
     }
   }, [isReturnMode, displayedProducts]);
 
-  const openReturnSearch = useCallback(() => {
-    setSearchResults(displayedProducts.slice(0, 50));
-    setShowReturnSearch(true);
-  }, [displayedProducts]);
-
   const addToReturn = useCallback((product: Product) => {
     addToCart(product);
     setShowReturnSearch(false);
@@ -501,9 +496,9 @@ ${itemsHtml}
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-gray-50 dark:bg-gray-900'}`}>
+    <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-neutral-50 dark:bg-neutral-900'}`}>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -518,10 +513,10 @@ ${itemsHtml}
               )}
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
                 {isReturnMode ? tKey('Qaytarish rejimi') : tKey('Kassa (POS)')}
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 {cart.length} {tKey('ta mahsulot')} • {total.toLocaleString()} {tKey("so'm")}
               </p>
             </div>
@@ -533,9 +528,9 @@ ${itemsHtml}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowCustomerSelect(true)}
-                className="relative flex items-center gap-2 pl-10 pr-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-semibold text-gray-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
+                className="relative flex items-center gap-2 pl-10 pr-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
               >
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <div className="flex-1 text-left min-w-0">
                   {selectedCustomer ? (
                     <>
@@ -543,7 +538,7 @@ ${itemsHtml}
                         {customers.find(c => c._id === selectedCustomer)?.name || tKey("Oddiy mijoz")}
                       </div>
                       {customers.find(c => c._id === selectedCustomer)?.phone && (
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-neutral-500 truncate">
                           {customers.find(c => c._id === selectedCustomer)?.phone}
                         </div>
                       )}
@@ -552,7 +547,7 @@ ${itemsHtml}
                     <div className="truncate">{tKey("Oddiy mijoz")}</div>
                   )}
                 </div>
-                <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -567,10 +562,10 @@ ${itemsHtml}
 
             <button
               onClick={() => setShowSavedReceipts(true)}
-              className="relative flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all hover:scale-105"  
+              className="relative flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-xl text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all hover:scale-105"  
             >
-              <Save className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-              <span className="text-gray-700 dark:text-gray-300">Saqlangan</span>
+              <Save className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+              <span className="text-neutral-700 dark:text-neutral-300">Saqlangan</span>
               {savedReceipts.length > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 text-white text-xs rounded-full font-bold flex items-center justify-center">
                   {savedReceipts.length}
@@ -586,35 +581,35 @@ ${itemsHtml}
         {/* Left - Cart Section */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Table */}
-          <div className="flex flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-col shadow-sm">
+          <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm">
             {/* Table Wrapper with Horizontal Scroll */}
             <div className="flex-1 overflow-x-auto overflow-y-auto">
               <div className="min-w-[1000px]">{/* Минимальная ширина для таблицы */}
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 sticky top-0 z-10">
-                  <div className="col-span-1 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("Kod")}</div>
-                  <div className="col-span-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
-                  <div className="col-span-1 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
-                  <div className="col-span-1 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("TAN NARX")}</div>
-                  <div className="col-span-2 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SONI")}</div>
-                  <div className="col-span-2 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("NARX")}</div>
-                  <div className="col-span-2 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
-                  <div className="col-span-1 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("AMAL")}</div>
+                <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600 sticky top-0 z-10">
+                  <div className="col-span-1 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("Kod")}</div>
+                  <div className="col-span-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
+                  <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
+                  <div className="col-span-1 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("TAN NARX")}</div>
+                  <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SONI")}</div>
+                  <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("NARX")}</div>
+                  <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
+                  <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("AMAL")}</div>
                 </div>
 
                 {/* Table Body */}
                 {cart.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-400 py-20">
+                  <div className="flex items-center justify-center h-full text-neutral-400 py-20">
                     <div className="text-center">
-                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
                         <Package className="w-10 h-10 opacity-50" />
                       </div>
                       <p className="text-lg font-medium">{tKey("Savat bo'sh")}</p>
-                      <p className="text-sm text-gray-400 mt-1">{tKey("Mahsulot qo'shish uchun qidiring")}</p>
+                      <p className="text-sm text-neutral-400 mt-1">{tKey("Mahsulot qo'shish uchun qidiring")}</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
                     {cart.map((item) => (
                       <CartItemRow
                         key={item._id}
@@ -635,7 +630,7 @@ ${itemsHtml}
         </div>
 
         {/* Right - Numpad & Total */}
-        <div className="flex w-96 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex-col shadow-sm">
+        <div className="flex w-96 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6 flex-col shadow-sm">
           {/* Total Display */}
           <div className="total-display mb-4 p-5 bg-gradient-to-br from-pink-100 via-pink-50 to-white dark:from-pink-900/40 dark:via-pink-900/30 dark:to-gray-800 rounded-3xl border-2 border-pink-300 dark:border-pink-700 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-pink-200/40 dark:bg-pink-600/30 rounded-full -mr-12 -mt-12"></div>
@@ -659,7 +654,7 @@ ${itemsHtml}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addProductByCode(inputValue)}
             placeholder={tKey("Kod kiriting...")}
-            className="modern-input w-full px-4 py-4 text-center text-xl font-mono font-bold bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-2xl mb-4 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 dark:text-gray-100 transition-all shadow-md"
+            className="modern-input w-full px-4 py-4 text-center text-xl font-mono font-bold bg-white dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-600 rounded-2xl mb-4 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 dark:text-neutral-100 transition-all shadow-md"
           />
 
           {/* Numpad */}
@@ -673,7 +668,7 @@ ${itemsHtml}
                   ${key === 'C' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700' : ''}
                   ${key === '⌫' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700' : ''}
                   ${key === '+' ? 'bg-gradient-to-br from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 row-span-2' : ''}
-                  ${!['C', '⌫', '+'].includes(key) ? 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-900 dark:text-gray-100 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-600 dark:hover:to-gray-700 border border-gray-200 dark:border-gray-600' : ''}
+                  ${!['C', '⌫', '+'].includes(key) ? 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-neutral-900 dark:text-neutral-100 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-600 dark:hover:to-gray-700 border border-neutral-200 dark:border-neutral-600' : ''}
                   ${key === '+' ? 'h-full' : 'h-14'}
                 `}
               >
@@ -685,7 +680,7 @@ ${itemsHtml}
       </div>
 
       {/* Bottom Action Bar - Fixed */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-2xl z-20 pl-64">{/* pl-64 для сайдбара */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-800 border-t-2 border-neutral-200 dark:border-neutral-700 shadow-2xl z-20 pl-64">{/* pl-64 для сайдбара */}
         <div className="px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             {/* Action Buttons */}
@@ -737,24 +732,24 @@ ${itemsHtml}
       {showSearch && (
         <div className="fixed inset-0 z-50 flex items-start lg:items-center justify-center pt-4 lg:pt-0 px-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowSearch(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-red-200">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-red-200">
             {/* Header */}
-            <div className="p-6 bg-white dark:bg-gray-800">
+            <div className="p-6 bg-white dark:bg-neutral-800">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg">
                     <Search className="w-8 h-8 text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-gray-100 mb-1">{tKey("Mahsulot qidirish")}</h3>
-                    <p className="text-sm font-bold text-slate-700 dark:text-gray-400">{tKey("Nom yoki kod bo'yicha toping")}</p>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">{tKey("Mahsulot qidirish")}</h3>
+                    <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">{tKey("Nom yoki kod bo'yicha toping")}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowSearch(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors"
                 >
-                  <X className="w-6 h-6 text-slate-600 dark:text-gray-400" strokeWidth={2.5} />
+                  <X className="w-6 h-6 text-slate-600 dark:text-neutral-400" strokeWidth={2.5} />
                 </button>
               </div>
               <div className="relative">
@@ -764,13 +759,13 @@ ${itemsHtml}
                   placeholder={tKey("Mahsulot nomi yoki kodi...")}
                   value={searchQuery}
                   onChange={e => handleSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-gray-700 border-2 border-red-300 dark:border-gray-600 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 transition-all"
+                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-red-300 dark:border-neutral-600 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
                   autoFocus
                 />
               </div>
             </div>
             {/* Results */}
-            <div className="flex-1 overflow-auto p-4 bg-white dark:bg-gray-800">
+            <div className="flex-1 overflow-auto p-4 bg-white dark:bg-neutral-800">
               {isSearching ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-12 h-12 border-4 border-red-200 border-t-red-500 rounded-full animate-spin mb-4"></div>
@@ -781,8 +776,8 @@ ${itemsHtml}
                   <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
                     <Package className="w-10 h-10 text-red-500" />
                   </div>
-                  <p className="text-lg font-bold text-slate-900 dark:text-gray-100">{tKey("Mahsulot topilmadi")}</p>
-                  <p className="text-sm font-semibold text-slate-600 dark:text-gray-400 mt-1">{tKey("Boshqa nom yoki kod bilan qidiring")}</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-neutral-100">{tKey("Mahsulot topilmadi")}</p>
+                  <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400 mt-1">{tKey("Boshqa nom yoki kod bilan qidiring")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -796,11 +791,11 @@ ${itemsHtml}
                         <Package className="w-8 h-8 text-red-600 dark:text-red-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-slate-900 dark:text-gray-100 truncate mb-1">{product.name}</p>
-                        <p className="text-xs text-slate-600 dark:text-gray-400 font-bold mb-2">Kod: {product.code}</p>
+                        <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1">{product.name}</p>
+                        <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-2">Kod: {product.code}</p>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-slate-600">Tan:</span>
-                          <span className="text-sm font-bold text-slate-700 dark:text-gray-400">
+                          <span className="text-sm font-bold text-slate-700 dark:text-neutral-400">
                             {((product as any).costPrice || 0).toLocaleString()}
                           </span>
                           <span className="text-xs font-bold text-slate-600">•</span>
@@ -822,7 +817,7 @@ ${itemsHtml}
       {showPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowPayment(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20">
             {/* Header with Gradient */}
             <div className={`relative overflow-hidden ${
               isReturnMode 
@@ -871,14 +866,14 @@ ${itemsHtml}
                     <p className={`text-5xl font-black ${isReturnMode ? 'text-warning-900 dark:text-warning-100' : 'text-emerald-900 dark:text-emerald-100'}`}>
                       {total.toLocaleString()}
                     </p>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">so'm</span>
+                    <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">so'm</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Payment Options */}
-            <div className="px-6 pb-6 space-y-4 bg-white dark:bg-gray-900">
+            <div className="px-6 pb-6 space-y-4 bg-white dark:bg-neutral-900">
               <button 
                 onClick={() => handlePayment('cash')} 
                 className={`group w-full relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-2xl ${
@@ -919,7 +914,7 @@ ${itemsHtml}
               
               <button 
                 onClick={() => setShowPayment(false)} 
-                className="w-full py-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors font-bold text-lg rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="w-full py-4 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors font-bold text-lg rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
                 Bekor qilish
               </button>
@@ -932,24 +927,24 @@ ${itemsHtml}
       {showReturnSearch && (
         <div className="fixed inset-0 z-50 flex items-start lg:items-center justify-center pt-4 lg:pt-0 px-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => { setShowReturnSearch(false); if (cart.length === 0) setIsReturnMode(false); }} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-warning-200">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-warning-200">
             {/* Header */}
-            <div className="p-6 bg-white dark:bg-gray-800">
+            <div className="p-6 bg-white dark:bg-neutral-800">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-warning-500 rounded-2xl flex items-center justify-center shadow-lg">
                     <RotateCcw className="w-8 h-8 text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-gray-100 mb-1">Qaytarish rejimi</h3>
-                    <p className="text-sm font-bold text-slate-700 dark:text-gray-400">Qaytariladigan tovarni tanlang</p>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">Qaytarish rejimi</h3>
+                    <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">Qaytariladigan tovarni tanlang</p>
                   </div>
                 </div>
                 <button
                   onClick={() => { setShowReturnSearch(false); if (cart.length === 0) setIsReturnMode(false); }}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors"
                 >
-                  <X className="w-6 h-6 text-slate-600 dark:text-gray-400" strokeWidth={2.5} />
+                  <X className="w-6 h-6 text-slate-600 dark:text-neutral-400" strokeWidth={2.5} />
                 </button>
               </div>
               <div className="relative">
@@ -959,20 +954,20 @@ ${itemsHtml}
                   placeholder="Tovar nomi yoki kodi..."
                   value={returnSearchQuery}
                   onChange={e => handleReturnSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-gray-700 border-2 border-warning-300 dark:border-gray-600 rounded-2xl focus:outline-none focus:border-warning-500 focus:ring-4 focus:ring-warning-500/20 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 transition-all"
+                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-warning-300 dark:border-neutral-600 rounded-2xl focus:outline-none focus:border-warning-500 focus:ring-4 focus:ring-warning-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
                   autoFocus
                 />
               </div>
             </div>
             {/* Results */}
-            <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-gray-800">
+            <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-neutral-800">
               {searchResults.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-20 h-20 bg-warning-100 dark:bg-warning-900/30 rounded-2xl flex items-center justify-center mb-4">
                     <AlertTriangle className="w-10 h-10 text-warning-500" />
                   </div>
-                  <p className="text-lg font-bold text-slate-900 dark:text-gray-100">Tovar topilmadi</p>
-                  <p className="text-sm font-semibold text-slate-600 dark:text-gray-400 mt-1">Boshqa nom yoki kod bilan qidiring</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-neutral-100">Tovar topilmadi</p>
+                  <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400 mt-1">Boshqa nom yoki kod bilan qidiring</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -986,11 +981,11 @@ ${itemsHtml}
                         <RotateCcw className="w-8 h-8 text-warning-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-slate-900 dark:text-gray-100 truncate mb-1">{product.name}</p>
-                        <p className="text-xs text-slate-600 dark:text-gray-400 font-bold mb-2">Kod: {product.code}</p>
+                        <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1">{product.name}</p>
+                        <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-2">Kod: {product.code}</p>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-slate-600">Tan:</span>
-                          <span className="text-sm font-bold text-slate-700 dark:text-gray-400">
+                          <span className="text-sm font-bold text-slate-700 dark:text-neutral-400">
                             {((product as any).costPrice || 0).toLocaleString()}
                           </span>
                           <span className="text-xs font-bold text-slate-600">•</span>
@@ -1012,32 +1007,32 @@ ${itemsHtml}
       {showSavedReceipts && (
         <div className="fixed inset-0 z-50 flex items-start lg:items-center justify-center pt-4 lg:pt-0 px-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowSavedReceipts(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in">
             {/* Header */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800">
+            <div className="p-6 border-b border-neutral-200 dark:border-neutral-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <div className="w-12 h-12 bg-neutral-500 rounded-2xl flex items-center justify-center shadow-lg">
                     <Save className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Saqlangan cheklar</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{savedReceipts.length} ta chek</p>
+                    <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Saqlangan cheklar</h3>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{savedReceipts.length} ta chek</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowSavedReceipts(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 dark:hover:bg-gray-700 transition-colors"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 dark:hover:bg-neutral-700 transition-colors"
                 >
-                  <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                  <X className="w-6 h-6 text-neutral-500 dark:text-neutral-400" />
                 </button>
               </div>
             </div>
             {/* Content */}
             <div className="flex-1 overflow-auto p-4">
               {savedReceipts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                  <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-4">
+                <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
+                  <div className="w-20 h-20 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
                     <Save className="w-10 h-10 opacity-50" />
                   </div>
                   <p className="text-lg font-medium">Saqlangan cheklar yo'q</p>
@@ -1046,19 +1041,19 @@ ${itemsHtml}
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {savedReceipts.map(receipt => (
-                    <div key={receipt.id} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-600 hover:border-primary-500 transition-all hover:shadow-lg">
+                    <div key={receipt.id} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-600 hover:border-primary-500 transition-all hover:shadow-lg">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
                               <Package className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                            <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
                               {receipt.items.length} ta mahsulot
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{receipt.savedAt}</p>
-                          <p className="text-2xl font-black text-gray-900 dark:text-gray-100">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">{receipt.savedAt}</p>
+                          <p className="text-2xl font-black text-neutral-900 dark:text-neutral-100">
                             {receipt.total.toLocaleString()}
                             <span className="text-sm ml-1">so'm</span>
                           </p>
@@ -1089,7 +1084,7 @@ ${itemsHtml}
       {showReceipt && printReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-md animate-fadeIn" onClick={() => setShowReceipt(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-md shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20">
             {/* Header with Gradient */}
             <div className="relative overflow-hidden bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600">
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHptMC0xMGMwLTIuMjEtMS43OS00LTQtNHMtNCAxLjc5LTQgNCAxLjc5IDQgNCA0IDQtMS43OSA0LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
@@ -1107,59 +1102,59 @@ ${itemsHtml}
             </div>
 
             {/* Receipt Content */}
-            <div className="p-6 font-mono text-sm bg-gray-50 dark:bg-gray-900">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border-2 border-gray-200 dark:border-gray-700 shadow-inner">
-                <div className="text-center border-b-2 border-dashed border-gray-300 dark:border-gray-600 pb-4 mb-4">
-                  <h2 className="text-2xl font-black tracking-widest text-gray-900 dark:text-gray-100 mb-1">UNIVERSAL</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Savdo markazi</p>
-                  <div className="text-[10px] leading-relaxed text-gray-600 dark:text-gray-400 space-y-0.5">
+            <div className="p-6 font-mono text-sm bg-neutral-50 dark:bg-neutral-900">
+              <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 border-2 border-neutral-200 dark:border-neutral-700 shadow-inner">
+                <div className="text-center border-b-2 border-dashed border-neutral-300 dark:border-neutral-600 pb-4 mb-4">
+                  <h2 className="text-2xl font-black tracking-widest text-neutral-900 dark:text-neutral-100 mb-1">UNIVERSAL</h2>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Savdo markazi</p>
+                  <div className="text-[10px] leading-relaxed text-neutral-600 dark:text-neutral-400 space-y-0.5">
                     <p>+99893 140-00-04 ASADBEK</p>
                     <p>+99893 657-66-87 RAMAZON</p>
                     <p>+99888 866-66-59 UYG'UNJON</p>
                   </div>
                 </div>
                 
-                <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400 mb-4">
+                <div className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400 mb-4">
                   <p>Sana: {printReceipt.date}</p>
                   <p>Chek: #{printReceipt.receiptNumber}</p>
                 </div>
                 
-                <div className="border-t border-dashed border-gray-300 dark:border-gray-600 pt-3 mb-3">
+                <div className="border-t border-dashed border-neutral-300 dark:border-neutral-600 pt-3 mb-3">
                   <div className="space-y-3">
                     {printReceipt.items.map((item, i) => (
                       <div key={i} className="space-y-1">
-                        <div className="font-bold text-gray-900 dark:text-gray-100">{i + 1}. {item.name}</div>
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <div className="font-bold text-neutral-900 dark:text-neutral-100">{i + 1}. {item.name}</div>
+                        <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
                           <span>{item.quantity} x {item.price.toLocaleString()}</span>
-                          <span className="font-bold text-gray-700 dark:text-gray-300">{(item.price * item.quantity).toLocaleString()}</span>
+                          <span className="font-bold text-neutral-700 dark:text-neutral-300">{(item.price * item.quantity).toLocaleString()}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
                 
-                <div className="border-t-2 border-gray-900 dark:border-gray-100 pt-3 mb-3">
+                <div className="border-t-2 border-neutral-900 dark:border-neutral-100 pt-3 mb-3">
                   <div className="flex justify-between items-center">
-                    <span className="font-black text-gray-900 dark:text-gray-100">JAMI:</span>
-                    <span className="text-xl font-black text-gray-900 dark:text-gray-100">{printReceipt.total.toLocaleString()} so'm</span>
+                    <span className="font-black text-neutral-900 dark:text-neutral-100">JAMI:</span>
+                    <span className="text-xl font-black text-neutral-900 dark:text-neutral-100">{printReceipt.total.toLocaleString()} so'm</span>
                   </div>
                 </div>
                 
-                <div className="text-center py-2 bg-gray-100 dark:bg-gray-700 rounded-xl">
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <div className="text-center py-2 bg-neutral-100 dark:bg-neutral-700 rounded-xl">
+                  <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
                     To'lov: {printReceipt.paymentMethod === 'cash' ? '💵 Naqd pul' : '💳 Plastik karta'}
                   </p>
                 </div>
                 
-                <div className="text-center mt-4 pt-4 border-t border-dashed border-gray-300 dark:border-gray-600">
-                  <p className="font-bold text-gray-900 dark:text-gray-100 mb-1">Xaridingiz uchun rahmat!</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Yana kutamiz! 😊</p>
+                <div className="text-center mt-4 pt-4 border-t border-dashed border-neutral-300 dark:border-neutral-600">
+                  <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">Xaridingiz uchun rahmat!</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Yana kutamiz! 😊</p>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+            <div className="p-6 bg-neutral-50 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex gap-3">
               <button
                 onClick={handlePrint}
                 className="flex-1 flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl font-bold hover:from-primary-600 hover:to-primary-700 transition-all hover:scale-105 shadow-lg"
@@ -1169,7 +1164,7 @@ ${itemsHtml}
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
-                className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                className="flex-1 py-4 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-2xl font-bold hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
               >
                 Yopish
               </button>
@@ -1196,32 +1191,32 @@ ${itemsHtml}
                     <User className="w-8 h-8 text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900 mb-1">Mijozni tanlang</h3>
-                    <p className="text-sm font-bold text-gray-700">Ism yoki telefon bo'yicha qidiring</p>
+                    <h3 className="text-2xl font-black text-neutral-900 mb-1">Mijozni tanlang</h3>
+                    <p className="text-sm font-bold text-neutral-700">Ism yoki telefon bo'yicha qidiring</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowCustomerSelect(false)}
                   className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors"
                 >
-                  <X className="w-6 h-6 text-gray-600" strokeWidth={2.5} />
+                  <X className="w-6 h-6 text-neutral-600" strokeWidth={2.5} />
                 </button>
               </div>
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="text"
                   placeholder="Mijoz ismi yoki telefon raqami..."
                   value={customerSearchQuery}
                   onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white border-2 border-red-300 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white border-2 border-red-300 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   autoFocus
                 />
               </div>
             </div>
             
             {/* Results */}
-            <div className="flex-1 overflow-auto p-4 bg-gray-50">
+            <div className="flex-1 overflow-auto p-4 bg-neutral-50">
               {/* Oddiy mijoz option */}
               <button
                 onClick={() => {
@@ -1232,7 +1227,7 @@ ${itemsHtml}
                 className={`w-full flex items-center gap-4 p-5 mb-3 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
                   selectedCustomer === '' 
                     ? 'bg-red-500 border-red-600 shadow-lg' 
-                    : 'bg-white border-gray-300 hover:border-red-400'
+                    : 'bg-white border-neutral-300 hover:border-red-400'
                 }`}
               >
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
@@ -1250,14 +1245,14 @@ ${itemsHtml}
                   <p className={`text-lg font-black mb-1 ${
                     selectedCustomer === '' 
                       ? 'text-white' 
-                      : 'text-gray-900'
+                      : 'text-neutral-900'
                   }`}>
                     {tKey("Oddiy mijoz")}
                   </p>
                   <p className={`text-sm font-semibold ${
                     selectedCustomer === '' 
                       ? 'text-white/90' 
-                      : 'text-gray-600'
+                      : 'text-neutral-600'
                   }`}>
                     Doimiy mijoz emas
                   </p>
@@ -1288,7 +1283,7 @@ ${itemsHtml}
                       className={`w-full flex items-center gap-4 p-5 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
                         selectedCustomer === customer._id 
                           ? 'bg-red-500 border-red-600 shadow-lg' 
-                          : 'bg-white border-gray-300 hover:border-red-400'
+                          : 'bg-white border-neutral-300 hover:border-red-400'
                       }`}
                     >
                       <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
@@ -1306,7 +1301,7 @@ ${itemsHtml}
                         <p className={`text-lg font-black mb-1 truncate ${
                           selectedCustomer === customer._id 
                             ? 'text-white' 
-                            : 'text-gray-900'
+                            : 'text-neutral-900'
                         }`}>
                           {customer.name}
                         </p>
@@ -1314,12 +1309,12 @@ ${itemsHtml}
                           <Phone className={`w-4 h-4 ${
                             selectedCustomer === customer._id 
                               ? 'text-white/90' 
-                              : 'text-gray-600'
+                              : 'text-neutral-600'
                           }`} />
                           <p className={`text-sm font-semibold ${
                             selectedCustomer === customer._id 
                               ? 'text-white' 
-                              : 'text-gray-900'
+                              : 'text-neutral-900'
                           }`}>
                             {customer.phone}
                           </p>
@@ -1328,7 +1323,7 @@ ${itemsHtml}
                           <p className={`text-xs font-medium mt-1 ${
                             selectedCustomer === customer._id 
                               ? 'text-white/80' 
-                              : 'text-gray-600'
+                              : 'text-neutral-600'
                           }`}>
                             {customer.address}
                           </p>
@@ -1349,11 +1344,11 @@ ${itemsHtml}
                        customer.phone.toLowerCase().includes(query);
               }).length === 0 && customerSearchQuery && (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mb-4">
-                    <User className="w-10 h-10 text-gray-400" />
+                  <div className="w-20 h-20 bg-neutral-200 rounded-2xl flex items-center justify-center mb-4">
+                    <User className="w-10 h-10 text-neutral-400" />
                   </div>
-                  <p className="text-lg font-bold text-gray-900">Mijoz topilmadi</p>
-                  <p className="text-sm font-semibold text-gray-600 mt-1">Boshqa ism yoki telefon bilan qidiring</p>
+                  <p className="text-lg font-bold text-neutral-900">Mijoz topilmadi</p>
+                  <p className="text-sm font-semibold text-neutral-600 mt-1">Boshqa ism yoki telefon bilan qidiring</p>
                 </div>
               )}
             </div>
@@ -1368,23 +1363,23 @@ ${itemsHtml}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
             onClick={() => setShowCustomerModal(false)} 
           />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 animate-scaleIn">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 animate-scaleIn">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
-                  <User className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center">
+                  <User className="w-6 h-6 text-neutral-600 dark:text-neutral-400" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100">Yangi mijoz</h3>
+                <h3 className="text-2xl font-black text-neutral-900 dark:text-neutral-100">Yangi mijoz</h3>
               </div>
               <button
                 onClick={() => {
                   setShowCustomerModal(false);
                   setCustomerFormData({ name: '', phone: '', region: '' });
                 }}
-                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
-                <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                <X className="w-6 h-6 text-neutral-500 dark:text-neutral-400" />
               </button>
             </div>
 
@@ -1392,7 +1387,7 @@ ${itemsHtml}
             <div className="p-6 space-y-5">
               {/* Ism */}
               <div>
-                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                <label className="block text-base font-bold text-neutral-900 dark:text-neutral-100 mb-3">
                   Ism
                 </label>
                 <input
@@ -1400,38 +1395,38 @@ ${itemsHtml}
                   value={customerFormData.name}
                   onChange={(e) => setCustomerFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Mijoz ismi"
-                  className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
+                  className="w-full px-4 py-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-2xl text-base text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
                   autoFocus
                 />
               </div>
 
               {/* Telefon */}
               <div>
-                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                <label className="block text-base font-bold text-neutral-900 dark:text-neutral-100 mb-3">
                   Telefon
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                   <input
                     type="tel"
                     value={customerFormData.phone}
                     onChange={(e) => setCustomerFormData(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="+998 (XX) XXX-XX-XX"
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-2xl text-base text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
                   />
                 </div>
               </div>
 
               {/* Viloyat */}
               <div>
-                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                <label className="block text-base font-bold text-neutral-900 dark:text-neutral-100 mb-3">
                   Viloyat
                 </label>
                 <div className="relative">
                   <select
                     value={customerFormData.region}
                     onChange={(e) => setCustomerFormData(prev => ({ ...prev, region: e.target.value }))}
-                    className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all appearance-none cursor-pointer"
+                    className="w-full px-4 py-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-2xl text-base text-neutral-900 dark:text-neutral-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Viloyatni tanlang</option>
                     {regionNames.map((region) => (
@@ -1441,7 +1436,7 @@ ${itemsHtml}
                     ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
@@ -1450,13 +1445,13 @@ ${itemsHtml}
             </div>
 
             {/* Actions */}
-            <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+            <div className="p-6 bg-neutral-50 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex gap-3">
               <button
                 onClick={() => {
                   setShowCustomerModal(false);
                   setCustomerFormData({ name: '', phone: '', region: '' });
                 }}
-                className="flex-1 py-4 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-100 dark:hover:bg-gray-600 transition-all border-2 border-gray-200 dark:border-gray-600"
+                className="flex-1 py-4 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-2xl font-bold hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-all border-2 border-neutral-200 dark:border-neutral-600"
               >
                 Bekor qilish
               </button>

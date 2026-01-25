@@ -46,18 +46,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         focus-visible:ring-primary-500
       `,
       secondary: `
-        bg-gray-100 text-gray-900 border border-gray-200
-        hover:bg-gray-200 hover:border-gray-300
-        active:bg-gray-300
+        bg-neutral-100 text-neutral-900 border border-neutral-200
+        hover:bg-neutral-200 hover:border-neutral-300
+        active:bg-neutral-300
         focus-visible:ring-gray-400
-        dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700
-        dark:hover:bg-gray-700
+        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
+        dark:hover:bg-neutral-700
       `,
       ghost: `
-        bg-transparent text-gray-600
-        hover:bg-gray-100 hover:text-gray-900
-        active:bg-gray-200
-        dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100
+        bg-transparent text-neutral-600
+        hover:bg-neutral-100 hover:text-neutral-900
+        active:bg-neutral-200
+        dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100
       `,
       success: `
         bg-success-600 text-white shadow-sm

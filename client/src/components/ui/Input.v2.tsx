@@ -51,7 +51,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {label}
             {props.required && <span className="text-danger-500 ml-1">*</span>}
           </label>
@@ -60,7 +60,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className="relative group">
           {/* Left Icon */}
           {icon && iconPosition === 'left' && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-600 transition-colors pointer-events-none">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-primary-600 transition-colors pointer-events-none">
               {icon}
             </div>
           )}
@@ -70,19 +70,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             type={inputType}
             className={`
-              w-full px-4 py-3 text-sm text-gray-900 bg-white
-              border rounded-lg placeholder:text-gray-400
+              w-full px-4 py-3 text-sm text-neutral-900 bg-white
+              border rounded-lg placeholder:text-neutral-400
               transition-all duration-200
               focus:outline-none focus:ring-4
-              disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed
-              dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700
-              dark:focus:bg-gray-900 dark:placeholder:text-gray-500
-              dark:disabled:bg-gray-900
+              disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed
+              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
+              dark:focus:bg-neutral-900 dark:placeholder:text-neutral-500
+              dark:disabled:bg-neutral-900
               ${error 
                 ? 'border-danger-300 focus:border-danger-500 focus:ring-danger-500/10 pr-10' 
                 : success
                 ? 'border-success-300 focus:border-success-500 focus:ring-success-500/10 pr-10'
-                : 'border-gray-300 focus:border-red-500 focus:ring-red-500/10'
+                : 'border-neutral-300 focus:border-red-500 focus:ring-red-500/10'
               }
               ${icon && iconPosition === 'left' ? 'pl-10' : ''}
               ${icon && iconPosition === 'right' ? 'pr-10' : ''}
@@ -94,7 +94,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           
           {/* Right Icon */}
           {icon && iconPosition === 'right' && !error && !success && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
               {icon}
             </div>
           )}
@@ -104,7 +104,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -134,7 +134,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                 {error}
               </p>
             ) : helperText ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 {helperText}
               </p>
             ) : null}

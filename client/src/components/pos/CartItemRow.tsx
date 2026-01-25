@@ -60,24 +60,24 @@ const CartItemRow = memo(({
       className={`grid grid-cols-12 gap-3 px-6 py-4 items-center cursor-pointer transition-all ${
         isSelected
           ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 shadow-sm'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+          : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
       }`}
     >
       <div className="col-span-1">
-        <span className="text-sm font-mono font-bold text-slate-900 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+        <span className="text-sm font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded">
           {item.code}
         </span>
       </div>
       <div className="col-span-2">
-        <span className="text-sm font-bold text-slate-900 dark:text-gray-100">{item.name}</span>
+        <span className="text-sm font-bold text-slate-900 dark:text-neutral-100">{item.name}</span>
       </div>
       <div className="col-span-1 text-center">
-        <span className={`text-sm font-bold ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-gray-100'}`}>
+        <span className={`text-sm font-bold ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
           {remainingStock} ta
         </span>
       </div>
       <div className="col-span-1 text-right">
-        <span className="text-sm font-semibold text-slate-600 dark:text-gray-400">{((item as any).costPrice || 0).toLocaleString()}</span>
+        <span className="text-sm font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>
       </div>
       <div className="col-span-2 flex items-center justify-center">
         <input
@@ -85,7 +85,7 @@ const CartItemRow = memo(({
           value={item.cartQuantity}
           onChange={handleQuantityChange}
           onBlur={handleQuantityBlur}
-          className="w-24 h-12 text-center font-black text-xl border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
+          className="w-24 h-12 text-center font-black text-xl border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
         />
       </div>
       <div className="col-span-2 text-right">
@@ -93,11 +93,11 @@ const CartItemRow = memo(({
           type="text"
           value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
           onChange={handlePriceChange}
-          className="w-32 h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl px-3 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
+          className="w-32 h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl px-3 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
         />
       </div>
       <div className="col-span-2 text-right">
-        <span className="text-lg font-black text-slate-900 dark:text-gray-100">
+        <span className="text-lg font-black text-slate-900 dark:text-neutral-100">
           {totalPrice.toLocaleString()}
         </span>
       </div>

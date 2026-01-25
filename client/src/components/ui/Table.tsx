@@ -51,7 +51,7 @@ export default function Table<T>({
     return (
       <div className="space-y-3">
         {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200">
+          <div key={i} className="flex items-center gap-4 p-4 bg-white rounded-lg border border-neutral-200">
             <div className="skeleton w-12 h-12 rounded-lg" />
             <div className="flex-1 space-y-2">
               <div className="skeleton-title" />
@@ -65,8 +65,8 @@ export default function Table<T>({
 
   if (data.length === 0) {
     return emptyState || (
-      <div className="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-lg border border-gray-200">
-        <p className="text-gray-500">Ma'lumot topilmadi</p>
+      <div className="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-lg border border-neutral-200">
+        <p className="text-neutral-500">Ma'lumot topilmadi</p>
       </div>
     );
   }
@@ -80,16 +80,16 @@ export default function Table<T>({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b-2 border-gray-200">
+              <tr className="bg-neutral-50 border-b-2 border-neutral-200">
                 {columns.map(column => (
                   <th
                     key={column.key}
                     className={`
-                      px-6 py-4 text-sm font-semibold text-gray-900
+                      px-6 py-4 text-sm font-semibold text-neutral-900
                       ${alignClasses[column.align || 'left']}
                     `}
                     style={{ width: column.width }}
@@ -99,14 +99,14 @@ export default function Table<T>({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-neutral-100">
               {data.map(item => (
                 <tr
                   key={keyExtractor(item)}
                   onClick={() => onRowClick?.(item)}
                   className={`
                     transition-colors
-                    hover:bg-gray-50
+                    hover:bg-neutral-50
                     ${onRowClick ? 'cursor-pointer' : ''}
                   `}
                 >
@@ -114,7 +114,7 @@ export default function Table<T>({
                     <td
                       key={column.key}
                       className={`
-                        px-6 py-4 text-sm text-gray-900
+                        px-6 py-4 text-sm text-neutral-900
                         ${alignClasses[column.align || 'left']}
                       `}
                     >
@@ -138,17 +138,17 @@ export default function Table<T>({
             key={keyExtractor(item)}
             onClick={() => onRowClick?.(item)}
             className={`
-              bg-white rounded-xl p-4 border border-gray-200
+              bg-white rounded-xl p-4 border border-neutral-200
               transition-all duration-200
               ${onRowClick ? 'cursor-pointer active:scale-98' : ''}
             `}
           >
             {columns.map(column => (
               <div key={column.key} className="flex justify-between items-start py-2">
-                <span className="text-sm font-medium text-gray-500">
+                <span className="text-sm font-medium text-neutral-500">
                   {column.label}
                 </span>
-                <span className="text-sm text-gray-900 text-right ml-4">
+                <span className="text-sm text-neutral-900 text-right ml-4">
                   {column.render 
                     ? column.render(item) 
                     : (item as any)[column.key]

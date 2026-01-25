@@ -52,15 +52,15 @@ export default function ProductSearchModal({
         </div>
 
         {/* Search Input */}
-        <div className="p-4 border-b border-gray-100 flex-shrink-0">
+        <div className="p-4 border-b border-neutral-100 flex-shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Nom yoki kod bo'yicha qidirish..."
-              className="w-full h-12 pl-10 pr-4 bg-white text-gray-900 placeholder-gray-400 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-500"
+              className="w-full h-12 pl-10 pr-4 bg-white text-neutral-900 placeholder-gray-400 border-2 border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600 dark:placeholder-gray-500"
               autoFocus
             />
           </div>

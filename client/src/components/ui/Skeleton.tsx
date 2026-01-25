@@ -13,7 +13,7 @@ export function Skeleton({
   height,
   count = 1
 }: SkeletonProps) {
-  const baseClasses = 'bg-gray-200 dark:bg-gray-700 animate-pulse';
+  const baseClasses = 'bg-neutral-200 dark:bg-neutral-700 animate-pulse';
   
   const variantClasses = {
     text: 'h-4 rounded',
