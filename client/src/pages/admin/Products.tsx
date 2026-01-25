@@ -8,6 +8,7 @@ import { useAlert } from '../../hooks/useAlert';
 import { useDebounce } from '../../hooks/useDebounce';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
+import { searchProducts } from '../../utils/productSearch';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -176,6 +177,11 @@ export default function Products() {
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
   const [printing, setPrinting] = useState(false);
+  const [showPriceOnLabel, setShowPriceOnLabel] = useState(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem('showPriceOnLabel');
+    return saved ? JSON.parse(saved) : true; // Default: показывать цену
+  });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -617,11 +623,22 @@ export default function Products() {
         console.error('Error checking code:', err);
       }
     } else {
-      // При добавлении нового товара просто показываем предупреждение, но не блокируем
+      // При добавлении нового товара автоматически выбираем свободный код
       try {
         const res = await api.get(`/products/check-code/${code}`);
         if (res.data.exists) {
-          setCodeError(`Kod "${code}" band. Saqlashda avtomatik bo'sh kod tanlanadi.`);
+          // Код занят - автоматически получаем следующий свободный
+          try {
+            const warehouseParam = mainWarehouse?._id ? `?warehouseId=${mainWarehouse._id}` : '';
+            const nextCodeRes = await api.get(`/products/next-code${warehouseParam}`);
+            setFormData(prev => ({ ...prev, code: nextCodeRes.data.code }));
+            setCodeError('');
+            // Тихо меняем код без уведомления
+            console.log(`Kod "${code}" band edi. Avtomatik yangi kod tanlandi: ${nextCodeRes.data.code}`);
+          } catch (err) {
+            console.error('Error getting next code:', err);
+            setCodeError(`Kod "${code}" band`);
+          }
         } else {
           setCodeError('');
         }
@@ -699,15 +716,21 @@ export default function Products() {
     }
     
     const qrData = JSON.stringify({ id: printProduct._id, code: printProduct.code, name: printProduct.name });
+    const price = printProduct.price;
     
     const labelsHtml = Array(qty).fill(`
       <div class="label">
-        <div class="info">
-          <div class="name">${printProduct.name}</div>
-          <div class="code">Kod: ${printProduct.code}</div>
-        </div>
-        <div class="qr-container">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}" alt="QR" />
+        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${price.toLocaleString()} so'm</div></div>` : ''}
+        <div class="content-row">
+          <div class="left-section">
+            <div class="name">${uz(printProduct.name)}</div>
+            <div class="code">Kod: ${printProduct.code}</div>
+          </div>
+          <div class="right-section">
+            <div class="qr-container">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR" />
+            </div>
+          </div>
         </div>
       </div>
     `).join('');
@@ -717,7 +740,7 @@ export default function Products() {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Ценник - ${printProduct.name}</title>
+  <title>Ценник - ${uz(printProduct.name)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { size: 58mm 40mm; margin: 0; }
@@ -728,14 +751,69 @@ export default function Products() {
     }
     body { font-family: Arial, sans-serif; background: white; }
     .label { 
-      width: 58mm; height: 40mm; padding: 2mm;
-      display: flex; align-items: center; justify-content: space-between;
+      width: 58mm; 
+      height: 40mm; 
+      padding: 2mm;
+      display: flex; 
+      flex-direction: column;
+      justify-content: center;
     }
-    .info { flex: 1; }
-    .name { font-size: 14pt; font-weight: bold; margin-bottom: 2mm; line-height: 1.1; }
-    .code { font-size: 12pt; color: #333; }
-    .qr-container { width: 22mm; height: 22mm; flex-shrink: 0; }
-    .qr-container img { width: 100%; height: 100%; }
+    .price-row {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 2mm;
+    }
+    .price { 
+      font-size: 22pt; 
+      font-weight: bold; 
+      color: #000;
+      line-height: 1;
+      white-space: nowrap;
+      display: inline-block;
+    }
+    .content-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2mm;
+    }
+    .left-section { 
+      flex: 0 0 28mm;
+      max-width: 28mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .right-section {
+      flex: 0 0 24mm;
+    }
+    .name { 
+      font-size: 15pt; 
+      font-weight: bold; 
+      margin-bottom: 1.5mm; 
+      line-height: 1.1;
+      color: #000;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .code { 
+      font-size: 13pt; 
+      color: #333;
+      font-weight: 600;
+    }
+    .qr-container { 
+      width: 24mm; 
+      height: 24mm; 
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-container img { 
+      width: 100%; 
+      height: 100%;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -804,13 +882,15 @@ export default function Products() {
 
   // Memoize filtered products with debounced search
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-                           p.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
+    const searchFiltered = searchProducts(products, debouncedSearchQuery);
+    
+    // Применяем фильтр по остаткам
+    return searchFiltered.filter(p => {
       const matchesStock = stockFilter === 'all' || 
                           (stockFilter === 'low' && p.quantity <= (p.minStock || 5) && p.quantity > 0) ||
                           (stockFilter === 'out' && p.quantity === 0);
-      return matchesSearch && matchesStock;
+      return matchesStock;
     });
   }, [products, debouncedSearchQuery, stockFilter]);
 
@@ -1239,6 +1319,25 @@ export default function Products() {
                   onChange={e => setPrintQuantity(e.target.value)}
                   disabled={printing}
                 />
+              </div>
+              
+              {/* Checkbox для отображения цены */}
+              <div className="flex items-center gap-3 p-4 bg-surface-50 dark:bg-surface-700 rounded-xl border-2 border-surface-200 dark:border-surface-600">
+                <input
+                  type="checkbox"
+                  id="showPrice"
+                  checked={showPriceOnLabel}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setShowPriceOnLabel(checked);
+                    localStorage.setItem('showPriceOnLabel', JSON.stringify(checked));
+                  }}
+                  className="w-5 h-5 rounded border-2 border-surface-300 dark:border-surface-500 text-primary-600 focus:ring-2 focus:ring-primary-500 cursor-pointer"
+                  disabled={printing}
+                />
+                <label htmlFor="showPrice" className="flex-1 text-sm font-bold text-surface-700 dark:text-surface-300 cursor-pointer select-none">
+                  Narxni ko'rsatish ({printProduct.price.toLocaleString()} so'm)
+                </label>
               </div>
               
               <div className="flex gap-3 pt-2">

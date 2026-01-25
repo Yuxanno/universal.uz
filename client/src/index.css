@@ -2,6 +2,197 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CRITICAL PERFORMANCE OPTIMIZATIONS */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* DISABLE ALL EXPENSIVE EFFECTS */
+@layer utilities {
+  /* Remove backdrop-blur completely */
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    backdrop-filter: none !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  .dark .backdrop-blur-sm,
+  .dark .backdrop-blur-md,
+  .dark .backdrop-blur-lg,
+  .dark .backdrop-blur-xl {
+    background: rgba(0, 0, 0, 0.7) !important;
+  }
+  
+  /* Disable will-change (causes memory leaks) */
+  * {
+    will-change: auto !important;
+  }
+  
+  /* Optimize containment */
+  .contain-paint {
+    contain: paint;
+  }
+}
+
+/* INSTANT ANIMATIONS (NO DELAYS!) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* INSTANT animations (50ms instead of 150-300ms) */
+.animate-fadeIn,
+.animate-fade-in {
+  animation: fadeIn 50ms ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 50ms ease-out;
+}
+
+.animate-scaleIn,
+.animate-scale-in {
+  animation: scaleIn 50ms ease-out;
+}
+
+/* INSTANT transitions */
+.transition-all {
+  transition-property: transform, opacity;
+  transition-duration: 50ms !important;
+  transition-timing-function: ease-out;
+}
+
+.transition-colors {
+  transition-duration: 50ms !important;
+}
+
+.transition-transform {
+  transition-duration: 50ms !important;
+}
+
+/* Remove expensive shadows */
+.shadow-xl {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-2xl {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Optimize hover effects */
+.hover\:scale-105:hover {
+  transform: scale(1.01);
+}
+
+.hover\:scale-110:hover {
+  transform: scale(1.03);
+}
+
+/* Loading spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+/* Optimize images */
+img {
+  content-visibility: auto;
+}
+
+/* Reduce repaints */
+.cart-item,
+.product-row,
+.product-card {
+  contain: layout style;
+}
+
+/* Optimize inputs */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Optimize scrolling */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto; /* Instant scroll, no smooth */
+}
+
+/* Print optimizations */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* MEMORY LEAK PREVENTION */
+/* Limit max height to prevent infinite scrolling memory leaks */
+.max-h-screen {
+  max-height: 100vh;
+}
+
+/* Prevent layout thrashing */
+.fixed,
+.absolute,
+.sticky {
+  transform: translateZ(0);
+}
+
+
 /* ============================================
    🎨 UNIVERSAL.UZ DESIGN SYSTEM 2025
    Logo-Based • White & Red • Professional
