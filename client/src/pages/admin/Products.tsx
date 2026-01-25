@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import Header from '../../components/Header';
-import { Plus, Minus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload, Printer, ArrowRightLeft } from 'lucide-react';
+import { Plus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload, Printer, ArrowRightLeft } from 'lucide-react';
 import { Product, Warehouse } from '../../types';
 import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
@@ -47,11 +47,11 @@ const ProductRow = memo(({
       </div>
       <div className="col-span-1">
         <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
-          {(product as any)._warehouseName}
+          {product._warehouseName || 'N/A'}
         </span>
       </div>
       <div className="col-span-1">
-        <p className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber((product as any).costPrice || 0)}</p>
+        <p className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(product.costPrice || 0)}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400">so'm</p>
       </div>
       <div className="col-span-2">
@@ -193,7 +193,6 @@ export default function Products() {
   const [nameError, setNameError] = useState('');
   const [showPackageInput, setShowPackageInput] = useState(false);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
-  const [quantityMode, setQuantityMode] = useState<'add' | 'subtract'>('add');
   const [quantityInput, setQuantityInput] = useState('');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferProduct, setTransferProduct] = useState<Product | null>(null);
@@ -288,6 +287,18 @@ export default function Products() {
   const handleQuantityChange = useCallback((value: string) => {
     setFormData(prev => ({ ...prev, quantity: parseNumber(value) }));
   }, []);
+
+  const applyQuantityChange = useCallback(() => {
+    if (!quantityInput || Number(quantityInput) <= 0) return;
+    
+    const currentQty = Number(formData.quantity) || 0;
+    const changeQty = Number(quantityInput);
+    const newQty = currentQty + changeQty;
+    
+    setFormData(prev => ({ ...prev, quantity: String(Math.max(0, newQty)) }));
+    setQuantityInput('');
+    setShowQuantityModal(false);
+  }, [quantityInput, formData.quantity]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -566,25 +577,6 @@ export default function Products() {
     } finally {
       setTransferring(false);
     }
-  };
-
-  const openQuantityModal = (mode: 'add' | 'subtract') => {
-    setQuantityMode(mode);
-    setQuantityInput('');
-    setShowQuantityModal(true);
-  };
-
-  const applyQuantityChange = () => {
-    const change = Number(quantityInput) || 0;
-    if (change <= 0) return;
-    
-    const currentQty = Number(formData.quantity) || 0;
-    let newQty = quantityMode === 'add' ? currentQty + change : currentQty - change;
-    if (newQty < 0) newQty = 0;
-    
-    setFormData({ ...formData, quantity: String(newQty) });
-    setShowQuantityModal(false);
-    setQuantityInput('');
   };
 
   const openAddModal = async () => {
@@ -1036,22 +1028,15 @@ export default function Products() {
                   )}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-surface-700 mb-2 block">Miqdori</label>
-                  {editingProduct ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 px-4 py-3 bg-surface-100 rounded-xl text-center font-semibold text-surface-900">
-                        {formatNumber(formData.quantity || 0)}
-                      </div>
-                      <button type="button" onClick={() => openQuantityModal('add')} className="btn-icon bg-success-100 text-success-600 hover:bg-success-200">
-                        <Plus className="w-5 h-5" />
-                      </button>
-                      <button type="button" onClick={() => openQuantityModal('subtract')} className="btn-icon bg-danger-100 text-danger-600 hover:bg-danger-200">
-                        <Minus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <input type="text" className="input" placeholder="0" value={formattedQuantity} onChange={e => handleQuantityChange(e.target.value)} required />
-                  )}
+                  <label className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2 block">Miqdori</label>
+                  <input 
+                    type="text" 
+                    className="input text-center font-semibold" 
+                    placeholder="0" 
+                    value={formattedQuantity} 
+                    onChange={e => handleQuantityChange(e.target.value)} 
+                    required 
+                  />
                 </div>
               </div>
               <div>
@@ -1156,16 +1141,16 @@ export default function Products() {
           <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-sm relative z-10 animate-scaleIn p-6 border-2 border-surface-100 dark:border-surface-700">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
-                {quantityMode === 'add' ? "Miqdor qo'shish" : "Miqdor ayirish"}
+                Miqdor qo'shish
               </h3>
               <button onClick={() => setShowQuantityModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 text-surface-700 dark:text-surface-300 transition-all hover:scale-110 hover:rotate-90 duration-200" title="Yopish">
                 <X className="w-6 h-6" strokeWidth={3} />
               </button>
             </div>
             
-            <div className={`rounded-xl p-4 mb-6 ${quantityMode === 'add' ? 'bg-success-50' : 'bg-danger-50'}`}>
+            <div className="rounded-xl p-4 mb-6 bg-success-50">
               <p className="text-sm text-surface-600 mb-1">Hozirgi miqdor</p>
-              <p className={`text-2xl font-bold ${quantityMode === 'add' ? 'text-success-600' : 'text-danger-600'}`}>
+              <p className="text-2xl font-bold text-success-600">
                 {formatNumber(formData.quantity || 0)} dona
               </p>
             </div>
@@ -1173,7 +1158,7 @@ export default function Products() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">
-                  {quantityMode === 'add' ? "Qo'shiladigan miqdor" : "Ayiriladigan miqdor"}
+                  Qo'shiladigan miqdor
                 </label>
                 <input 
                   type="text" 
@@ -1189,11 +1174,7 @@ export default function Products() {
                 <div className="bg-surface-50 rounded-xl p-4">
                   <p className="text-sm text-surface-600 mb-1">Yangi miqdor</p>
                   <p className="text-xl font-bold text-surface-900">
-                    {formatNumber(
-                      quantityMode === 'add' 
-                        ? (Number(formData.quantity) || 0) + Number(quantityInput)
-                        : Math.max(0, (Number(formData.quantity) || 0) - Number(quantityInput))
-                    )} dona
+                    {formatNumber((Number(formData.quantity) || 0) + Number(quantityInput))} dona
                   </p>
                 </div>
               )}
@@ -1205,10 +1186,10 @@ export default function Products() {
                 <button 
                   type="button" 
                   onClick={applyQuantityChange} 
-                  className={`flex-1 ${quantityMode === 'add' ? 'btn-success' : 'btn-danger'}`}
+                  className="flex-1 btn-success"
                   disabled={!quantityInput || Number(quantityInput) <= 0}
                 >
-                  {quantityMode === 'add' ? "Qo'shish" : "Ayirish"}
+                  Qo'shish
                 </button>
               </div>
             </div>

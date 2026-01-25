@@ -42,11 +42,12 @@ server/.telegram_chat_ids
 server/.telegram_customers.json
 server/.telegram_users.json
 
-# Uploads (user uploaded files)
-server/uploads/
-
 # Database backups
 *.sql
 *.dump
+<<<<<<< HEAD
 backup/
 server/.env
+=======
+backup/
+>>>>>>> b75e3a9446d56c4be5562e9e84a0fe0af5af698d

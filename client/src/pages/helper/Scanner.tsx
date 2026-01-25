@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { QrCode, Search, Send, Plus, Package, ShoppingCart, CheckCircle, Loader2, Trash2, Tag } from 'lucide-react';
+import { QrCode, Search, Send, Plus, Package, ShoppingCart, CheckCircle, Loader2, Trash2, Tag, X, Minus } from 'lucide-react';
 import { Product, CartItem } from '../../types';
 import api from '../../utils/api';
 import { formatNumber } from '../../utils/format';
@@ -69,7 +69,9 @@ export default function HelperScanner() {
         clearInterval(checkIntervalRef.current);
       }
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        scannerRef.current.stop().catch((err) => {
+          console.log('Scanner cleanup error:', err);
+        });
       }
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
@@ -108,12 +110,13 @@ export default function HelperScanner() {
             const cartItems: CartItemWithOriginalPrice[] = res.data.items.map((item: any) => {
               // Находим оригинальную цену из списка продуктов
               const product = productsList.find(p => p._id === item.product);
+              const originalPrice = product?.price || item.price;
               return {
                 _id: item.product,
                 name: item.name,
                 code: item.code,
                 price: item.price,
-                originalPrice: product?.price || item.price,
+                originalPrice: originalPrice,
                 cartQuantity: item.quantity,
                 quantity: 0
               };
@@ -224,7 +227,9 @@ export default function HelperScanner() {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
-      } catch (err) {}
+      } catch (err) {
+        console.log('Scanner already stopped');
+      }
       scannerRef.current = null;
     }
     setScanning(false);
@@ -256,20 +261,28 @@ export default function HelperScanner() {
       if (existing) {
         return prev.map(p => p._id === product._id ? { ...p, cartQuantity: p.cartQuantity + 1 } : p);
       }
-      // Add with empty price (0), store original price separately
-      return [...prev, { ...product, cartQuantity: 1, price: 0, originalPrice: product.price }];
+      // Add with product price, store original price separately
+      return [...prev, { 
+        ...product, 
+        cartQuantity: 1, 
+        price: product.price, 
+        originalPrice: product.price 
+      }];
     });
     setSearchQuery('');
     setSearchResults([]);
     setScannedProduct(null);
   };
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = useCallback((id: string) => {
     // Don't allow removing if receipt is pending
-    if (receiptStatus === 'pending') return;
+    if (receiptStatus === 'pending') {
+      showAlert('Chek yuborilgan, o\'zgartirish mumkin emas', 'Ogohlantirish', 'warning');
+      return;
+    }
     
     setCart(prev => prev.filter(item => item._id !== id));
-  };
+  }, [receiptStatus, showAlert]);
 
   const sendToCashier = async () => {
     if (cart.length === 0) return;
@@ -291,12 +304,25 @@ export default function HelperScanner() {
   const total = cart.reduce((sum, item) => sum + (item.price || 0) * item.cartQuantity, 0);
 
   // Функция для вставки оригинальной цены
-  const fillOriginalPrice = (id: string) => {
-    if (receiptStatus === 'pending') return;
-    setCart(prev => prev.map(item => 
-      item._id === id ? { ...item, price: item.originalPrice || 0 } : item
-    ));
-  };
+  const fillOriginalPrice = useCallback((id: string) => {
+    if (receiptStatus === 'pending') {
+      showAlert('Chek yuborilgan, o\'zgartirish mumkin emas', 'Ogohlantirish', 'warning');
+      return;
+    }
+    
+    setCart(prev => prev.map(item => {
+      if (item._id === id && item.originalPrice) {
+        console.log('🏷️ Filling original price:', {
+          id: item._id,
+          name: item.name,
+          currentPrice: item.price,
+          originalPrice: item.originalPrice
+        });
+        return { ...item, price: item.originalPrice };
+      }
+      return item;
+    }));
+  }, [receiptStatus, showAlert]);
 
   return (
     <div className="space-y-4">
@@ -324,11 +350,31 @@ export default function HelperScanner() {
         </div>
       </div>
 
-      {/* QR Scanner */}
+      {/* QR Scanner - Fullscreen Modal */}
       {scanning && (
-        <div className="card">
-          <div id="qr-reader" className="w-full rounded-xl overflow-hidden max-w-sm mx-auto" />
-          <p className="text-center text-sm text-surface-500 mt-3">QR kodni kameraga ko'rsating</p>
+        <div className="fixed inset-0 z-50 bg-black">
+          {/* Header */}
+          <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white text-lg font-bold">QR kodni skanerlash</h3>
+              <button
+                onClick={stopScanner}
+                className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-all backdrop-blur-sm"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scanner */}
+          <div id="qr-reader" className="w-full h-full" />
+
+          {/* Footer */}
+          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-6">
+            <p className="text-center text-white text-base font-medium">
+              QR kodni kameraga ko'rsating
+            </p>
+          </div>
         </div>
       )}
 
@@ -434,7 +480,11 @@ export default function HelperScanner() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => fillOriginalPrice(item._id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fillOriginalPrice(item._id);
+                      }}
                       disabled={receiptStatus === 'pending'}
                       className="p-1.5 text-brand-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
                       title="Optom narxni qo'yish"
@@ -467,40 +517,85 @@ export default function HelperScanner() {
                       className="w-20 h-8 text-right text-sm font-medium border border-surface-200 rounded-lg px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300"
                     />
                     <span className="text-surface-400">×</span>
-                    <input
-                      type="text"
-                      value={item.cartQuantity}
-                      onFocus={(e) => {
-                        e.target.dataset.prevValue = String(item.cartQuantity);
-                        hasLocalChanges.current = true;
-                      }}
-                      onChange={(e) => {
-                        if (receiptStatus === 'pending') return;
-                        hasLocalChanges.current = true;
-                        const val = e.target.value;
-                        if (val === '' || /^\d+$/.test(val)) {
-                          const newQty = val === '' ? 0 : parseInt(val);
+                    
+                    {/* Quantity with +/- buttons */}
+                    <div className="flex items-center gap-1 bg-white border border-surface-200 rounded-lg">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (receiptStatus === 'pending') return;
+                          hasLocalChanges.current = true;
+                          const newQty = Math.max(1, item.cartQuantity - 1);
                           setCart(prev => prev.map(p => 
                             p._id === item._id ? { ...p, cartQuantity: newQty } : p
                           ));
-                        }
-                      }}
-                      onBlur={(e) => {
-                        if (!item.cartQuantity || item.cartQuantity < 1) {
-                          const prevValue = parseInt(e.target.dataset.prevValue || '1') || 1;
+                        }}
+                        disabled={receiptStatus === 'pending' || item.cartQuantity <= 1}
+                        className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Kamaytirish"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      
+                      <input
+                        type="text"
+                        value={item.cartQuantity}
+                        onFocus={(e) => {
+                          e.target.dataset.prevValue = String(item.cartQuantity);
+                          hasLocalChanges.current = true;
+                        }}
+                        onChange={(e) => {
+                          if (receiptStatus === 'pending') return;
+                          hasLocalChanges.current = true;
+                          const val = e.target.value;
+                          if (val === '' || /^\d+$/.test(val)) {
+                            const newQty = val === '' ? 0 : parseInt(val);
+                            setCart(prev => prev.map(p => 
+                              p._id === item._id ? { ...p, cartQuantity: newQty } : p
+                            ));
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (!item.cartQuantity || item.cartQuantity < 1) {
+                            const prevValue = parseInt(e.target.dataset.prevValue || '1') || 1;
+                            setCart(prev => prev.map(p => 
+                              p._id === item._id ? { ...p, cartQuantity: prevValue } : p
+                            ));
+                          }
+                        }}
+                        disabled={receiptStatus === 'pending'}
+                        className="w-16 h-8 text-center text-sm font-bold border-0 focus:outline-none focus:ring-0 disabled:opacity-50 bg-transparent"
+                      />
+                      
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (receiptStatus === 'pending') return;
+                          hasLocalChanges.current = true;
+                          const newQty = item.cartQuantity + 1;
                           setCart(prev => prev.map(p => 
-                            p._id === item._id ? { ...p, cartQuantity: prevValue } : p
+                            p._id === item._id ? { ...p, cartQuantity: newQty } : p
                           ));
-                        }
-                      }}
-                      disabled={receiptStatus === 'pending'}
-                      className="w-12 h-8 text-center text-sm font-semibold border border-surface-200 rounded-lg focus:outline-none focus:border-brand-500 disabled:opacity-50"
-                    />
+                        }}
+                        disabled={receiptStatus === 'pending'}
+                        className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-r-lg transition-colors disabled:opacity-50"
+                        title="Oshirish"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
                     <span className="w-20 text-right font-semibold text-surface-900 text-sm whitespace-nowrap">
                       {formatNumber((item.price || 0) * item.cartQuantity)}
                     </span>
                     <button 
-                      onClick={() => removeFromCart(item._id)} 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeFromCart(item._id);
+                      }} 
                       disabled={receiptStatus === 'pending'}
                       className="p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
                     >

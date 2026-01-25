@@ -15,8 +15,10 @@ export interface Product {
   name: string;
   costPrice?: number;
   price: number;
+  wholesalePrice?: number;
   quantity: number;
   warehouse: string;
+  _warehouseName?: string;
   category?: string;
   image?: string;
   images?: string[];
@@ -25,6 +27,7 @@ export interface Product {
 
 export interface CartItem extends Product {
   cartQuantity: number;
+  originalPrice?: number; // Store original price for price toggle
 }
 
 export interface Receipt {
@@ -34,9 +37,10 @@ export interface Receipt {
   paymentMethod: 'cash' | 'card';
   cashier: User;
   customer?: Customer;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'draft';
   createdBy: User;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Customer {
@@ -46,6 +50,7 @@ export interface Customer {
   email?: string;
   address?: string;
   totalPurchases: number;
+  purchaseCount?: number;
   debt: number;
   purchaseHistory?: PurchaseHistory[];
 }
@@ -77,6 +82,7 @@ export interface Warehouse {
   _id: string;
   name: string;
   address: string;
+  isMain?: boolean;
   products: Product[];
   productCount?: number;
 }

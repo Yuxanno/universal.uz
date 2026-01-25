@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Search, RotateCcw, Save, CreditCard, Trash2, X, 
-  Package, Banknote, Delete, AlertTriangle, Printer, User
+  Package, Banknote, Delete, AlertTriangle, Printer, User, Phone
 } from 'lucide-react';
 import { CartItem, Product, Customer } from '../../types';
 import api from '../../utils/api';
@@ -9,6 +10,7 @@ import { useAlert } from '../../hooks/useAlert';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useLanguage } from '../../context/LanguageContext';
 import CartItemRow from '../../components/pos/CartItemRow';
+import { regionNames } from '../../data/regions';
 import './Kassa.modern.css';
 
 interface SavedReceipt {
@@ -28,6 +30,7 @@ interface PrintReceipt {
 
 export default function Kassa() {
   const { tKey } = useLanguage();
+  const location = useLocation();
   const { showAlert, AlertComponent } = useAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -50,13 +53,47 @@ export default function Kassa() {
   const [printReceipt, setPrintReceipt] = useState<PrintReceipt | null>(null);
   const [workerReceiptIds, setWorkerReceiptIds] = useState<string[]>([]);
   const [localPrices, setLocalPrices] = useState<{[key: string]: string}>({});
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerFormData, setCustomerFormData] = useState({
+    name: '',
+    phone: '',
+    region: ''
+  });
 
   useEffect(() => {
     fetchProducts();
     fetchCustomers();
     loadSavedReceipts();
     loadWorkerItems();
+    
+    // Listen for localStorage changes (when items are loaded from StaffReceipts)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kassaItems' && e.newValue) {
+        console.log('🔄 localStorage changed, reloading worker items...');
+        loadWorkerItems();
+      }
+    };
+    
+    // Also listen for custom event (for same-tab changes)
+    const handleKassaItemsUpdate = () => {
+      console.log('🔄 Custom event received, reloading worker items...');
+      loadWorkerItems();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+    };
   }, []);
+
+  // Reload worker items when navigating to this page
+  useEffect(() => {
+    console.log('🔄 Route changed to Kassa, checking for worker items...');
+    loadWorkerItems();
+  }, [location.pathname]);
 
   // Load items from worker (StaffReceipts - "Kassaga yuklash")
   const loadWorkerItems = () => {
@@ -475,6 +512,40 @@ ${itemsHtml}
     localStorage.setItem('savedReceipts', JSON.stringify(updated));
   };
 
+  const handleCreateCustomer = async () => {
+    if (!customerFormData.name.trim() || !customerFormData.phone.trim()) {
+      showAlert('Ism va telefon raqamini kiriting', 'Xatolik', 'warning');
+      return;
+    }
+
+    try {
+      const customerData = {
+        name: customerFormData.name.trim(),
+        phone: customerFormData.phone.trim(),
+        address: customerFormData.region || ''
+      };
+      
+      const res = await api.post('/customers', customerData);
+      const newCustomer = res.data;
+      
+      // Refresh customer list
+      await fetchCustomers();
+      
+      // Auto-select the newly created customer
+      setSelectedCustomer(newCustomer._id);
+      
+      // Reset form and close modal
+      setCustomerFormData({ name: '', phone: '', region: '' });
+      setShowCustomerModal(false);
+      
+      showAlert('Mijoz muvaffaqiyatli qo\'shildi!', 'Muvaffaqiyat', 'success');
+    } catch (err: any) {
+      console.error('Error creating customer:', err);
+      const message = err.response?.data?.message || 'Mijoz qo\'shishda xatolik';
+      showAlert(message, 'Xatolik', 'danger');
+    }
+  };
+
   return (
     <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-gray-50 dark:bg-gray-900'}`}>
       {/* Header */}
@@ -504,20 +575,29 @@ ${itemsHtml}
           
           {/* Customer Select */}
           <div className="flex-1 max-w-xs">
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold text-gray-900 dark:text-gray-100 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all"
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={selectedCustomer}
+                  onChange={(e) => setSelectedCustomer(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold text-gray-900 dark:text-gray-100 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all"
+                >
+                  <option value="">{tKey("Oddiy mijoz")}</option>
+                  {customers.map(customer => (
+                    <option key={customer._id} value={customer._id}>
+                      {customer.name} - {customer.phone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => setShowCustomerModal(true)}
+                className="flex items-center justify-center w-10 h-10 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-all hover:scale-105 shadow-md"
+                title="Yangi mijoz qo'shish"
               >
-                <option value="">{tKey("Oddiy mijoz")}</option>
-                {customers.map(customer => (
-                  <option key={customer._id} value={customer._id}>
-                    {customer.name} - {customer.phone}
-                  </option>
-                ))}
-              </select>
+                <span className="text-xl font-bold">+</span>
+              </button>
             </div>
           </div>
 
@@ -1281,6 +1361,116 @@ ${itemsHtml}
       )}
 
       {AlertComponent}
+
+      {/* Customer Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
+            onClick={() => setShowCustomerModal(false)} 
+          />
+          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 animate-scaleIn">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
+                  <User className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-gray-100">Yangi mijoz</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCustomerModal(false);
+                  setCustomerFormData({ name: '', phone: '', region: '' });
+                }}
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-5">
+              {/* Ism */}
+              <div>
+                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                  Ism
+                </label>
+                <input
+                  type="text"
+                  value={customerFormData.name}
+                  onChange={(e) => setCustomerFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Mijoz ismi"
+                  className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
+                  autoFocus
+                />
+              </div>
+
+              {/* Telefon */}
+              <div>
+                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                  Telefon
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={customerFormData.phone}
+                    onChange={(e) => setCustomerFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="+998 (XX) XXX-XX-XX"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Viloyat */}
+              <div>
+                <label className="block text-base font-bold text-gray-900 dark:text-gray-100 mb-3">
+                  Viloyat
+                </label>
+                <div className="relative">
+                  <select
+                    value={customerFormData.region}
+                    onChange={(e) => setCustomerFormData(prev => ({ ...prev, region: e.target.value }))}
+                    className="w-full px-4 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl text-base text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Viloyatni tanlang</option>
+                    {regionNames.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCustomerModal(false);
+                  setCustomerFormData({ name: '', phone: '', region: '' });
+                }}
+                className="flex-1 py-4 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-2xl font-bold hover:bg-gray-100 dark:hover:bg-gray-600 transition-all border-2 border-gray-200 dark:border-gray-600"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleCreateCustomer}
+                className="flex-1 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold hover:from-red-600 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
