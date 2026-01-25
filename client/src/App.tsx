@@ -55,7 +55,9 @@ const RoleRedirect = () => {
 function App() {
   // Monitor memory usage
   useEffect(() => {
-    console.log('🚀 App started');
+    if (import.meta.env.DEV) {
+      console.log('🚀 App started');
+    }
     monitorMemory();
     startMemoryMonitoring();
     
@@ -71,7 +73,12 @@ function App() {
           <ProductsProvider>
             <CustomersProvider>
               <WarehousesProvider>
-                <BrowserRouter>
+                <BrowserRouter
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true
+                  }}
+                >
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/" element={<RoleRedirect />} />

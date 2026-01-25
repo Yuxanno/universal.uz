@@ -27,11 +27,18 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     const cacheTime = sessionStorage.getItem('customers_cache_time');
     
     if (cached && cacheTime && shouldUseCache(cacheTime, PERFORMANCE_CONFIG.CUSTOMERS_CACHE_TIME)) {
-      console.log('📦 Loading customers from cache');
+      if (import.meta.env.DEV) {
+        console.log('📦 Loading customers from cache');
+      }
       setCustomers(cached);
     } else {
-      fetchCustomers();
+      // Only fetch if token exists
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetchCustomers();
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCustomers = useCallback(async (force = false) => {

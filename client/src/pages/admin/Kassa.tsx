@@ -57,47 +57,16 @@ export default function Kassa() {
   const [workerReceiptIds, setWorkerReceiptIds] = useState<string[]>([]);
   const [localPrices, setLocalPrices] = useState<{[key: string]: string}>({});
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showCustomerSelect, setShowCustomerSelect] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerFormData, setCustomerFormData] = useState({
     name: '',
     phone: '',
     region: ''
   });
 
-  useEffect(() => {
-    loadSavedReceipts();
-    loadWorkerItems();
-    
-    // Listen for localStorage changes (when items are loaded from StaffReceipts)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'kassaItems' && e.newValue) {
-        console.log('🔄 localStorage changed, reloading worker items...');
-        loadWorkerItems();
-      }
-    };
-    
-    // Also listen for custom event (for same-tab changes)
-    const handleKassaItemsUpdate = () => {
-      console.log('🔄 Custom event received, reloading worker items...');
-      loadWorkerItems();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
-    };
-  }, []);
-
-  // Reload worker items when navigating to this page
-  useEffect(() => {
-    console.log('🔄 Route changed to Kassa, checking for worker items...');
-    loadWorkerItems();
-  }, [location.pathname]);
-
   // Load items from worker (StaffReceipts - "Kassaga yuklash")
-  const loadWorkerItems = () => {
+  const loadWorkerItems = useCallback(() => {
     const kassaItems = localStorage.getItem('kassaItems');
     const receiptId = localStorage.getItem('kassaReceiptId');
     
@@ -148,7 +117,40 @@ export default function Kassa() {
         console.error('Error loading worker items:', err);
       }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSavedReceipts();
+    loadWorkerItems();
+    
+    // Listen for localStorage changes (when items are loaded from StaffReceipts)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kassaItems' && e.newValue) {
+        console.log('🔄 localStorage changed, reloading worker items...');
+        loadWorkerItems();
+      }
+    };
+    
+    // Also listen for custom event (for same-tab changes)
+    const handleKassaItemsUpdate = () => {
+      console.log('🔄 Custom event received, reloading worker items...');
+      loadWorkerItems();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+    };
+  }, [loadWorkerItems]);
+
+  // Reload worker items when navigating to this page
+  useEffect(() => {
+    console.log('🔄 Route changed to Kassa, checking for worker items...');
+    loadWorkerItems();
+  }, [location.pathname, loadWorkerItems]);
 
   const loadSavedReceipts = () => {
     const saved = localStorage.getItem('savedReceipts');
@@ -501,7 +503,7 @@ ${itemsHtml}
   return (
     <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-gray-50 dark:bg-gray-900'}`}>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -516,7 +518,7 @@ ${itemsHtml}
               )}
             </div>
             <div>
-              <h1 className="text-base lg:text-lg font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                 {isReturnMode ? tKey('Qaytarish rejimi') : tKey('Kassa (POS)')}
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -524,42 +526,51 @@ ${itemsHtml}
               </p>
             </div>
           </div>
-          
-          {/* Customer Select */}
-          <div className="flex-1 max-w-xs">
+
+          {/* Customer Select & Saved Receipts */}
+          <div className="flex items-center gap-2">
+            {/* Customer Select */}
             <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+              <button
+                onClick={() => setShowCustomerSelect(true)}
+                className="relative flex items-center gap-2 pl-10 pr-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-semibold text-gray-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
+              >
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <select
-                  value={selectedCustomer}
-                  onChange={(e) => setSelectedCustomer(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold text-gray-900 dark:text-gray-100 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all"
-                >
-                  <option value="">{tKey("Oddiy mijoz")}</option>
-                  {customers.map(customer => (
-                    <option key={customer._id} value={customer._id}>
-                      {customer.name} - {customer.phone}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="flex-1 text-left min-w-0">
+                  {selectedCustomer ? (
+                    <>
+                      <div className="truncate font-bold">
+                        {customers.find(c => c._id === selectedCustomer)?.name || tKey("Oddiy mijoz")}
+                      </div>
+                      {customers.find(c => c._id === selectedCustomer)?.phone && (
+                        <div className="text-xs text-gray-500 truncate">
+                          {customers.find(c => c._id === selectedCustomer)?.phone}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="truncate">{tKey("Oddiy mijoz")}</div>
+                  )}
+                </div>
+                <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
               <button
                 onClick={() => setShowCustomerModal(true)}
-                className="flex items-center justify-center w-10 h-10 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-all hover:scale-105 shadow-md"
+                className="flex items-center justify-center w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
                 title="Yangi mijoz qo'shish"
               >
-                <span className="text-xl font-bold">+</span>
+                <span className="text-lg font-bold">+</span>
               </button>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSavedReceipts(true)}
-              className="relative flex items-center gap-2 px-3 lg:px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-xs lg:text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all hover:scale-105"  
+              className="relative flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all hover:scale-105"  
             >
               <Save className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-              <span className="hidden sm:inline text-gray-700 dark:text-gray-300">Saqlangan</span>
+              <span className="text-gray-700 dark:text-gray-300">Saqlangan</span>
               {savedReceipts.length > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 text-white text-xs rounded-full font-bold flex items-center justify-center">
                   {savedReceipts.length}
@@ -571,147 +582,60 @@ ${itemsHtml}
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4 lg:gap-6 p-4 lg:p-6">
+      <div className="flex-1 flex overflow-hidden gap-6 p-6 pb-28">{/* pb-28 для нижней панели */}
         {/* Left - Cart Section */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Table - Desktop */}
-          <div className="hidden lg:flex flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-col shadow-sm">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600">
-              <div className="col-span-1 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("Kod")}</div>
-              <div className="col-span-3 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
-              <div className="col-span-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
-              <div className="col-span-2 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SONI")}</div>
-              <div className="col-span-2 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("NARX")}</div>
-              <div className="col-span-1 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
-              <div className="col-span-1 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("AMAL")}</div>
-            </div>
+          {/* Table */}
+          <div className="flex flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex-col shadow-sm">
+            {/* Table Wrapper with Horizontal Scroll */}
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
+              <div className="min-w-[1000px]">{/* Минимальная ширина для таблицы */}
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-600 sticky top-0 z-10">
+                  <div className="col-span-1 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("Kod")}</div>
+                  <div className="col-span-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
+                  <div className="col-span-1 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
+                  <div className="col-span-1 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("TAN NARX")}</div>
+                  <div className="col-span-2 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SONI")}</div>
+                  <div className="col-span-2 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("NARX")}</div>
+                  <div className="col-span-2 text-right text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
+                  <div className="col-span-1 text-center text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">{tKey("AMAL")}</div>
+                </div>
 
-            {/* Table Body */}
-            <div className="flex-1 overflow-auto">
-              {cart.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-400 py-20">
-                  <div className="text-center">
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      <Package className="w-10 h-10 opacity-50" />
+                {/* Table Body */}
+                {cart.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-gray-400 py-20">
+                    <div className="text-center">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                        <Package className="w-10 h-10 opacity-50" />
+                      </div>
+                      <p className="text-lg font-medium">{tKey("Savat bo'sh")}</p>
+                      <p className="text-sm text-gray-400 mt-1">{tKey("Mahsulot qo'shish uchun qidiring")}</p>
                     </div>
-                    <p className="text-lg font-medium">{tKey("Savat bo'sh")}</p>
-                    <p className="text-sm text-gray-400 mt-1">{tKey("Mahsulot qo'shish uchun qidiring")}</p>
                   </div>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {cart.map((item) => (
-                    <CartItemRow
-                      key={item._id}
-                      item={item}
-                      localPrice={localPrices[item._id]}
-                      isSelected={selectedCartItemId === item._id}
-                      onQuantityChange={handleQuantityChange}
-                      onPriceChange={handlePriceChange}
-                      onRemove={removeFromCart}
-                      onClick={handleCartItemClick}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile Card List */}
-          <div className="lg:hidden flex-1 overflow-auto space-y-3 pb-32">
-            {cart.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-400 py-12">
-                <div className="text-center">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <Package className="w-10 h-10 opacity-50" />
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {cart.map((item) => (
+                      <CartItemRow
+                        key={item._id}
+                        item={item}
+                        localPrice={localPrices[item._id]}
+                        isSelected={selectedCartItemId === item._id}
+                        onQuantityChange={handleQuantityChange}
+                        onPriceChange={handlePriceChange}
+                        onRemove={removeFromCart}
+                        onClick={handleCartItemClick}
+                      />
+                    ))}
                   </div>
-                  <p className="text-base font-medium">{tKey("Savat bo'sh")}</p>
-                  <p className="text-sm text-gray-400 mt-1">{tKey("Mahsulot qo'shish uchun qidiring")}</p>
-                </div>
+                )}
               </div>
-            ) : (
-              cart.map((item) => (
-                <div
-                  key={item._id}
-                  className={`bg-white dark:bg-gray-800 rounded-2xl border-2 p-4 transition-all ${
-                    selectedCartItemId === item._id
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg'
-                      : 'border-gray-200 dark:border-gray-700 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">{item.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                          {item.code}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(item._id)}
-                      className="p-2 rounded-xl text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/30 transition-all"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs font-black text-slate-700 dark:text-gray-400 block mb-1.5">{tKey("Soni")}</label>
-                      <input
-                        type="text"
-                        value={item.cartQuantity}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '' || /^\d+$/.test(val)) {
-                            setCart(prev => prev.map(p =>
-                              p._id === item._id ? { ...p, cartQuantity: val === '' ? 0 : parseInt(val) } : p
-                            ));
-                          }
-                        }}
-                        className="w-full h-12 text-center text-lg font-black border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-black text-slate-700 dark:text-gray-400 block mb-1.5">{tKey("Narx")}</label>
-                      <input
-                        type="text"
-                        value={localPrices[item._id] !== undefined ? localPrices[item._id] : item.price.toLocaleString()}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\s/g, '');
-                          if (val === '' || /^\d+$/.test(val)) {
-                            setLocalPrices(prev => ({
-                              ...prev,
-                              [item._id]: val
-                            }));
-                          }
-                        }}
-                        className="w-full h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl px-2 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1.5">{tKey("Summa")}</label>
-                      <div className="h-12 flex items-center justify-end px-3 bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-900/30 rounded-xl border-2 border-primary-200 dark:border-primary-800">
-                        <span className="text-base font-bold text-primary-700 dark:text-primary-400">
-                          {(() => {
-                            const localPrice = localPrices[item._id];
-                            const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
-                            return (price * item.cartQuantity).toLocaleString();
-                          })()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+            </div>
           </div>
-
         </div>
 
-        {/* Right - Numpad & Total (Desktop Only) */}
-        <div className="hidden lg:flex w-96 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex-col shadow-sm">
+        {/* Right - Numpad & Total */}
+        <div className="flex w-96 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex-col shadow-sm">
           {/* Total Display */}
           <div className="total-display mb-4 p-5 bg-gradient-to-br from-pink-100 via-pink-50 to-white dark:from-pink-900/40 dark:via-pink-900/30 dark:to-gray-800 rounded-3xl border-2 border-pink-300 dark:border-pink-700 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-pink-200/40 dark:bg-pink-600/30 rounded-full -mr-12 -mt-12"></div>
@@ -739,7 +663,7 @@ ${itemsHtml}
           />
 
           {/* Numpad */}
-          <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-4 gap-2">
             {['7', '8', '9', 'C', '4', '5', '6','⌫', '1', '2', '3', '+', '0', '00', '.'].map((key) => (
               <button
                 key={key}
@@ -757,113 +681,55 @@ ${itemsHtml}
               </button>
             ))}
           </div>
-
-          {/* Action Buttons - Desktop (3 tugma) */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <button
-              onClick={openSearch}
-              className="press-effect flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-bold text-sm shadow-md hover:shadow-lg"
-            >
-              <Search className="w-4 h-4" />
-              <span>{tKey("Qidirish")}</span>
-            </button>
-            <button
-              onClick={toggleReturnMode}
-              className={`press-effect flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl transition-all font-bold text-sm shadow-md hover:shadow-lg ${
-                isReturnMode
-                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700'
-                  : 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-900 hover:from-yellow-200 hover:to-yellow-300 dark:from-yellow-900/30 dark:to-yellow-900/40 dark:text-yellow-300'
-              }`}
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>{tKey("Qaytarish")}</span>
-            </button>
-            <button
-              onClick={saveReceipt}
-              className="press-effect flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-900 dark:text-gray-100 rounded-xl hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-700 transition-all font-bold text-sm shadow-md hover:shadow-lg"
-            >
-              <Save className="w-4 h-4" />
-              <span>{tKey("Saqlash")}</span>
-            </button>
-          </div>
-
-          {/* Payment Button - Desktop */}
-          <button
-            onClick={() => setShowPayment(true)}
-            disabled={cart.length === 0}
-            className="press-effect w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 text-white rounded-2xl hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-lg shadow-xl hover:shadow-emerald-500/50 hover:scale-105"
-          >
-            <CreditCard className="w-6 h-6" />
-            {tKey("To'lov qilish")}
-          </button>
         </div>
       </div>
 
-      {/* Mobile Bottom Bar - Total & Payment */}
-      <div className="lg:hidden glass-effect sticky bottom-0 left-0 right-0 border-t-2 border-pink-200 dark:border-gray-700 shadow-2xl z-20 backdrop-blur-lg bg-white/95 dark:bg-gray-800/95">
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 px-3 pt-3 pb-2 border-b border-pink-100 dark:border-gray-700">
-          {!isReturnMode && (
+      {/* Bottom Action Bar - Fixed */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-2xl z-20 pl-64">{/* pl-64 для сайдбара */}
+        <div className="px-6 py-4">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            {/* Action Buttons */}
             <button
               onClick={openSearch}
-              className="press-effect flex-1 flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-bold text-sm shadow-md active:scale-95"
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl hover:from-slate-700 hover:to-slate-800 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-5 h-5" strokeWidth={2.5} />
               <span>Qidirish</span>
             </button>
-          )}
-          <button
-            onClick={toggleReturnMode}
-            className={`press-effect flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl transition-all font-bold text-sm shadow-md active:scale-95 ${
-              isReturnMode
-                ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700'
-                : 'bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-900 hover:from-yellow-200 hover:to-yellow-300 dark:from-yellow-900/30 dark:to-yellow-900/40 dark:text-yellow-300'
-            }`}
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>{isReturnMode ? tKey('Bekor') : tKey('Qaytarish')}</span>
-          </button>
-          {isReturnMode && (
+            
             <button
-              onClick={openReturnSearch}
-              className="press-effect flex-1 flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-900 rounded-xl hover:from-yellow-200 hover:to-yellow-300 transition-all font-bold text-sm shadow-md active:scale-95 dark:from-yellow-900/30 dark:to-yellow-900/40 dark:text-yellow-300"
+              onClick={toggleReturnMode}
+              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 ${
+                isReturnMode
+                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700'
+                  : 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-slate-900 hover:from-yellow-500 hover:to-yellow-600'
+              }`}
             >
-              <Search className="w-4 h-4" />
-              <span>Qo'shish</span>
+              <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
+              <span>{isReturnMode ? 'Bekor qilish' : 'Qaytarish'}</span>
             </button>
-          )}
-          <button
-            onClick={saveReceipt}
-            className="press-effect flex-1 flex items-center justify-center gap-1.5 px-3 py-3 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-900 dark:text-gray-100 rounded-xl hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-700 transition-all font-bold text-sm shadow-md active:scale-95"
-          >
-            <Save className="w-4 h-4" />
-            <span>Saqlash</span>
-          </button>
-        </div>
-        
-        {/* Total & Payment */}
-        <div className="flex items-center gap-3 p-3">
-          <div className="flex-1 p-4 bg-gradient-to-br from-pink-100 via-pink-50 to-white dark:from-pink-900/30 dark:via-pink-900/20 dark:to-gray-800 rounded-2xl border-2 border-pink-200 dark:border-pink-800 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-pink-200/30 dark:bg-pink-700/20 rounded-full -mr-8 -mt-8"></div>
-            <div className="relative z-10">
-              <p className="text-xs font-black text-pink-900 dark:text-pink-100 mb-1 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse"></span>
-                {tKey("JAMI SUMMA")}
-              </p>
-              <p className={`text-2xl font-black ${isReturnMode ? 'text-warning-700 dark:text-warning-300' : 'text-pink-900 dark:text-pink-100'}`}>
-                {total.toLocaleString()}
-                <span className="text-sm ml-1 font-bold opacity-70">so'm</span>
-              </p>
-            </div>
+            
+            <button
+              onClick={saveReceipt}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-gray-400 to-gray-500 text-white rounded-2xl hover:from-gray-500 hover:to-gray-600 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
+            >
+              <Save className="w-5 h-5" strokeWidth={2.5} />
+              <span>Saqlash</span>
+            </button>
+
+            {/* Spacer */}
+            <div className="flex-1"></div>
+
+            {/* Payment Button */}
+            <button
+              onClick={() => setShowPayment(true)}
+              disabled={cart.length === 0}
+              className="flex items-center justify-center gap-3 px-10 py-4 bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-500 hover:via-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-lg shadow-xl hover:shadow-2xl active:scale-95"
+            >
+              <CreditCard className="w-6 h-6" strokeWidth={2.5} />
+              <span>To'lov qilish</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowPayment(true)}
-            disabled={cart.length === 0}
-            className="press-effect flex flex-col items-center justify-center gap-1 px-5 py-3.5 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 text-white rounded-2xl hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black shadow-xl active:scale-95"
-          >
-            <CreditCard className="w-6 h-6" />
-            <span className="text-sm">{tKey("To'lov")}</span>
-          </button>
         </div>
       </div>
 
@@ -1313,6 +1179,187 @@ ${itemsHtml}
       )}
 
       {AlertComponent}
+
+      {/* Customer Select Modal */}
+      {showCustomerSelect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" 
+            onClick={() => setShowCustomerSelect(false)} 
+          />
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-red-200">
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                    <User className="w-8 h-8 text-white" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-1">Mijozni tanlang</h3>
+                    <p className="text-sm font-bold text-gray-700">Ism yoki telefon bo'yicha qidiring</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCustomerSelect(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-600" strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Mijoz ismi yoki telefon raqami..."
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white border-2 border-red-300 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                  autoFocus
+                />
+              </div>
+            </div>
+            
+            {/* Results */}
+            <div className="flex-1 overflow-auto p-4 bg-gray-50">
+              {/* Oddiy mijoz option */}
+              <button
+                onClick={() => {
+                  setSelectedCustomer('');
+                  setShowCustomerSelect(false);
+                  setCustomerSearchQuery('');
+                }}
+                className={`w-full flex items-center gap-4 p-5 mb-3 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
+                  selectedCustomer === '' 
+                    ? 'bg-red-500 border-red-600 shadow-lg' 
+                    : 'bg-white border-gray-300 hover:border-red-400'
+                }`}
+              >
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                  selectedCustomer === '' 
+                    ? 'bg-white/20' 
+                    : 'bg-red-100'
+                }`}>
+                  <User className={`w-7 h-7 ${
+                    selectedCustomer === '' 
+                      ? 'text-white' 
+                      : 'text-red-600'
+                  }`} strokeWidth={2.5} />
+                </div>
+                <div className="flex-1">
+                  <p className={`text-lg font-black mb-1 ${
+                    selectedCustomer === '' 
+                      ? 'text-white' 
+                      : 'text-gray-900'
+                  }`}>
+                    {tKey("Oddiy mijoz")}
+                  </p>
+                  <p className={`text-sm font-semibold ${
+                    selectedCustomer === '' 
+                      ? 'text-white/90' 
+                      : 'text-gray-600'
+                  }`}>
+                    Doimiy mijoz emas
+                  </p>
+                </div>
+                {selectedCustomer === '' && (
+                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  </div>
+                )}
+              </button>
+
+              {/* Customer list */}
+              <div className="space-y-3">
+                {customers
+                  .filter(customer => {
+                    const query = customerSearchQuery.toLowerCase();
+                    return customer.name.toLowerCase().includes(query) || 
+                           customer.phone.toLowerCase().includes(query);
+                  })
+                  .map(customer => (
+                    <button
+                      key={customer._id}
+                      onClick={() => {
+                        setSelectedCustomer(customer._id);
+                        setShowCustomerSelect(false);
+                        setCustomerSearchQuery('');
+                      }}
+                      className={`w-full flex items-center gap-4 p-5 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
+                        selectedCustomer === customer._id 
+                          ? 'bg-red-500 border-red-600 shadow-lg' 
+                          : 'bg-white border-gray-300 hover:border-red-400'
+                      }`}
+                    >
+                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                        selectedCustomer === customer._id 
+                          ? 'bg-white/20' 
+                          : 'bg-red-100'
+                      }`}>
+                        <User className={`w-7 h-7 ${
+                          selectedCustomer === customer._id 
+                            ? 'text-white' 
+                            : 'text-red-600'
+                        }`} strokeWidth={2.5} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-lg font-black mb-1 truncate ${
+                          selectedCustomer === customer._id 
+                            ? 'text-white' 
+                            : 'text-gray-900'
+                        }`}>
+                          {customer.name}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Phone className={`w-4 h-4 ${
+                            selectedCustomer === customer._id 
+                              ? 'text-white/90' 
+                              : 'text-gray-600'
+                          }`} />
+                          <p className={`text-sm font-semibold ${
+                            selectedCustomer === customer._id 
+                              ? 'text-white' 
+                              : 'text-gray-900'
+                          }`}>
+                            {customer.phone}
+                          </p>
+                        </div>
+                        {customer.address && (
+                          <p className={`text-xs font-medium mt-1 ${
+                            selectedCustomer === customer._id 
+                              ? 'text-white/80' 
+                              : 'text-gray-600'
+                          }`}>
+                            {customer.address}
+                          </p>
+                        )}
+                      </div>
+                      {selectedCustomer === customer._id && (
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+              </div>
+
+              {customers.filter(customer => {
+                const query = customerSearchQuery.toLowerCase();
+                return customer.name.toLowerCase().includes(query) || 
+                       customer.phone.toLowerCase().includes(query);
+              }).length === 0 && customerSearchQuery && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mb-4">
+                    <User className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">Mijoz topilmadi</p>
+                  <p className="text-sm font-semibold text-gray-600 mt-1">Boshqa ism yoki telefon bilan qidiring</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Customer Modal */}
       {showCustomerModal && (

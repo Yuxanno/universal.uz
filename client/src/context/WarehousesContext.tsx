@@ -24,13 +24,20 @@ export function WarehousesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const cached = getCachedData<Warehouse[]>('warehouses_cache');
     if (cached) {
-      console.log('📦 Loading warehouses from cache');
+      if (import.meta.env.DEV) {
+        console.log('📦 Loading warehouses from cache');
+      }
       setWarehouses(cached);
       const main = cached.find(w => w.name === 'Asosiy ombor');
       if (main) setMainWarehouse(main);
     } else {
-      fetchWarehouses();
+      // Only fetch if token exists
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetchWarehouses();
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWarehouses = useCallback(async (force = false) => {

@@ -76,7 +76,7 @@ export default function StaffReceipts() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 1000); // Обновляем каждую секунду
+    const interval = setInterval(fetchData, 5000); // Обновляем каждые 5 секунд
     return () => clearInterval(interval);
   }, [fetchData]);
 
