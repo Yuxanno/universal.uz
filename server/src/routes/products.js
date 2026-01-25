@@ -491,7 +491,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const { warehouse, code, packageInfo, name, ...rest } = req.body;
+    const { warehouse, code, packageInfo, name, quantity, ...rest } = req.body;
     
     // Trim and normalize the name
     const normalizedName = name ? name.trim() : undefined;
@@ -538,7 +538,8 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
       ...(normalizedName && { name: normalizedName }),
       code, 
       warehouse, 
-      isMainWarehouse 
+      isMainWarehouse,
+      ...(quantity !== undefined && { quantity: Number(quantity) })
     };
     
     // Add package information if provided
@@ -555,6 +556,34 @@ router.put('/:id', auth, authorize('admin'), async (req, res) => {
       { new: true }
     );
     if (!product) return res.status(404).json({ message: 'Tovar topilmadi' });
+    
+    // CRITICAL: Update WarehouseInventory if quantity changed
+    if (quantity !== undefined && warehouse) {
+      try {
+        const inventory = await WarehouseInventory.findOne({
+          product: req.params.id,
+          warehouse: warehouse
+        });
+        
+        if (inventory) {
+          inventory.quantity = Number(quantity);
+          await inventory.save();
+          console.log(`✅ Updated inventory for product ${product.code}: ${quantity}`);
+        } else {
+          // Create inventory if it doesn't exist
+          await WarehouseInventory.create({
+            product: req.params.id,
+            warehouse: warehouse,
+            quantity: Number(quantity),
+            minStock: product.minStock || 5
+          });
+          console.log(`✅ Created inventory for product ${product.code}: ${quantity}`);
+        }
+      } catch (invError) {
+        console.error(`⚠️  Failed to update inventory for product ${product.code}:`, invError.message);
+      }
+    }
+    
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
