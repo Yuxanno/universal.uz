@@ -4,6 +4,7 @@ import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Product } from '../../types';
+import { IMAGE_BASE_URL } from '../../config/env';
 
 // Memoized Product Card Component
 const ProductCard = memo(({ 

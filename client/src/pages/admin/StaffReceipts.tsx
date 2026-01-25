@@ -320,98 +320,118 @@ export default function StaffReceipts() {
                         <p className="text-lg">{t("Tovarlar yo'q")}</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        {displayItems.map((item) => {
+                      <div className="space-y-3">
+                        {displayItems.map((item, index) => {
                           const isEditing = editingItem?.receiptId === item.receiptId && editingItem?.itemIndex === item.itemIndex;
                           
                           return (
-                            <div 
-                              key={`${item.receiptId}-${item.itemIndex}`}
-                              className="flex items-center gap-2 p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-surface-900 truncate">{item.name}</p>
-                                <p className="text-xs text-surface-500">Kod: {item.code?.length > 10 ? item.code.slice(-6) : item.code}</p>
-                              </div>
+                            <div key={`${item.receiptId}-${item.itemIndex}`}>
+                              {/* Separator line between items */}
+                              {index > 0 && (
+                                <div className="border-t border-surface-200 -mt-1 mb-3" />
+                              )}
                               
-                              {isEditing ? (
-                                <>
-                                  {showPrices && (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={editPrice}
-                                        onChange={(e) => {
-                                          const val = e.target.value.replace(/\s/g, '');
-                                          if (val === '' || /^\d+$/.test(val)) {
-                                            setEditPrice(val);
-                                          }
-                                        }}
-                                        className="w-20 h-8 text-right text-sm font-medium border-2 border-brand-500 rounded-lg px-2 focus:outline-none"
-                                        placeholder="Narx"
-                                      />
-                                      <span className="text-surface-400">×</span>
-                                    </>
-                                  )}
-                                  <input
-                                    type="text"
-                                    value={editQuantity}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      if (val === '' || /^\d+$/.test(val)) {
-                                        setEditQuantity(val);
-                                      }
-                                    }}
-                                    className="w-12 h-8 text-center text-sm font-semibold border-2 border-brand-500 rounded-lg focus:outline-none"
-                                    placeholder="Son"
-                                  />
-                                  <button
-                                    onClick={handleSaveEdit}
-                                    className="p-1.5 bg-success-500 text-white rounded-lg hover:bg-success-600 transition-colors"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={handleCancelEdit}
-                                    className="p-1.5 bg-surface-300 text-surface-700 rounded-lg hover:bg-surface-400 transition-colors"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-2">
+                              <div 
+                                className={`relative flex items-center gap-3 p-4 rounded-xl transition-all ${
+                                  isEditing 
+                                    ? 'bg-brand-50 border-2 border-brand-500 shadow-lg' 
+                                    : 'bg-surface-50 hover:bg-surface-100'
+                                }`}
+                              >
+                                {/* Product Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-surface-900 truncate text-sm">{item.name}</p>
+                                  <p className="text-xs text-surface-500">Kod: {item.code?.length > 10 ? item.code.slice(-6) : item.code}</p>
+                                </div>
+                                
+                                {isEditing ? (
+                                  /* Edit Mode */
+                                  <div className="flex items-center gap-2 flex-shrink-0">
                                     {showPrices && (
-                                      <>
-                                        <span className="w-20 h-8 flex items-center justify-end text-sm font-medium text-surface-700 px-2">
+                                      <div className="flex items-center gap-1">
+                                        <input
+                                          type="text"
+                                          value={editPrice}
+                                          onChange={(e) => {
+                                            const val = e.target.value.replace(/\s/g, '');
+                                            if (val === '' || /^\d+$/.test(val)) {
+                                              setEditPrice(val);
+                                            }
+                                          }}
+                                          className="w-24 h-10 text-right text-sm font-semibold border-2 border-brand-400 rounded-lg px-2 focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
+                                          placeholder="Narx"
+                                          autoFocus
+                                        />
+                                        <span className="text-surface-400 font-bold text-lg">×</span>
+                                      </div>
+                                    )}
+                                    <input
+                                      type="text"
+                                      value={editQuantity}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '' || /^\d+$/.test(val)) {
+                                          setEditQuantity(val);
+                                        }
+                                      }}
+                                      className="w-16 h-10 text-center text-sm font-bold border-2 border-brand-400 rounded-lg focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
+                                      placeholder="Soni"
+                                    />
+                                    <div className="flex items-center gap-2 ml-2">
+                                      <button
+                                        onClick={handleSaveEdit}
+                                        className="w-11 h-11 flex items-center justify-center bg-success-500 text-white rounded-xl hover:bg-success-600 transition-all hover:scale-110 shadow-lg active:scale-95"
+                                        title="Saqlash"
+                                      >
+                                        <Check className="w-6 h-6" strokeWidth={3} />
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className="w-11 h-11 flex items-center justify-center bg-surface-500 text-white rounded-xl hover:bg-surface-600 transition-all hover:scale-110 shadow-lg active:scale-95"
+                                        title="Bekor qilish"
+                                      >
+                                        <X className="w-6 h-6" strokeWidth={3} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* View Mode */
+                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                    {showPrices && (
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="font-semibold text-surface-700 min-w-[70px] text-right">
                                           {formatNumber(item.price)}
                                         </span>
-                                        <span className="text-surface-400">×</span>
-                                      </>
+                                        <span className="text-surface-400 font-bold text-lg">×</span>
+                                      </div>
                                     )}
-                                    <span className="w-12 h-8 flex items-center justify-center text-sm font-semibold text-surface-700">
+                                    <span className="font-bold text-surface-900 min-w-[40px] text-center text-sm">
                                       {item.quantity}
                                     </span>
                                     {showPrices && (
-                                      <span className="w-20 text-right font-semibold text-surface-900 text-sm">
+                                      <span className="font-bold text-surface-900 min-w-[80px] text-right text-sm">
                                         {formatNumber(item.price * item.quantity)}
                                       </span>
                                     )}
+                                    <div className="flex items-center gap-1 ml-2">
+                                      <button
+                                        onClick={() => handleEditItem(item.receiptId, item.itemIndex, item.price, item.quantity)}
+                                        className="w-9 h-9 flex items-center justify-center text-brand-600 hover:bg-brand-100 rounded-lg transition-all hover:scale-110"
+                                        title="Tahrirlash"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRemoveItem(item.receiptId, item.itemIndex)}
+                                        className="w-9 h-9 flex items-center justify-center text-danger-600 hover:bg-danger-100 rounded-lg transition-all hover:scale-110"
+                                        title="O'chirish"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </div>
-                                  <button
-                                    onClick={() => handleEditItem(item.receiptId, item.itemIndex, item.price, item.quantity)}
-                                    className="p-1.5 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                                  >
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleRemoveItem(item.receiptId, item.itemIndex)}
-                                    className="p-1.5 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -491,6 +511,10 @@ export default function StaffReceipts() {
                           if (allKassaItems.length > 0) {
                             localStorage.setItem('kassaItems', JSON.stringify(allKassaItems));
                             localStorage.setItem('kassaReceiptId', uniqueReceipts.map(r => r._id).join(','));
+                            
+                            // Dispatch custom event for same-tab updates
+                            window.dispatchEvent(new Event('kassaItemsUpdated'));
+                            
                             navigate('/cashier');
                           }
                         }}

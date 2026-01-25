@@ -255,9 +255,9 @@ export default function Customers() {
                         className="text-left hover:text-brand-600 transition-colors"
                       >
                         <span className="text-brand-600 font-medium">
-                          {formatNumber((customer as any).totalPurchases || 0)} {t("so'm")}
+                          {formatNumber(customer.totalPurchases || 0)} {t("so'm")}
                         </span>
-                        <p className="text-xs text-surface-400">{(customer as any).purchaseCount || 0} {t("ta xarid")}</p>
+                        <p className="text-xs text-surface-400">{customer.purchaseCount || 0} {t("ta xarid")}</p>
                       </button>
                     </div>
                     <div className="col-span-2">
@@ -305,13 +305,13 @@ export default function Customers() {
                         </div>
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        {(customer as any).totalPurchases > 0 && (
+                        {customer.totalPurchases > 0 && (
                           <button 
                             onClick={() => openDetailsModal(customer)}
                             className="bg-brand-50 rounded-xl p-2 inline-block hover:bg-brand-100 transition-colors"
                           >
                             <span className="text-sm font-semibold text-brand-600">
-                              {t("Xarid")}: {formatNumber((customer as any).totalPurchases)} {t("so'm")}
+                              {t("Xarid")}: {formatNumber(customer.totalPurchases)} {t("so'm")}
                             </span>
                           </button>
                         )}
@@ -444,9 +444,9 @@ export default function Customers() {
                 <div className="bg-brand-50 dark:bg-brand-900/20 rounded-2xl p-4">
                   <p className="text-sm text-brand-600 dark:text-brand-400 mb-1">{t("Jami xaridlar")}</p>
                   <p className="text-2xl font-bold text-brand-700 dark:text-brand-300">
-                    {formatNumber((selectedCustomer as any).totalPurchases || 0)} {t("so'm")}
+                    {formatNumber(selectedCustomer.totalPurchases || 0)} {t("so'm")}
                   </p>
-                  <p className="text-xs text-surface-500 mt-1">{(selectedCustomer as any).purchaseCount || 0} {t("ta xarid")}</p>
+                  <p className="text-xs text-surface-500 mt-1">{selectedCustomer.purchaseCount || 0} {t("ta xarid")}</p>
                 </div>
                 <div className={`rounded-2xl p-4 ${selectedCustomer.debt > 0 ? 'bg-danger-50 dark:bg-danger-900/20' : 'bg-success-50 dark:bg-success-900/20'}`}>
                   <p className={`text-sm mb-1 ${selectedCustomer.debt > 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}`}>{t("Qarz")}</p>

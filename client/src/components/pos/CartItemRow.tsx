@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import { Trash2 } from 'lucide-react';
+import { memo, useCallback, useState } from 'react';
+import { Trash2, Tag } from 'lucide-react';
 import { CartItem } from '../../types';
 
 interface CartItemRowProps {
@@ -21,6 +21,7 @@ const CartItemRow = memo(({
   onRemove,
   onClick
 }: CartItemRowProps) => {
+  const [showPrice, setShowPrice] = useState(true);
   const handleQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === '' || /^\d+$/.test(val)) {
@@ -49,6 +50,11 @@ const CartItemRow = memo(({
   const handleRowClick = useCallback(() => {
     onClick(item._id);
   }, [item._id, onClick]);
+
+  const togglePriceVisibility = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowPrice(prev => !prev);
+  }, []);
 
   const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
   const totalPrice = price * item.cartQuantity;
@@ -83,19 +89,32 @@ const CartItemRow = memo(({
         />
       </div>
       <div className="col-span-2 text-right">
-        <input
-          type="text"
-          value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
-          onChange={handlePriceChange}
-          className="w-32 h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl px-3 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
-        />
+        {showPrice ? (
+          <input
+            type="text"
+            value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
+            onChange={handlePriceChange}
+            className="w-32 h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-gray-600 dark:bg-gray-700 text-slate-900 dark:text-gray-100 rounded-xl px-3 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
+          />
+        ) : (
+          <div className="w-32 h-12 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl">
+            <span className="text-gray-400 dark:text-gray-500 text-sm">•••</span>
+          </div>
+        )}
       </div>
       <div className="col-span-1 text-right">
         <span className="text-lg font-black text-slate-900 dark:text-gray-100">
-          {totalPrice.toLocaleString()}
+          {showPrice ? totalPrice.toLocaleString() : '•••'}
         </span>
       </div>
-      <div className="col-span-1 flex justify-center">
+      <div className="col-span-1 flex justify-center gap-1">
+        <button
+          onClick={togglePriceVisibility}
+          className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 transition-all hover:scale-110"
+          title={showPrice ? "Narxni yashirish" : "Narxni ko'rsatish"}
+        >
+          <Tag className="w-5 h-5" />
+        </button>
         <button
           onClick={handleRemoveClick}
           className="w-10 h-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all hover:scale-110"

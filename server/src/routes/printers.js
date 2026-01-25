@@ -213,26 +213,41 @@ function generateReceiptText(receipt, settings = {}) {
   text += `Chek: #${receipt.receiptNumber || ''}\n`;
   text += thinLine + '\n';
   
+  // Mijoz ma'lumotlari
+  if (receipt.customer && receipt.customer.name) {
+    text += `Mijoz: ${receipt.customer.name}\n`;
+    if (receipt.customer.phone) {
+      text += `Tel: ${receipt.customer.phone}\n`;
+    }
+  } else {
+    text += `Mijoz: Oddiy mijoz\n`;
+  }
+  text += thinLine + '\n';
+  
   // Товары
   receipt.items.forEach((item, i) => {
-    // Название товара (обрезаем если длинное)
-    const name = item.name.length > width - 3 
-      ? item.name.substring(0, width - 3) 
+    // Название товара (полная ширина, жирный)
+    const name = item.name.length > width 
+      ? item.name.substring(0, width) 
       : item.name;
     text += `${i + 1}. ${name}\n`;
     
-    // Количество x цена = сумма (на одной строке)
-    const qty = `${item.quantity}x${formatNumber(item.price)}`;
+    // Количество x цена = сумма (полная ширина, выровнено)
+    const qty = `${item.quantity} x ${formatNumber(item.price)}`;
     const sum = formatNumber(item.price * item.quantity);
-    const spaces = Math.max(1, width - qty.length - sum.length - 3);
-    text += `   ${qty}${' '.repeat(spaces)}${sum}\n`;
+    const spaces = Math.max(1, width - qty.length - sum.length);
+    text += `${qty}${' '.repeat(spaces)}${sum}\n`;
   });
   
   text += line + '\n';
   
-  // ИТОГО
-  const totalValue = formatNumber(receipt.total);
-  text += `JAMI:${' '.repeat(width - 5 - totalValue.length)}${totalValue}\n`;
+  // ИТОГО (полная ширина, крупный шрифт)
+  text += '\n';
+  const totalLabel = 'JAMI:';
+  const totalValue = formatNumber(receipt.total) + " so'm";
+  const totalSpaces = Math.max(1, width - totalLabel.length - totalValue.length);
+  text += `${totalLabel}${' '.repeat(totalSpaces)}${totalValue}\n`;
+  text += '\n';
   text += line + '\n';
   
   // Способ оплаты
