@@ -176,6 +176,7 @@ export default function Products() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
+  const [printCodePrefix, setPrintCodePrefix] = useState('');
   const [printing, setPrinting] = useState(false);
   const [showPriceOnLabel, setShowPriceOnLabel] = useState(() => {
     // Load from localStorage
@@ -699,6 +700,7 @@ export default function Products() {
     // Open print modal
     setPrintProduct(product);
     setPrintQuantity('1');
+    setPrintCodePrefix('');
     setPrinting(false);
     setShowPrintModal(true);
   };
@@ -718,9 +720,14 @@ export default function Products() {
     const qrData = JSON.stringify({ id: printProduct._id, code: printProduct.code, name: printProduct.name });
     const price = printProduct.price;
     
+    // Формируем цену с кодом если он введен
+    const displayPrice = printCodePrefix.trim() 
+      ? `${printCodePrefix.trim()} ${price.toLocaleString()}` 
+      : price.toLocaleString();
+    
     const labelsHtml = Array(qty).fill(`
       <div class="label">
-        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${price.toLocaleString()} so'm</div></div>` : ''}
+        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
         <div class="content-row">
           <div class="left-section">
             <div class="name">${uz(printProduct.name)}</div>
@@ -1295,6 +1302,9 @@ export default function Products() {
                 <div>
                   <p className="font-bold text-lg text-surface-900 dark:text-white">{uz(printProduct.name)}</p>
                   <p className="font-semibold text-surface-600 dark:text-surface-400">Code: {printProduct.code}</p>
+                  <p className="text-sm font-semibold text-surface-700 dark:text-surface-300 mt-1">
+                    Narx: {printProduct.price.toLocaleString()} so'm
+                  </p>
                 </div>
                 <div className="bg-white p-2 rounded-xl border-2 border-surface-200 shadow-lg">
                   <QRCodeSVG
@@ -1306,6 +1316,23 @@ export default function Products() {
                     level="H"
                   />
                 </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">Kod prefiksi (ixtiyoriy)</label>
+                <input 
+                  type="number" 
+                  className="input text-center font-bold text-lg" 
+                  placeholder="Masalan: 1, 2, 3..."
+                  value={printCodePrefix}
+                  onChange={e => setPrintCodePrefix(e.target.value)}
+                  disabled={printing}
+                />
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 text-center">
+                  {printCodePrefix.trim() 
+                    ? `Ценникда: ${printCodePrefix.trim()} ${printProduct.price.toLocaleString()} so'm` 
+                    : `Ценникда: ${printProduct.price.toLocaleString()} so'm`}
+                </p>
               </div>
               
               <div>
@@ -1336,7 +1363,7 @@ export default function Products() {
                   disabled={printing}
                 />
                 <label htmlFor="showPrice" className="flex-1 text-sm font-bold text-surface-700 dark:text-surface-300 cursor-pointer select-none">
-                  Narxni ko'rsatish ({printProduct.price.toLocaleString()} so'm)
+                  Narxni ko'rsatish
                 </label>
               </div>
               

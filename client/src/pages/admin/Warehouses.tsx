@@ -28,7 +28,12 @@ export default function Warehouses() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [printQuantity, setPrintQuantity] = useState('1');
+  const [printCodePrefix, setPrintCodePrefix] = useState('');
   const [printing, setPrinting] = useState(false);
+  const [showPriceOnLabel, setShowPriceOnLabel] = useState(() => {
+    const saved = localStorage.getItem('showPriceOnLabel');
+    return saved ? JSON.parse(saved) : true;
+  });
   const [formData, setFormData] = useState({ name: '', address: '' });
   const [productFormData, setProductFormData] = useState({
     code: '', name: '', costPrice: '', wholesalePrice: '', quantity: ''
@@ -269,6 +274,7 @@ export default function Warehouses() {
   const openPrintModal = (product: Product) => {
     setPrintProduct(product);
     setPrintQuantity('1');
+    setPrintCodePrefix('');
     setPrinting(false);
     setShowPrintModal(true);
   };
@@ -286,9 +292,16 @@ export default function Warehouses() {
     }
     
     const qrData = JSON.stringify({ id: printProduct._id, code: printProduct.code, name: printProduct.name });
+    const price = printProduct.price;
+    
+    // Формируем цену с кодом если он введен
+    const displayPrice = printCodePrefix.trim() 
+      ? `${printCodePrefix.trim()} ${price.toLocaleString()}` 
+      : price.toLocaleString();
     
     const labelsHtml = Array(qty).fill(`
       <div class="label">
+        ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
         <div class="content-row">
           <div class="left-section">
             <div class="name">${printProduct.name}</div>
@@ -907,6 +920,9 @@ export default function Warehouses() {
                 <div>
                   <p className="font-semibold text-surface-900">{printProduct.name}</p>
                   <p className="text-sm text-surface-500">Код: {printProduct.code}</p>
+                  <p className="text-sm font-semibold text-surface-700 mt-1">
+                    Narx: {printProduct.price.toLocaleString()} so'm
+                  </p>
                 </div>
                 <div className="bg-white p-1 rounded-lg border border-surface-200">
                   <QRCodeSVG
@@ -923,6 +939,23 @@ export default function Warehouses() {
               </div>
               
               <div>
+                <label className="text-sm font-medium text-surface-700 mb-2 block">Kod prefiksi (ixtiyoriy)</label>
+                <input 
+                  type="number" 
+                  className="input text-center" 
+                  placeholder="Masalan: 1, 2, 3..."
+                  value={printCodePrefix}
+                  onChange={e => setPrintCodePrefix(e.target.value)}
+                  disabled={printing}
+                />
+                <p className="text-xs text-surface-500 mt-1 text-center">
+                  {printCodePrefix.trim() 
+                    ? `Ценникда: ${printCodePrefix.trim()} ${printProduct.price.toLocaleString()} so'm` 
+                    : `Ценникда: ${printProduct.price.toLocaleString()} so'm`}
+                </p>
+              </div>
+              
+              <div>
                 <label className="text-sm font-medium text-surface-700 mb-2 block">Сони</label>
                 <input 
                   type="number" 
@@ -933,6 +966,25 @@ export default function Warehouses() {
                   onChange={e => setPrintQuantity(e.target.value)}
                   disabled={printing}
                 />
+              </div>
+              
+              {/* Checkbox для отображения цены */}
+              <div className="flex items-center gap-3 p-3 bg-surface-50 rounded-lg border border-surface-200">
+                <input
+                  type="checkbox"
+                  id="showPriceWarehouse"
+                  checked={showPriceOnLabel}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setShowPriceOnLabel(checked);
+                    localStorage.setItem('showPriceOnLabel', JSON.stringify(checked));
+                  }}
+                  className="w-4 h-4 rounded border-2 border-surface-300 text-primary-600 focus:ring-2 focus:ring-primary-500 cursor-pointer"
+                  disabled={printing}
+                />
+                <label htmlFor="showPriceWarehouse" className="flex-1 text-sm font-medium text-surface-700 cursor-pointer select-none">
+                  Narxni ko'rsatish
+                </label>
               </div>
               
               <div className="flex gap-3 pt-2">
