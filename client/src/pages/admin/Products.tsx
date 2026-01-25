@@ -25,7 +25,7 @@ const ProductRow = memo(({
   formatNumber
 }: any) => {
   return (
-    <div className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+    <div className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
       <div className="col-span-1">
         {getProductImage(product) ? (
           <img 
@@ -35,29 +35,29 @@ const ProductRow = memo(({
             loading="lazy"
           />
         ) : (
-          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-            <Image className="w-5 h-5 text-gray-400" />
+          <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-700 rounded-lg flex items-center justify-center">
+            <Image className="w-5 h-5 text-neutral-400" />
           </div>
         )}
       </div>
       <div className="col-span-1">
-        <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">{product.code}</span>
+        <span className="font-mono text-sm bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">{product.code}</span>
       </div>
       <div className="col-span-2">
-        <p className="font-medium text-gray-900 dark:text-gray-100">{uz(product.name)}</p>
+        <p className="font-medium text-neutral-900 dark:text-neutral-100">{uz(product.name)}</p>
       </div>
       <div className="col-span-1">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
+        <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">
           {product._warehouseName || 'N/A'}
         </span>
       </div>
       <div className="col-span-1">
-        <p className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(product.costPrice || 0)}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">so'm</p>
+        <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.costPrice || 0)}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
       </div>
       <div className="col-span-2">
-        <p className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(product.price)}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">so'm</p>
+        <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
       </div>
       <div className="col-span-1">
         <span className={`font-semibold ${
@@ -69,10 +69,10 @@ const ProductRow = memo(({
         <button onClick={() => onTransfer(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all" title="Omborga o'tkazish">
           <ArrowRightLeft className="w-4 h-4" />
         </button>
-        <button onClick={() => onQR(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all" title="QR kod">
+        <button onClick={() => onQR(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="QR kod">
           <QrCode className="w-4 h-4" />
         </button>
-        <button onClick={() => onPrint(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all" title="Ценник чоп этиш">
+        <button onClick={() => onPrint(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="Ценник чоп этиш">
           <Printer className="w-4 h-4" />
         </button>
         <button onClick={() => onEdit(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-100 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all">
@@ -111,29 +111,29 @@ const ProductCard = memo(({
             loading="lazy"
           />
         ) : (
-          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Package className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Package className="w-8 h-8 text-neutral-400" />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-1">{uz(product.name)}</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">Kod: {product.code}</p>
-          <span className="inline-block mt-1 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
+          <h4 className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">{uz(product.name)}</h4>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono">Kod: {product.code}</p>
+          <span className="inline-block mt-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">
             {(product as any)._warehouseName}
           </span>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tan narxi</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{formatNumber((product as any).costPrice || 0)}</p>
+        <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tan narxi</p>
+          <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber((product as any).costPrice || 0)}</p>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Optom</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{formatNumber(product.price)}</p>
+        <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Optom</p>
+          <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Miqdor</p>
+        <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Miqdor</p>
           <p className={`text-sm font-bold ${
             product.quantity === 0 ? 'text-red-600 dark:text-red-400' :
             product.quantity <= (product.minStock || 5) ? 'text-red-600 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'
@@ -145,10 +145,10 @@ const ProductCard = memo(({
           <ArrowRightLeft className="w-4 h-4 inline mr-1" />
           Transfer
         </button>
-        <button onClick={() => onQR(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+        <button onClick={() => onQR(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
           <QrCode className="w-4 h-4" />
         </button>
-        <button onClick={() => onPrint(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+        <button onClick={() => onPrint(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
           <Printer className="w-4 h-4" />
         </button>
         <button onClick={() => onEdit(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all">
@@ -722,7 +722,7 @@ export default function Products() {
     
     // Формируем цену с кодом если он введен
     const displayPrice = printCodePrefix.trim() 
-      ? `${printCodePrefix.trim()}${price.toString().replace(/\s/g, '')}` 
+      ? `${printCodePrefix.trim()},${price.toString().replace(/\s/g, '')}` 
       : price.toLocaleString();
     
     const labelsHtml = Array(qty).fill(`
@@ -983,7 +983,7 @@ export default function Products() {
                     <span className="table-header-cell col-span-3 text-center">Amallar</span>
                   </div>
                 </div>
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
                   {filteredProducts.map(product => (
                     <ProductRow
                       key={product._id}
@@ -1000,7 +1000,7 @@ export default function Products() {
                   ))}
                 </div>
               </div>
-              <div className="lg:hidden divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
                 {filteredProducts.map(product => (
                   <ProductCard
                     key={product._id}
@@ -1330,7 +1330,7 @@ export default function Products() {
                 />
                 <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 text-center">
                   {printCodePrefix.trim() 
-                    ? `Ценникда: ${printCodePrefix.trim()}${printProduct.price.toString().replace(/\s/g, '')} so'm` 
+                    ? `Ценникда: ${printCodePrefix.trim()},${printProduct.price.toString().replace(/\s/g, '')} so'm` 
                     : `Ценникда: ${printProduct.price.toLocaleString()} so'm`}
                 </p>
               </div>

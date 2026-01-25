@@ -24,13 +24,14 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number | null>(null);
 
-  // Load from cache IMMEDIATELY on mount
   useEffect(() => {
     const cached = getCachedData<Product[]>('products_cache');
     const cacheTime = sessionStorage.getItem('products_cache_time');
     
     if (cached && cached.length > 0) {
-      console.log('⚡ Instant load from cache:', cached.length, 'products');
+      if (import.meta.env.DEV) {
+        console.log('⚡ Instant load from cache:', cached.length, 'products');
+      }
       // Limit size to prevent memory issues
       const limited = limitArraySize(cached, 2000);
       setProducts(limited);
@@ -48,8 +49,12 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // No cache or expired - fetch in background
-    fetchProducts();
+    // No cache or expired - fetch in background only if token exists
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProducts = useCallback(async (force = false) => {
@@ -66,11 +71,15 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching products...');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Fetching products...');
+      }
       const startTime = Date.now();
       const res = await api.get('/products?warehouse=Asosiy ombor');
       const endTime = Date.now();
-      console.log(`✅ Loaded in ${endTime - startTime}ms`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Loaded in ${endTime - startTime}ms`);
+      }
       
       // Limit size to prevent memory issues
       const productsData = limitArraySize(res.data, 2000) as Product[];

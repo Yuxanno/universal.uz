@@ -305,7 +305,7 @@ export default function Helpers() {
                         </button>
                       </div>
                     ) : (
-                      <div className="w-28 h-28 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-surface-600 shadow-inner">
+                      <div className="w-28 h-28 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-neutral-300 dark:border-surface-600 shadow-inner">
                         <Camera className="w-10 h-10 text-slate-400 mb-1" />
                         <p className="text-xs text-slate-600 dark:text-slate-400 font-bold">Rasm yo'q</p>
                       </div>
@@ -325,7 +325,7 @@ export default function Helpers() {
                       disabled={uploadingImage}
                       className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold transition-all ${
                         uploadingImage
-                          ? 'bg-gray-200 text-slate-400 cursor-not-allowed'
+                          ? 'bg-neutral-200 text-slate-400 cursor-not-allowed'
                           : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
                       }`}
                     >
@@ -361,7 +361,7 @@ export default function Helpers() {
                     className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
                       formData.role === 'cashier' 
                         ? 'border-green-500 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 shadow-lg scale-105' 
-                        : 'border-gray-200 dark:border-surface-600 hover:border-green-300 hover:bg-green-50/50 hover:scale-102'
+                        : 'border-neutral-200 dark:border-surface-600 hover:border-green-300 hover:bg-green-50/50 hover:scale-102'
                     }`}
                   >
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
@@ -394,7 +394,7 @@ export default function Helpers() {
                     className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
                       formData.role === 'helper' 
                         ? 'border-red-500 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 shadow-lg scale-105' 
-                        : 'border-gray-200 dark:border-surface-600 hover:border-red-300 hover:bg-red-50/50 hover:scale-102'
+                        : 'border-neutral-200 dark:border-surface-600 hover:border-red-300 hover:bg-red-50/50 hover:scale-102'
                     }`}
                   >
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${
@@ -433,7 +433,7 @@ export default function Helpers() {
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input 
                     type="text" 
-                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-gray-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
+                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
                     placeholder={t("Masalan: Alisher Navoiy")} 
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
@@ -453,7 +453,7 @@ export default function Helpers() {
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input 
                     type="tel" 
-                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-gray-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
+                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
                     placeholder="+998 XX XXX-XX-XX" 
                     value={formData.phone}
                     onChange={handlePhoneChange}
@@ -473,7 +473,7 @@ export default function Helpers() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input 
                     type="password" 
-                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-gray-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
+                    className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
                     placeholder={editingUser ? t("Bo'sh qoldiring o'zgarmaydi") : t("Kamida 6 ta belgi")} 
                     value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})}
@@ -493,7 +493,7 @@ export default function Helpers() {
                 <button 
                   type="button" 
                   onClick={closeModal} 
-                  className="flex-1 px-6 py-4 bg-gray-100 dark:bg-surface-700 hover:bg-gray-200 dark:hover:bg-surface-600 text-slate-900 dark:text-white text-base font-black rounded-xl transition-all hover:scale-105 shadow-md"
+                  className="flex-1 px-6 py-4 bg-neutral-100 dark:bg-surface-700 hover:bg-neutral-200 dark:hover:bg-surface-600 text-slate-900 dark:text-white text-base font-black rounded-xl transition-all hover:scale-105 shadow-md"
                 >
                   {t("Bekor qilish")}
                 </button>
@@ -502,7 +502,7 @@ export default function Helpers() {
                   disabled={isSaving}
                   className={`flex-1 px-6 py-4 text-white text-base font-black rounded-xl shadow-xl transition-all ${
                     isSaving 
-                      ? 'bg-gray-400 cursor-not-allowed' 
+                      ? 'bg-neutral-400 cursor-not-allowed' 
                       : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 hover:shadow-2xl hover:scale-105'
                   }`}
                 >

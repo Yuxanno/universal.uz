@@ -28,16 +28,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const login = async (phone: string, password: string) => {
+  const login = useCallback(async (phone: string, password: string) => {
     const res = await api.post('/auth/login', { phone, password });
     localStorage.setItem('token', res.data.token);
     setUser(res.data.user);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
-  };
+  }, []);
 
   const updateUser = useCallback((userData: User) => {
     setUser(userData);

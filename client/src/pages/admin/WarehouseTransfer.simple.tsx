@@ -155,7 +155,7 @@ export default function WarehouseTransferSimple() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-20 lg:pb-0">
+    <div className="min-h-screen bg-neutral-50 dark:bg-slate-950 pb-20 lg:pb-0">
       {AlertComponent}
       
       <Header 
@@ -183,7 +183,7 @@ export default function WarehouseTransferSimple() {
         </div>
 
         {/* Products List */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-neutral-200 dark:border-slate-700 overflow-hidden">
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="spinner text-red-600 w-8 h-8" />
@@ -196,9 +196,9 @@ export default function WarehouseTransferSimple() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-slate-700">
+            <div className="divide-y divide-neutral-200 dark:divide-slate-700">
               {filteredInventory.map(item => (
-                <div key={item._id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                <div key={item._id} className="p-4 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-slate-900 dark:text-white truncate">
@@ -242,7 +242,7 @@ export default function WarehouseTransferSimple() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeTransferModal} />
           
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md relative z-10 animate-scaleIn border-2 border-gray-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md relative z-10 animate-scaleIn border-2 border-neutral-200 dark:border-slate-700">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5">
               <div className="flex items-center justify-between">
@@ -269,7 +269,7 @@ export default function WarehouseTransferSimple() {
             {/* Body */}
             <div className="p-6 space-y-6">
               {/* Current Info */}
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+              <div className="bg-neutral-50 dark:bg-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-slate-600 dark:text-slate-400">Hozirgi ombor:</span>
                   <span className="font-semibold text-slate-900 dark:text-white">
@@ -305,11 +305,11 @@ export default function WarehouseTransferSimple() {
                           className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                             isSelected
                               ? `border-${color}-500 bg-${color}-50 dark:bg-${color}-900/20`
-                              : 'border-gray-200 dark:border-slate-700 hover:border-gray-300'
+                              : 'border-neutral-200 dark:border-slate-700 hover:border-neutral-300'
                           }`}
                         >
                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            isSelected ? `bg-${color}-600` : 'bg-gray-100 dark:bg-slate-800'
+                            isSelected ? `bg-${color}-600` : 'bg-neutral-100 dark:bg-slate-800'
                           }`}>
                             <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-600'}`} />
                           </div>
@@ -347,7 +347,7 @@ export default function WarehouseTransferSimple() {
                   onChange={(e) => setTransferQuantity(e.target.value)}
                   min="1"
                   max={selectedProduct.quantity}
-                  className="w-full px-4 py-3 text-lg font-bold text-center text-slate-900 dark:text-white bg-white dark:bg-slate-800 border-2 border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
+                  className="w-full px-4 py-3 text-lg font-bold text-center text-slate-900 dark:text-white bg-white dark:bg-slate-800 border-2 border-neutral-300 dark:border-slate-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10"
                 />
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 text-center">
                   Maksimal: {selectedProduct.quantity} dona
@@ -359,7 +359,7 @@ export default function WarehouseTransferSimple() {
                 <button
                   type="button"
                   onClick={closeTransferModal}
-                  className="flex-1 px-6 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-bold rounded-xl transition-all"
+                  className="flex-1 px-6 py-3 bg-neutral-100 dark:bg-slate-700 hover:bg-neutral-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-bold rounded-xl transition-all"
                 >
                   Bekor qilish
                 </button>

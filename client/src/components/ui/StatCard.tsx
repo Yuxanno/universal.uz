@@ -68,8 +68,8 @@ export default function StatCard({
       ring: 'ring-danger-500'
     },
     gray: {
-      bg: 'bg-gray-50 dark:bg-gray-800',
-      icon: 'text-gray-600 dark:text-gray-400',
+      bg: 'bg-neutral-50 dark:bg-neutral-800',
+      icon: 'text-neutral-600 dark:text-neutral-400',
       ring: 'ring-gray-500'
     }
   };
@@ -80,11 +80,11 @@ export default function StatCard({
     <div
       onClick={onClick}
       className={`
-        bg-white dark:bg-gray-800 rounded-xl p-5
-        border border-gray-200 dark:border-gray-700
+        bg-white dark:bg-neutral-800 rounded-xl p-5
+        border border-neutral-200 dark:border-neutral-700
         shadow-sm
         transition-all duration-200
-        ${onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600' : ''}
+        ${onClick ? 'cursor-pointer hover:shadow-md hover:border-neutral-300 dark:hover:border-neutral-600' : ''}
         ${isActive ? `ring-2 ${colors.ring}` : ''}
       `}
     >
@@ -112,13 +112,13 @@ export default function StatCard({
       </div>
       
       {/* Value */}
-      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+      <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-1">
         {value}
-        {suffix && <span className="text-sm font-normal text-gray-400 ml-1">{suffix}</span>}
+        {suffix && <span className="text-sm font-normal text-neutral-400 ml-1">{suffix}</span>}
       </p>
       
       {/* Label */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+      <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
         {label}
       </p>
     </div>

@@ -28,12 +28,12 @@ const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
             <div className="spinner text-primary-600 dark:text-primary-400" />
           </div>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Yuklanmoqda...</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -55,7 +55,9 @@ const RoleRedirect = () => {
 function App() {
   // Monitor memory usage
   useEffect(() => {
-    console.log('🚀 App started');
+    if (import.meta.env.DEV) {
+      console.log('🚀 App started');
+    }
     monitorMemory();
     startMemoryMonitoring();
     
@@ -71,7 +73,12 @@ function App() {
           <ProductsProvider>
             <CustomersProvider>
               <WarehousesProvider>
-                <BrowserRouter>
+                <BrowserRouter
+                  future={{
+                    v7_startTransition: true,
+                    v7_relativeSplatPath: true
+                  }}
+                >
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/" element={<RoleRedirect />} />

@@ -65,20 +65,20 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-50 ${
+    <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-neutral-950 border-r-2 border-neutral-200 dark:border-neutral-800 transition-all duration-300 z-50 shadow-lg ${
       collapsed ? 'w-[72px]' : 'w-64'
     }`}>
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-700">
+      <div className="h-16 flex items-center justify-between px-4 border-b-2 border-neutral-200 dark:border-neutral-800">
         {!collapsed && (
           <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Universal" className="w-9 h-9 rounded-xl object-cover" />
-            <span className="font-bold text-lg text-gray-900 dark:text-gray-100">Universal</span>
+            <img src="/logo.jpg" alt="Universal" className="w-10 h-10 rounded-xl object-cover shadow-md ring-2 ring-red-500/20" />
+            <span className="font-bold text-xl text-neutral-900 dark:text-neutral-50">Universal</span>
           </div>
         )}
         <button 
           onClick={() => setCollapsed?.(!collapsed)} 
-          className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+          className="p-2 rounded-lg text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-neutral-100 dark:hover:bg-neutral-800 transition-all"
         >
           {collapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
         </button>
@@ -93,11 +93,11 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
             end={items[i].path === ''}
             onClick={handleMenuItemClick}
             className={({ isActive }) => `
-              flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200
+              flex items-center gap-3 px-3 py-3 rounded-lg font-medium transition-all duration-200
               ${collapsed ? 'justify-center' : ''}
               ${isActive 
-                ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' 
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                ? 'bg-red-50 text-red-600 shadow-sm dark:bg-red-900/30 dark:text-red-400' 
+                : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
               }
             `}
             title={collapsed ? item.label : undefined}
@@ -109,26 +109,26 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
       </nav>
 
       {/* User Section */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t-2 border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
         {/* Language Switcher - Desktop (above account) */}
         {!collapsed && (
           <div className="flex items-center gap-2 mb-3">
             <button
               onClick={() => setScript('latin')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 ${
                 script === 'latin' 
-                  ? 'bg-primary-600 text-white shadow-sm' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  ? 'bg-red-600 text-white shadow-sm' 
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'
               }`}
             >
               Lotin
             </button>
             <button
               onClick={() => setScript('cyrillic')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 ${
                 script === 'cyrillic' 
-                  ? 'bg-primary-600 text-white shadow-sm' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  ? 'bg-red-600 text-white shadow-sm' 
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'
               }`}
             >
               Кирил
@@ -138,7 +138,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
         {collapsed && (
           <button
             onClick={() => setScript(script === 'latin' ? 'cyrillic' : 'latin')}
-            className="w-full mb-3 py-2 text-xs font-semibold bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-all"
+            className="w-full mb-3 py-2.5 text-xs font-bold bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700 transition-all"
             title={script === 'latin' ? 'Кирилга ўтиш' : "Lotinga o'tish"}
           >
             {script === 'latin' ? 'Кир' : 'Лот'}
@@ -146,20 +146,20 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
         )}
         
         {!collapsed && (
-          <div className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <div className="w-9 h-9 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 rounded-xl flex items-center justify-center">
-              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-sm">
+              <span className="text-sm font-bold text-white">
                 {user?.name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
+              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">{user?.name}</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 capitalize font-medium">{user?.role}</p>
             </div>
             {user?.role === 'admin' && (
               <button
                 onClick={openEditModal}
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-colors"
+                className="p-2 rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
                 title={tKey("Tahrirlash")}
               >
                 <Edit className="w-4 h-4" />
@@ -169,13 +169,13 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
         )}
         <button
           onClick={logout}
-          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-500 hover:bg-danger-50 hover:text-danger-600 dark:text-gray-400 dark:hover:bg-danger-900/30 dark:hover:text-danger-400 transition-all duration-200 ${
+          className={`flex items-center gap-3 w-full px-3 py-3 rounded-lg text-neutral-600 hover:bg-red-50 hover:text-red-600 dark:text-neutral-400 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all duration-200 font-medium ${
             collapsed ? 'justify-center' : ''
           }`}
           title={collapsed ? tKey('Chiqish') : undefined}
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span className="font-medium">{tKey("Chiqish")}</span>}
+          {!collapsed && <span>{tKey("Chiqish")}</span>}
         </button>
       </div>
 
@@ -183,24 +183,24 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
       {showEditModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowEditModal(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md p-6 relative z-10 shadow-xl animate-scale-in">
+          <div className="bg-white dark:bg-neutral-800 rounded-xl w-full max-w-md p-6 relative z-10 shadow-xl animate-scale-in">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{tKey("Profilni tahrirlash")}</h3>
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">{tKey("Profilni tahrirlash")}</h3>
               <button 
                 onClick={() => setShowEditModal(false)} 
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                className="p-2 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 block">{tKey("Ismingiz")}</label>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Ismingiz")}</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input 
                     type="text" 
-                    className="w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg placeholder:text-gray-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:focus:bg-gray-900" 
+                    className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
                     placeholder={tKey("Ismingiz")} 
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})} 
@@ -209,12 +209,12 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 block">{tKey("Telefon")}</label>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Telefon")}</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input 
                     type="tel" 
-                    className="w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg placeholder:text-gray-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:focus:bg-gray-900" 
+                    className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
                     placeholder="+998 (XX) XXX-XX-XX" 
                     value={formData.phone}
                     onChange={e => setFormData({...formData, phone: formatPhone(e.target.value)})} 
@@ -223,12 +223,12 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5 block">{tKey("Yangi parol (ixtiyoriy)")}</label>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Yangi parol (ixtiyoriy)")}</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input 
                     type="password" 
-                    className="w-full pl-10 pr-3 py-2.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg placeholder:text-gray-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 dark:focus:bg-gray-900" 
+                    className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
                     placeholder={tKey("O'zgartirmaslik uchun bo'sh qoldiring")} 
                     value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})} 

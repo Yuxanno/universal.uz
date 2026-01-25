@@ -296,7 +296,7 @@ export default function Warehouses() {
     
     // Формируем цену с кодом если он введен
     const displayPrice = printCodePrefix.trim() 
-      ? `${printCodePrefix.trim()}${price.toString().replace(/\s/g, '')}` 
+      ? `${printCodePrefix.trim()},${price.toString().replace(/\s/g, '')}` 
       : price.toLocaleString();
     
     const labelsHtml = Array(qty).fill(`
@@ -567,7 +567,7 @@ export default function Warehouses() {
       {showProductsModal && selectedWarehouse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 lg:p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeProductsModal} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full h-full max-w-full max-h-full lg:max-w-6xl lg:max-h-[90vh] relative z-10 animate-scaleIn overflow-hidden flex flex-col border-2 border-gray-100 dark:border-gray-700">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl w-full h-full max-w-full max-h-full lg:max-w-6xl lg:max-h-[90vh] relative z-10 animate-scaleIn overflow-hidden flex flex-col border-2 border-neutral-100 dark:border-neutral-700">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-4 lg:px-6 py-4 lg:py-5">
               <div className="flex items-center justify-between mb-4">
@@ -588,13 +588,13 @@ export default function Warehouses() {
               {/* Search and Add Button */}
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                   <input
                     type="text"
                     placeholder="Mahsulot nomi yoki kodi..."
                     value={warehouseSearchQuery}
                     onChange={(e) => setWarehouseSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-white text-black font-medium placeholder-gray-400 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white text-black font-medium placeholder-gray-400 border-2 border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all"
                     style={{ color: '#000000' }}
                   />
                 </div>
@@ -616,8 +616,8 @@ export default function Warehouses() {
                 </div>
               ) : warehouseProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Package className="w-12 h-12 text-gray-300 mb-4" />
-                  <p className="text-gray-500">Bu omborga tovarlar yo'q</p>
+                  <Package className="w-12 h-12 text-neutral-300 mb-4" />
+                  <p className="text-neutral-500">Bu omborga tovarlar yo'q</p>
                   <button onClick={openAddProductModal} className="btn-primary mt-4">
                     Tovar qo'shish
                   </button>
@@ -647,10 +647,10 @@ export default function Warehouses() {
                             </p>
                           </div>
                           <div className="flex gap-1 flex-shrink-0">
-                            <button onClick={() => openQRModal(product)} className="btn-icon-sm hover:bg-gray-100 dark:hover:bg-surface-600" title="QR kod">
+                            <button onClick={() => openQRModal(product)} className="btn-icon-sm hover:bg-neutral-100 dark:hover:bg-surface-600" title="QR kod">
                               <QrCode className="w-4 h-4" />
                             </button>
-                            <button onClick={() => openPrintModal(product)} className="btn-icon-sm hover:bg-gray-100 dark:hover:bg-surface-600" title="Ценник чоп этиш">
+                            <button onClick={() => openPrintModal(product)} className="btn-icon-sm hover:bg-neutral-100 dark:hover:bg-surface-600" title="Ценник чоп этиш">
                               <Printer className="w-4 h-4" />
                             </button>
                             <button onClick={() => openEditProductModal(product)} className="btn-icon-sm hover:bg-red-100 hover:text-red-600">
@@ -720,7 +720,7 @@ export default function Warehouses() {
       {showAddProductModal && selectedWarehouse && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={closeAddProductModal} />
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden border border-gray-200 dark:border-gray-700 max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden border border-neutral-200 dark:border-neutral-700 max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -743,7 +743,7 @@ export default function Warehouses() {
 
             <form onSubmit={handleProductSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Kod</label>
+                <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2 block">Kod</label>
                 <input 
                   type="text" 
                   className={`input ${codeError && editingProduct ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : codeError ? 'border-yellow-500 focus:border-yellow-500 focus:ring-yellow-500/20' : ''}`}
@@ -762,7 +762,7 @@ export default function Warehouses() {
               </div>
               
               <div>
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Nomi</label>
+                <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2 block">Nomi</label>
                 <input 
                   type="text" 
                   className="input" 
@@ -776,7 +776,7 @@ export default function Warehouses() {
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Tan narxi</label>
+                  <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2 block">Tan narxi</label>
                   <input 
                     type="text" 
                     className="input" 
@@ -787,7 +787,7 @@ export default function Warehouses() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Optom narxi</label>
+                  <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2 block">Optom narxi</label>
                   <input 
                     type="text" 
                     className="input" 
@@ -801,12 +801,12 @@ export default function Warehouses() {
               </div>
               
               {/* Package Information */}
-              <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">Qop ma'lumotlari</label>
-                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600">
+              <div className="border-t-2 border-neutral-200 dark:border-neutral-700 pt-4">
+                <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3 block">Qop ma'lumotlari</label>
+                <div className="bg-neutral-50 dark:bg-neutral-700/50 p-4 rounded-xl border border-neutral-200 dark:border-neutral-600">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Qoplar</label>
+                      <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Qoplar</label>
                       <input
                         type="number"
                         className="input text-sm"
@@ -817,7 +817,7 @@ export default function Warehouses() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Har qopda</label>
+                      <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Har qopda</label>
                       <input
                         type="number"
                         className="input text-sm"
@@ -828,10 +828,10 @@ export default function Warehouses() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Jami</label>
+                      <label className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Jami</label>
                       <input
                         type="text"
-                        className="input text-sm bg-gray-100 dark:bg-gray-600 font-bold"
+                        className="input text-sm bg-neutral-100 dark:bg-neutral-600 font-bold"
                         placeholder="0"
                         value={packageData.packageCount && packageData.unitsPerPackage ? formatNumber(Number(packageData.packageCount) * Number(packageData.unitsPerPackage)) : ''}
                         readOnly
@@ -950,7 +950,7 @@ export default function Warehouses() {
                 />
                 <p className="text-xs text-surface-500 mt-1 text-center">
                   {printCodePrefix.trim() 
-                    ? `Ценникда: ${printCodePrefix.trim()}${printProduct.price.toString().replace(/\s/g, '')} so'm` 
+                    ? `Ценникда: ${printCodePrefix.trim()},${printProduct.price.toString().replace(/\s/g, '')} so'm` 
                     : `Ценникда: ${printProduct.price.toLocaleString()} so'm`}
                 </p>
               </div>

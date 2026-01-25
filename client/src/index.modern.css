@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   🎨 MODERN DESIGN SYSTEM 2025
+   White • Red • Black • Premium • Fast
+   ============================================ */
+
+/* CRITICAL PERFORMANCE OPTIMIZATIONS */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+
+  html {
+    @apply antialiased scroll-smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply font-sans bg-white text-neutral-900;
+    @apply dark:bg-neutral-950 dark:text-neutral-50;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Modern Minimal Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 dark:bg-neutral-700 rounded-full;
+    @apply hover:bg-neutral-400 dark:hover:bg-neutral-600;
+    @apply transition-colors duration-200;
+  }
+
+  /* Selection - Red accent */
+  ::selection {
+    @apply bg-red-100 text-red-900;
+    @apply dark:bg-red-900/30 dark:text-red-100;
+  }
+
+  /* Focus visible - Red ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-red-500 ring-offset-2;
+  }
+}
+
+/* ============================================
+   🔘 BUTTONS - Modern & Minimal
+   ============================================ */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply font-bold rounded-xl;
+    @apply transition-all duration-200 ease-out;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+    @apply select-none;
+  }
+
+  /* Primary - Red CTA */
+  .btn-primary {
+    @apply btn px-5 py-3 text-sm;
+    @apply bg-red-600 text-white shadow-md;
+    @apply hover:bg-red-700 hover:shadow-lg hover:-translate-y-0.5;
+    @apply active:bg-red-800 active:translate-y-0 active:shadow-md;
+    @apply focus-visible:ring-red-500;
+    @apply dark:bg-red-600 dark:hover:bg-red-700;
+  }
+
+  /* Secondary - Neutral outline */
+  .btn-secondary {
+    @apply btn px-5 py-3 text-sm;
+    @apply bg-white text-neutral-900 border-2 border-neutral-300;
+    @apply hover:bg-neutral-100 hover:border-neutral-400 hover:-translate-y-0.5;
+    @apply active:translate-y-0;
+    @apply focus-visible:ring-neutral-400;
+    @apply dark:bg-neutral-900 dark:text-neutral-50 dark:border-neutral-700;
+    @apply dark:hover:bg-neutral-800 dark:hover:border-neutral-600;
+  }
+
+  /* Ghost - Minimal */
+  .btn-ghost {
+    @apply btn px-4 py-2.5 text-sm;
+    @apply bg-transparent text-neutral-600;
+    @apply hover:bg-neutral-100 hover:text-neutral-900;
+    @apply active:bg-neutral-200;
+    @apply dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100;
+  }
+
+  /* Icon Button */
+  .btn-icon {
+    @apply inline-flex items-center justify-center;
+    @apply w-10 h-10 rounded-xl;
+    @apply bg-transparent text-neutral-600;
+    @apply hover:bg-neutral-100 hover:text-neutral-900;
+    @apply active:bg-neutral-200;
+    @apply transition-all duration-200;
+    @apply dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100;
+  }
+
+  .btn-icon-sm {
+    @apply btn-icon w-9 h-9;
+  }
+}
+
+/* ============================================
+   📝 INPUTS - Clean & Modern
+   ============================================ */
+
+@layer components {
+  .input {
+    @apply w-full px-4 py-3 text-sm font-medium;
+    @apply bg-white text-neutral-900;
+    @apply border-2 border-neutral-300 rounded-xl;
+    @apply placeholder:text-neutral-400;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10;
+    @apply disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed;
+    @apply dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-100;
+    @apply dark:focus:border-red-400 dark:focus:ring-red-400/10;
+    @apply shadow-sm;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:border-red-600 focus:ring-red-500/20;
+  }
+
+  /* Select */
+  .select {
+    @apply input appearance-none cursor-pointer pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+  }
+
+  /* Select focus - red */
+  select {
+    accent-color: #ef4444;
+  }
+
+  select:focus {
+    @apply border-red-500 ring-4 ring-red-500/10 outline-none;
+  }
+
+  select option:checked,
+  select option:hover {
+    background-color: #ef4444 !important;
+    color: white !important;
+  }
+}
+
+/* ============================================
+   📦 CARDS - White & Clean
+   ============================================ */
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl p-6;
+    @apply border-2 border-neutral-200 shadow-sm;
+    @apply dark:bg-neutral-900 dark:border-neutral-800;
+    @apply transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card cursor-pointer;
+    @apply hover:shadow-md hover:border-red-500 hover:-translate-y-1;
+    @apply dark:hover:border-red-500;
+    @apply active:translate-y-0 active:shadow-sm;
+  }
+
+  .card-interactive {
+    @apply card-hover;
+  }
+}
+
+/* ============================================
+   🏷️ BADGES - Minimal & Clean
+   ============================================ */
+
+@layer components {
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1;
+    @apply text-xs font-bold rounded-full;
+    @apply transition-all duration-200;
+  }
+
+  .badge-primary {
+    @apply badge bg-red-100 text-red-700;
+    @apply dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .badge-secondary {
+    @apply badge bg-neutral-100 text-neutral-700;
+    @apply dark:bg-neutral-800 dark:text-neutral-300;
+  }
+}
+
+/* ============================================
+   📊 STAT CARDS - Dashboard
+   ============================================ */
+
+@layer components {
+  .stat-card {
+    @apply bg-white rounded-xl p-6 border-2 border-neutral-200 shadow-sm;
+    @apply transition-all duration-200;
+    @apply hover:shadow-md hover:border-red-500 hover:-translate-y-1;
+    @apply dark:bg-neutral-900 dark:border-neutral-800;
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center;
+    @apply bg-red-100 text-red-600 shadow-sm;
+    @apply dark:bg-red-900/30 dark:text-red-400;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold text-neutral-900;
+    @apply dark:text-neutral-50;
+  }
+
+  .stat-label {
+    @apply text-sm text-neutral-600 font-medium;
+    @apply dark:text-neutral-400;
+  }
+}
+
+/* ============================================
+   📋 TABLES - Clean & Readable
+   ============================================ */
+
+@layer components {
+  .table-container {
+    @apply w-full overflow-x-auto rounded-xl border-2 border-neutral-200;
+    @apply dark:border-neutral-800;
+  }
+
+  .table {
+    @apply w-full text-sm text-left;
+  }
+
+  .table-header {
+    @apply bg-neutral-50 border-b-2 border-neutral-200;
+    @apply dark:bg-neutral-900 dark:border-neutral-800;
+  }
+
+  .table-header-cell {
+    @apply px-6 py-4 text-xs font-bold text-neutral-600 uppercase tracking-wider;
+    @apply dark:text-neutral-400;
+  }
+
+  .table-row {
+    @apply border-b border-neutral-200 transition-colors duration-150;
+    @apply hover:bg-neutral-50;
+    @apply dark:border-neutral-800 dark:hover:bg-neutral-900;
+  }
+
+  .table-cell {
+    @apply px-6 py-4 text-neutral-900;
+    @apply dark:text-neutral-100;
+  }
+}
+
+/* ============================================
+   ⏳ LOADING STATES - Skeletons & Spinners
+   ============================================ */
+
+@layer components {
+  .skeleton {
+    @apply bg-neutral-200 rounded-lg animate-pulse;
+    @apply dark:bg-neutral-800;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 w-full;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 w-3/4;
+  }
+
+  .spinner {
+    @apply w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+}
+
+/* ============================================
+   🎬 ANIMATIONS - Smooth & Fast
+   ============================================ */
+
+@layer utilities {
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fade-in 200ms ease-out;
+  }
+
+  .animate-scaleIn {
+    animation: scale-in 200ms ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 300ms ease-out;
+  }
+}
+
+/* ============================================
+   ⚡ PERFORMANCE - Optimizations
+   ============================================ */
+
+img {
+  content-visibility: auto;
+}
+
+.contain-paint {
+  contain: paint;
+}
+
+.overflow-auto,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Print styles */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -182,18 +182,18 @@ export default function Debts() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 lg:pb-0">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 pb-20 lg:pb-0">
       {AlertComponent}
       
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 h-16 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+      <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 lg:px-6 h-16 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary-100 dark:bg-primary-900/30">
             <Wallet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <h1 className="text-base lg:text-lg font-bold text-gray-900 dark:text-gray-100">{t("Qarz daftarcha")}</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <h1 className="text-base lg:text-lg font-bold text-neutral-900 dark:text-neutral-100">{t("Qarz daftarcha")}</h1>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {debtType === 'receivable' ? t("Menga qarzdor") : t("Men qarzdorman")}
             </p>
           </div>
@@ -208,13 +208,13 @@ export default function Debts() {
         {/* Type Toggle & Search - only for admin */}
         {isAdmin && (
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="inline-flex p-1.5 bg-gray-100 dark:bg-gray-800 rounded-2xl shadow-sm">
+            <div className="inline-flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl shadow-sm">
               <button
                 onClick={() => { setDebtType('receivable'); setStatusFilter('all'); }}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
                   debtType === 'receivable' 
-                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-md scale-105' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-md scale-105' 
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
                 <ArrowDownLeft className="w-5 h-5" />
@@ -224,8 +224,8 @@ export default function Debts() {
                 onClick={() => { setDebtType('payable'); setStatusFilter('all'); }}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
                   debtType === 'payable' 
-                    ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-md scale-105' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    ? 'bg-white dark:bg-neutral-700 text-red-600 dark:text-red-400 shadow-md scale-105' 
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
                 }`}
               >
                 <ArrowUpRight className="w-5 h-5" />
@@ -233,13 +233,13 @@ export default function Debts() {
               </button>
             </div>
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Mijoz nomi yoki telefon..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 dark:text-gray-100 transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 dark:text-neutral-100 transition-all"
               />
             </div>
           </div>
@@ -251,12 +251,12 @@ export default function Debts() {
             <div 
               key={i} 
               onClick={() => stat.filter && setStatusFilter(stat.filter)}
-              className={`relative p-5 bg-white dark:bg-gray-800 rounded-2xl border-2 transition-all hover:shadow-lg ${
+              className={`relative p-5 bg-white dark:bg-neutral-800 rounded-2xl border-2 transition-all hover:shadow-lg ${
                 stat.filter ? 'cursor-pointer' : ''
               } ${
                 statusFilter === stat.filter 
                   ? 'border-primary-500 shadow-lg scale-105' 
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               <div className="flex items-start justify-between mb-3">
@@ -266,14 +266,14 @@ export default function Debts() {
                   'from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-900/40'
                 }`}>
                   <stat.icon className={`w-6 h-6 ${
-                    stat.color === 'gray' ? 'text-gray-600 dark:text-gray-400' :
+                    stat.color === 'gray' ? 'text-neutral-600 dark:text-neutral-400' :
                     stat.color === 'primary' ? 'text-primary-600 dark:text-primary-400' :
                     'text-red-600 dark:text-red-400'
                   }`} />
                 </div>
               </div>
-              <p className="text-2xl lg:text-3xl font-black text-gray-900 dark:text-gray-100 mb-1">{stat.value}</p>
-              <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 font-medium">{stat.label}</p>
+              <p className="text-2xl lg:text-3xl font-black text-neutral-900 dark:text-neutral-100 mb-1">{stat.value}</p>
+              <p className="text-xs lg:text-sm text-neutral-500 dark:text-neutral-400 font-medium">{stat.label}</p>
               {statusFilter === stat.filter && (
                 <div className="absolute top-2 right-2 w-3 h-3 bg-primary-500 rounded-full animate-pulse" />
               )}
@@ -282,19 +282,19 @@ export default function Debts() {
         </div>
 
         {/* Debts List */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-0 overflow-hidden">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 p-0 overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
+              <p className="text-neutral-500 dark:text-neutral-400">Yuklanmoqda...</p>
             </div>
           ) : filteredDebts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8 text-gray-400" />
+              <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
+                <AlertTriangle className="w-8 h-8 text-neutral-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Qarzlar topilmadi</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Qarzlar topilmadi</h3>
+              <p className="text-neutral-500 dark:text-neutral-400 text-center max-w-md">
                 {searchQuery || statusFilter !== 'all' ? 'Filtr bo\'yicha qarzlar topilmadi' : 'Hozircha qarzlar yo\'q'}
               </p>
             </div>
@@ -315,38 +315,38 @@ export default function Debts() {
                     <span className="table-header-cell col-span-1 text-center">Amallar</span>
                   </div>
                 </div>
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
                   {filteredDebts.map(debt => (
-                    <div key={debt._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div key={debt._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
                       <div className="col-span-2 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary-100 dark:bg-primary-900/30">
                           <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{getDebtorName(debt)}</p>
-                          {getDebtorPhone(debt) && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{getDebtorPhone(debt)}</p>}
+                          <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{getDebtorName(debt)}</p>
+                          {getDebtorPhone(debt) && <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">{getDebtorPhone(debt)}</p>}
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(debt.amount)}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">so'm</p>
+                        <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(debt.amount)}</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
                       </div>
                       <div className="col-span-2">
                         <p className="font-semibold text-primary-600 dark:text-primary-400">
                           {formatNumber(debt.amount - debt.paidAmount)}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">so'm</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
                       </div>
-                      <div className="col-span-2 flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <div className="col-span-2 flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
                         <Calendar className="w-4 h-4" />
                         {new Date(debt.dueDate).toLocaleDateString('uz-UZ')}
                       </div>
                       {debtType === 'receivable' && (
                         <div className="col-span-2">
                           {(debt as any).collateral ? (
-                            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{(debt as any).collateral}</span>
+                            <span className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">{(debt as any).collateral}</span>
                           ) : (
-                            <span className="text-sm text-gray-400">-</span>
+                            <span className="text-sm text-neutral-400">-</span>
                           )}
                         </div>
                       )}
@@ -354,7 +354,7 @@ export default function Debts() {
                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${
                           debt.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
                           debt.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
                         }`}>
                           {debt.status === 'paid' ? <CheckCircle2 className="w-3 h-3" /> :
                            debt.status === 'overdue' ? <AlertCircle className="w-3 h-3" /> :
@@ -395,15 +395,15 @@ export default function Debts() {
               {/* Mobile Cards */}
               <div className="lg:hidden space-y-3 p-4">
                 {filteredDebts.map(debt => (
-                  <div key={debt._id} className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-700 p-4 hover:border-primary-500 transition-all hover:shadow-lg">
+                  <div key={debt._id} className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 p-4 hover:border-primary-500 transition-all hover:shadow-lg">
                     <div className="flex items-start gap-3 mb-4">
                       <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-900/40">
                         <User className="w-7 h-7 text-primary-600 dark:text-primary-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-1">{getDebtorName(debt)}</h4>
+                        <h4 className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">{getDebtorName(debt)}</h4>
                         {getDebtorPhone(debt) && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
                             <Phone className="w-3 h-3" />
                             {getDebtorPhone(debt)}
                           </p>
@@ -412,7 +412,7 @@ export default function Debts() {
                       <span className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 ${
                         debt.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
                         debt.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                        'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
                       }`}>
                         {debt.status === 'paid' ? <CheckCircle2 className="w-3 h-3" /> :
                          debt.status === 'overdue' ? <AlertCircle className="w-3 h-3" /> :
@@ -423,31 +423,31 @@ export default function Debts() {
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Qarz summasi</p>
-                        <p className="text-lg font-black text-gray-900 dark:text-gray-100">{formatNumber(debt.amount)}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">so'm</p>
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
+                        <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Qarz summasi</p>
+                        <p className="text-lg font-black text-neutral-900 dark:text-neutral-100">{formatNumber(debt.amount)}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">so'm</p>
                       </div>
                       <div className="rounded-xl p-3 border-2 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 dark:from-primary-900/20 dark:to-primary-900/30 dark:border-primary-800">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Qoldiq</p>
+                        <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Qoldiq</p>
                         <p className="text-lg font-black text-primary-600 dark:text-primary-400">
                           {formatNumber(debt.amount - debt.paidAmount)}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">so'm</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">so'm</p>
                       </div>
                     </div>
                     
                     {debtType === 'receivable' && (debt as any).collateral && (
-                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-3 mb-3 border border-gray-200 dark:border-gray-600">
-                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-3 mb-3 border border-neutral-200 dark:border-neutral-600">
+                        <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
                           Zalog: {(debt as any).collateral}
                         </p>
                       </div>
                     )}
                     
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    <div className="flex items-center justify-between pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                      <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 font-medium">
                         <Calendar className="w-4 h-4" />
                         {new Date(debt.dueDate).toLocaleDateString('uz-UZ')}
                       </div>
@@ -486,7 +486,7 @@ export default function Debts() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeModal} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden border-2 border-gray-200 dark:border-gray-700 max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden border-2 border-neutral-200 dark:border-neutral-700 max-h-[90vh] flex flex-col">
             {/* Header - Sticky */}
             <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-5 flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -507,12 +507,12 @@ export default function Debts() {
               <div className="p-6 space-y-5">
                 {/* Debt Type Toggle - only for admin */}
                 {isAdmin && (
-                  <div className="flex p-1.5 bg-gray-100 dark:bg-gray-700 rounded-2xl">
+                  <div className="flex p-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-2xl">
                     <button
                       type="button"
                       onClick={() => setDebtType('receivable')}
                       className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${
-                        debtType === 'receivable' ? 'bg-white dark:bg-gray-600 text-primary-600 dark:text-primary-400 shadow-md scale-105' : 'text-gray-500 dark:text-gray-400'
+                        debtType === 'receivable' ? 'bg-white dark:bg-neutral-600 text-primary-600 dark:text-primary-400 shadow-md scale-105' : 'text-neutral-500 dark:text-neutral-400'
                       }`}
                     >
                       <ArrowDownLeft className="w-5 h-5" />
@@ -522,7 +522,7 @@ export default function Debts() {
                       type="button"
                       onClick={() => setDebtType('payable')}
                       className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all ${
-                        debtType === 'payable' ? 'bg-white dark:bg-gray-600 text-red-600 dark:text-red-400 shadow-md scale-105' : 'text-gray-500 dark:text-gray-400'
+                        debtType === 'payable' ? 'bg-white dark:bg-neutral-600 text-red-600 dark:text-red-400 shadow-md scale-105' : 'text-neutral-500 dark:text-neutral-400'
                       }`}
                     >
                       <ArrowUpRight className="w-5 h-5" />
@@ -534,34 +534,34 @@ export default function Debts() {
                 <form id="debt-form" onSubmit={handleSubmit} className="space-y-5">
                   {debtType === 'receivable' ? (
                     <div>
-                      <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Mijoz</label>
+                      <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Mijoz</label>
                       {showNewCustomerForm ? (
-                        <div className="space-y-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-gray-200 dark:border-gray-600">
+                        <div className="space-y-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-600">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-bold text-primary-600 dark:text-primary-400">Yangi mijoz</span>
-                            <button type="button" onClick={() => setShowNewCustomerForm(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all hover:scale-110">
+                            <button type="button" onClick={() => setShowNewCustomerForm(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-all hover:scale-110">
                               <X className="w-5 h-5" />
                             </button>
                           </div>
                           <input 
                             type="text" 
-                            className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" 
+                            className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" 
                             placeholder="Mijoz ismi" 
                             value={newCustomer.name}
                             onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} 
                           />
                           <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
                             <input 
                               type="text" 
-                              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" 
+                              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" 
                               placeholder="+998 (XX) XXX-XX-XX" 
                               value={newCustomer.phone}
                               onChange={e => setNewCustomer({ ...newCustomer, phone: formatPhone(e.target.value) })} 
                             />
                           </div>
                           <select 
-                            className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-sm" 
+                            className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-sm" 
                             value={newCustomer.region}
                             onChange={e => setNewCustomer({ ...newCustomer, region: e.target.value, district: '' })}
                           >
@@ -572,7 +572,7 @@ export default function Debts() {
                           </select>
                           {newCustomer.region && (
                             <select 
-                              className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-sm" 
+                              className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-sm" 
                               value={newCustomer.district}
                               onChange={e => setNewCustomer({ ...newCustomer, district: e.target.value })}
                             >
@@ -594,7 +594,7 @@ export default function Debts() {
                         </div>
                       ) : (
                         <div className="flex gap-2">
-                          <select className="flex-1 px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.customer}
+                          <select className="flex-1 px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.customer}
                             onChange={e => setFormData({...formData, customer: e.target.value})} required>
                             <option value="">Tanlang</option>
                             {customers.map(c => <option key={c._id} value={c._id}>{c.name} - {c.phone}</option>)}
@@ -612,32 +612,32 @@ export default function Debts() {
                     </div>
                   ) : (
                     <div>
-                      <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Kimga qarzdorman</label>
-                      <input type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" placeholder="Ism yoki kompaniya nomi" 
+                      <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Kimga qarzdorman</label>
+                      <input type="text" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" placeholder="Ism yoki kompaniya nomi" 
                         value={formData.creditorName}
                         onChange={e => setFormData({...formData, creditorName: e.target.value})} required />
                     </div>
                   )}
                   <div>
-                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Summa (so'm)</label>
-                    <input type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-lg font-bold" placeholder="0" value={formatInputNumber(formData.amount)}
+                    <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Summa (so'm)</label>
+                    <input type="text" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-lg font-bold" placeholder="0" value={formatInputNumber(formData.amount)}
                       onChange={e => setFormData({...formData, amount: parseNumber(e.target.value)})} required />
                   </div>
                   <div>
-                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Muddat</label>
-                    <input type="date" className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.dueDate}
+                    <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Muddat</label>
+                    <input type="date" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.dueDate}
                       onChange={e => setFormData({...formData, dueDate: e.target.value})} required />
                   </div>
                   <div>
-                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Izoh (ixtiyoriy)</label>
-                    <textarea className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all resize-none" rows={3} placeholder="Qarz haqida izoh" 
+                    <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Izoh (ixtiyoriy)</label>
+                    <textarea className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all resize-none" rows={3} placeholder="Qarz haqida izoh" 
                       value={formData.description}
                       onChange={e => setFormData({...formData, description: e.target.value})} />
                   </div>
                   {debtType === 'receivable' && (
                     <div>
-                      <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">Zalog (ixtiyoriy)</label>
-                      <input type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" placeholder="Zalogga nima qoldirdi" 
+                      <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Zalog (ixtiyoriy)</label>
+                      <input type="text" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" placeholder="Zalogga nima qoldirdi" 
                         value={formData.collateral}
                         onChange={e => setFormData({...formData, collateral: e.target.value})} />
                     </div>
@@ -647,9 +647,9 @@ export default function Debts() {
             </div>
 
             {/* Footer - Sticky */}
-            <div className="flex-shrink-0 p-6 pt-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 p-6 pt-0 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
               <div className="flex gap-3">
-                <button type="button" onClick={closeModal} className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-bold active:scale-95">
+                <button type="button" onClick={closeModal} className="flex-1 px-6 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95">
                   Bekor qilish
                 </button>
                 <button type="submit" form="debt-form" className="flex-1 px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95">
@@ -665,7 +665,7 @@ export default function Debts() {
       {showPaymentModal && selectedDebt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)} />
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden border-2 border-neutral-200 dark:border-neutral-700">
             {/* Header */}
             <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-5">
               <div className="flex items-center justify-between">
@@ -683,19 +683,19 @@ export default function Debts() {
 
             <div className="p-6 space-y-5">
               <div className="rounded-2xl p-5 border-2 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 dark:from-primary-900/20 dark:to-primary-900/30 dark:border-primary-800">
-                <p className="text-sm font-bold text-gray-600 dark:text-gray-400 mb-1">Qoldiq summa</p>
+                <p className="text-sm font-bold text-neutral-600 dark:text-neutral-400 mb-1">Qoldiq summa</p>
                 <p className="text-3xl font-black text-primary-600 dark:text-primary-400">
                   {formatNumber(selectedDebt.amount - selectedDebt.paidAmount)} so'm
                 </p>
               </div>
               <form onSubmit={handlePayment} className="space-y-5">
                 <div>
-                  <label className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 block">To'lov summasi</label>
-                  <input type="text" className="w-full px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-center text-xl font-bold" placeholder="0" value={formatInputNumber(paymentAmount)}
+                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">To'lov summasi</label>
+                  <input type="text" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-center text-xl font-bold" placeholder="0" value={formatInputNumber(paymentAmount)}
                     onChange={e => setPaymentAmount(parseNumber(e.target.value))} required />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowPaymentModal(false)} className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-bold active:scale-95">
+                  <button type="button" onClick={() => setShowPaymentModal(false)} className="flex-1 px-6 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95">
                     Bekor qilish
                   </button>
                   <button type="submit" className="flex-1 px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95">To'lash</button>
