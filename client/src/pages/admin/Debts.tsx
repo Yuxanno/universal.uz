@@ -7,6 +7,7 @@ import { Debt, Customer } from '../../types';
 import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber, formatPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
+import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -16,8 +17,8 @@ export default function Debts() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { showConfirm, AlertComponent } = useAlert();
+  const { customers, addCustomer } = useCustomers();
   const [debts, setDebts] = useState<Debt[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [stats, setStats] = useState({
     total: 0, pending: 0, today: 0, overdue: 0, paid: 0, blacklist: 0, totalAmount: 0
   });
@@ -38,7 +39,6 @@ export default function Debts() {
 
   useEffect(() => {
     fetchDebts();
-    fetchCustomers();
     fetchStats();
   }, [debtType]);
 
@@ -48,13 +48,6 @@ export default function Debts() {
       setDebts(res.data);
     } catch (err) { console.error('Error fetching debts:', err); }
     finally { setLoading(false); }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const res = await api.get('/customers');
-      setCustomers(res.data);
-    } catch (err) { console.error('Error fetching customers:', err); }
   };
 
   const fetchStats = async () => {
@@ -144,9 +137,8 @@ export default function Debts() {
         phone: newCustomer.phone,
         address: newCustomer.region && newCustomer.district ? `${newCustomer.region}, ${newCustomer.district}` : ''
       };
-      const res = await api.post('/customers', data);
-      await fetchCustomers();
-      setFormData({ ...formData, customer: res.data._id });
+      const customer = await addCustomer(data);
+      setFormData({ ...formData, customer: customer._id });
       setShowNewCustomerForm(false);
       setNewCustomer({ name: '', phone: '', region: '', district: '' });
     } catch (err) { console.error('Error creating customer:', err); }

@@ -9,8 +9,11 @@ import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useLanguage } from '../../context/LanguageContext';
+import { useProducts } from '../../context/ProductsContext';
+import { useCustomers } from '../../context/CustomersContext';
 import CartItemRow from '../../components/pos/CartItemRow';
 import { regionNames } from '../../data/regions';
+import { searchProducts } from '../../utils/productSearch';
 import './Kassa.modern.css';
 
 interface SavedReceipt {
@@ -32,15 +35,15 @@ export default function Kassa() {
   const { tKey } = useLanguage();
   const location = useLocation();
   const { showAlert, AlertComponent } = useAlert();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { displayedProducts, loading: loadingProducts } = useProducts();
+  const { customers, addCustomer } = useCustomers();
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 100);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
@@ -61,8 +64,6 @@ export default function Kassa() {
   });
 
   useEffect(() => {
-    fetchProducts();
-    fetchCustomers();
     loadSavedReceipts();
     loadWorkerItems();
     
@@ -149,46 +150,6 @@ export default function Kassa() {
     }
   };
 
-  const fetchProducts = async () => {
-    try {
-      // Check cache first
-      const cachedProducts = sessionStorage.getItem('products_cache');
-      const cacheTime = sessionStorage.getItem('products_cache_time');
-      const now = Date.now();
-      
-      // Use cache if less than 5 minutes old
-      if (cachedProducts && cacheTime && (now - parseInt(cacheTime)) < 5 * 60 * 1000) {
-        console.log('📦 Using cached products');
-        setProducts(JSON.parse(cachedProducts));
-        return;
-      }
-      
-      console.log('🔄 Fetching products from server...');
-      const startTime = Date.now();
-      const res = await api.get('/products?warehouse=Asosiy ombor');
-      const endTime = Date.now();
-      console.log(`✅ Products loaded in ${endTime - startTime}ms`);
-      
-      setProducts(res.data);
-      
-      // Cache the results
-      sessionStorage.setItem('products_cache', JSON.stringify(res.data));
-      sessionStorage.setItem('products_cache_time', now.toString());
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      showAlert('Mahsulotlarni yuklashda xatolik', 'Xatolik', 'danger');
-    }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const res = await api.get('/customers');
-      setCustomers(res.data);
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-    }
-  };
-
   const loadSavedReceipts = () => {
     const saved = localStorage.getItem('savedReceipts');
     if (saved) setSavedReceipts(JSON.parse(saved));
@@ -203,20 +164,18 @@ export default function Kassa() {
     }, 0);
   }, [cart, localPrices]);
 
-  // Debounced search with useEffect
+  // Debounced search with useEffect - limit results
   useEffect(() => {
     setIsSearching(true);
     if (debouncedSearchQuery.length > 0) {
-      const results = products.filter(p =>
-        p.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        p.code.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-      );
+      // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
+      const results = searchProducts(displayedProducts, debouncedSearchQuery).slice(0, 50);
       setSearchResults(results);
     } else {
-      setSearchResults(products);
+      setSearchResults(displayedProducts.slice(0, 50)); // Show first 50
     }
     setIsSearching(false);
-  }, [debouncedSearchQuery, products]);
+  }, [debouncedSearchQuery, displayedProducts]);
 
   // Memoize callbacks
   const handleNumpadClick = useCallback((value: string) => {
@@ -233,14 +192,14 @@ export default function Kassa() {
   }, []);
 
   const addProductByCode = useCallback((code: string) => {
-    const product = products.find(p => p.code === code);
+    const product = displayedProducts.find(p => p.code === code);
     if (product) {
       addToCart(product);
       setInputValue('');
     } else if (code) {
       showAlert('Tovar topilmadi', 'Xatolik', 'warning');
     }
-  }, [products, showAlert]);
+  }, [displayedProducts, showAlert]);
 
   const addToCart = useCallback((product: Product) => {
     // Optimistic update - darhol UI'da ko'rsatadi
@@ -282,32 +241,30 @@ export default function Kassa() {
   const handleReturnSearch = useCallback((query: string) => {
     setReturnSearchQuery(query);
     if (query.length > 0) {
-      const results = products.filter(p =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.code.toLowerCase().includes(query.toLowerCase())
-      );
+      // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
+      const results = searchProducts(displayedProducts, query).slice(0, 50);
       setSearchResults(results);
     } else {
-      setSearchResults(products);
+      setSearchResults(displayedProducts.slice(0, 50));
     }
-  }, [products]);
+  }, [displayedProducts]);
 
   const toggleReturnMode = useCallback(() => {
     if (!isReturnMode) {
       setCart([]);
       setIsReturnMode(true);
-      setSearchResults(products);
+      setSearchResults(displayedProducts.slice(0, 50));
       setShowReturnSearch(true);
     } else {
       setIsReturnMode(false);
       setCart([]);
     }
-  }, [isReturnMode, products]);
+  }, [isReturnMode, displayedProducts]);
 
   const openReturnSearch = useCallback(() => {
-    setSearchResults(products);
+    setSearchResults(displayedProducts.slice(0, 50));
     setShowReturnSearch(true);
-  }, [products]);
+  }, [displayedProducts]);
 
   const addToReturn = useCallback((product: Product) => {
     addToCart(product);
@@ -316,9 +273,9 @@ export default function Kassa() {
   }, [addToCart]);
 
   const openSearch = useCallback(() => {
-    setSearchResults(products);
+    setSearchResults(displayedProducts.slice(0, 50));
     setShowSearch(true);
-  }, [products]);
+  }, [displayedProducts]);
 
   const handlePayment = async (method: 'cash' | 'card') => {
     if (cart.length === 0) return;
@@ -373,7 +330,6 @@ export default function Kassa() {
       setIsReturnMode(false);
       setPrintReceipt(receiptData);
       setShowReceipt(true);
-      fetchProducts();
     } catch (err: any) {
       console.error('Error creating receipt:', err);
       const message = err.response?.data?.message || 'Xatolik yuz berdi';
@@ -525,11 +481,7 @@ ${itemsHtml}
         address: customerFormData.region || ''
       };
       
-      const res = await api.post('/customers', customerData);
-      const newCustomer = res.data;
-      
-      // Refresh customer list
-      await fetchCustomers();
+      const newCustomer = await addCustomer(customerData);
       
       // Auto-select the newly created customer
       setSelectedCustomer(newCustomer._id);

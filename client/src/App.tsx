@@ -1,7 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ProductsProvider } from './context/ProductsContext';
+import { CustomersProvider } from './context/CustomersContext';
+import { WarehousesProvider } from './context/WarehousesContext';
+import { startMemoryMonitoring, stopMemoryMonitoring, monitorMemory } from './utils/memoryOptimizer';
 import Login from './pages/Login';
 import AdminLayout from './layouts/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
@@ -48,14 +53,28 @@ const RoleRedirect = () => {
 };
 
 function App() {
+  // Monitor memory usage
+  useEffect(() => {
+    console.log('🚀 App started');
+    monitorMemory();
+    startMemoryMonitoring();
+    
+    return () => {
+      stopMemoryMonitoring();
+    };
+  }, []);
+
   return (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<RoleRedirect />} />
+          <ProductsProvider>
+            <CustomersProvider>
+              <WarehousesProvider>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/" element={<RoleRedirect />} />
               
               {/* Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminLayout /></ProtectedRoute>}>
@@ -84,6 +103,9 @@ function App() {
               </Route>
             </Routes>
           </BrowserRouter>
+          </WarehousesProvider>
+          </CustomersProvider>
+          </ProductsProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

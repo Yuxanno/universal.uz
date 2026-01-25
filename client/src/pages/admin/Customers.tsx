@@ -2,17 +2,16 @@ import { useEffect, useState } from 'react';
 import Header from '../../components/Header';
 import { Plus, Users, X, Phone, Edit, Trash2, MapPin, ChevronDown, Package } from 'lucide-react';
 import { Customer } from '../../types';
-import api from '../../utils/api';
 import { formatNumber, formatPhone, displayPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
+import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function Customers() {
   const { t } = useLanguage();
   const { showConfirm, AlertComponent } = useAlert();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { customers, loading, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,16 +22,6 @@ export default function Customers() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-  useEffect(() => { fetchCustomers(); }, []);
-
-  const fetchCustomers = async () => {
-    try {
-      const res = await api.get('/customers');
-      setCustomers(res.data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -42,11 +31,10 @@ export default function Customers() {
         address: formData.region && formData.district ? `${formData.region}, ${formData.district}` : ''
       };
       if (editingCustomer) {
-        await api.put(`/customers/${editingCustomer._id}`, data);
+        await updateCustomer(editingCustomer._id, data);
       } else {
-        await api.post('/customers', data);
+        await addCustomer(data);
       }
-      fetchCustomers();
       closeModal();
     } catch (err) { console.error(err); }
   };
@@ -55,8 +43,7 @@ export default function Customers() {
     const confirmed = await showConfirm(t("Mijozni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
     if (!confirmed) return;
     try {
-      await api.delete(`/customers/${id}`);
-      fetchCustomers();
+      await deleteCustomer(id);
     } catch (err) { console.error(err); }
   };
 
