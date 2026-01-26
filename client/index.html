@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" class="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
@@ -12,6 +12,25 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/logo.jpg" />
     <title>Universal.uz - Biznes boshqaruv tizimi</title>
+    <script>
+      // Force light mode - disable dark mode completely
+      (function() {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        // Prevent dark mode from being applied
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'class') {
+              if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+              }
+            }
+          });
+        });
+        observer.observe(document.documentElement, { attributes: true });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
