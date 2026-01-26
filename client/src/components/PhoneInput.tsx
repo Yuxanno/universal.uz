@@ -82,7 +82,6 @@ export default function PhoneInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const cursorPosition = input.selectionStart || 0;
-    const currentValue = input.value;
     
     // Backspace bosilganda
     if (e.key === 'Backspace') {
@@ -93,7 +92,7 @@ export default function PhoneInput({
       }
       
       // Agar butun matn tanlangan bo'lsa
-      if (input.selectionStart === 0 && input.selectionEnd === currentValue.length) {
+      if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
         e.preventDefault();
         setDisplayValue('+998');
         onChange('+998');
@@ -101,11 +100,11 @@ export default function PhoneInput({
       }
       
       // Agar cursor formatlash belgisida bo'lsa (qavs, chiziq, bo'sh joy)
-      const charBefore = currentValue[cursorPosition - 1];
+      const charBefore = input.value[cursorPosition - 1];
       if (charBefore && /[\s\(\)\-]/.test(charBefore)) {
         e.preventDefault();
         // Raqamni o'chirish
-        const digits = currentValue.replace(/\D/g, '');
+        const digits = input.value.replace(/\D/g, '');
         if (digits.length > 3) {
           const newDigits = digits.slice(0, -1);
           const formatted = formatPhone(newDigits);
@@ -125,7 +124,7 @@ export default function PhoneInput({
       }
       
       // Agar cursor formatlash belgisida bo'lsa
-      const charAfter = currentValue[cursorPosition];
+      const charAfter = input.value[cursorPosition];
       if (charAfter && /[\s\(\)\-]/.test(charAfter)) {
         e.preventDefault();
         return;
