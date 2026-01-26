@@ -53,8 +53,8 @@ export default function ProductSearchModal({
 
  {/* Search Input */}
  <div className="p-4 border-b border-neutral-100 flex-shrink-0">
- <div className="relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+ <div className="relative flex items-center">
+ <Search className="absolute left-3 w-5 h-5 text-neutral-400 pointer-events-none" />
  <input
  type="text"
  value={searchQuery}

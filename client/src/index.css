@@ -352,6 +352,19 @@ textarea:focus {
     @apply shadow-sm;
   }
 
+  /* Input icon wrapper - ensures proper centering */
+  .input-icon-wrapper {
+    @apply relative flex items-center;
+  }
+
+  /* Input icon - always centered vertically */
+  .input-icon {
+    @apply absolute left-3 pointer-events-none;
+    @apply flex items-center justify-center;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
   .input-error {
     @apply input border-red-300 focus:border-red-500 focus:ring-red-500/10;
   }

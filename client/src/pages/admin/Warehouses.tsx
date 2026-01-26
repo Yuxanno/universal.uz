@@ -548,8 +548,8 @@ export default function Warehouses() {
  </div>
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">Manzil</label>
- <div className="relative">
- <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+ <div className="relative flex items-center">
+ <MapPin className="absolute left-4 w-5 h-5 text-surface-400 pointer-events-none" />
  <input type="text" className="input pl-12" placeholder="Manzilni kiriting" value={formData.address}
  onChange={e => setFormData({...formData, address: e.target.value})} />
  </div>
@@ -587,8 +587,8 @@ export default function Warehouses() {
  
  {/* Search and Add Button */}
  <div className="flex items-center gap-2">
- <div className="relative flex-1">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+ <div className="relative flex items-center flex-1">
+ <Search className="absolute left-3 w-4 h-4 text-neutral-500 pointer-events-none" />
  <input
  type="text"
  placeholder="Mahsulot nomi yoki kodi..."

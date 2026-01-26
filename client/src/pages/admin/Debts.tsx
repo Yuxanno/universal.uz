@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { 
  Plus, AlertTriangle, X, DollarSign, Calendar, User, 
- Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, Phone, UserPlus, Edit, Banknote, Search
+ Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, UserPlus, Edit, Banknote, Search
 } from 'lucide-react';
 import { Debt } from '../../types';
 import api from '../../utils/api';
-import { formatNumber, formatInputNumber, parseNumber, formatPhone } from '../../utils/format';
+import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import PhoneInput from '../../components/PhoneInput';
 
 export default function Debts() {
  const { t } = useLanguage();
@@ -34,7 +35,7 @@ export default function Debts() {
  const [searchQuery, setSearchQuery] = useState('');
  const [statusFilter, setStatusFilter] = useState('all');
  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
- const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', region: '', district: '' });
+ const [newCustomer, setNewCustomer] = useState({ name: '', phone: '+998', region: '', district: '' });
  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
 
  useEffect(() => {
@@ -112,7 +113,7 @@ export default function Debts() {
  setEditingDebt(null);
  setFormData({ customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' });
  setShowNewCustomerForm(false);
- setNewCustomer({ name: '', phone: '', region: '', district: '' });
+ setNewCustomer({ name: '', phone: '+998', region: '', district: '' });
  };
 
  const openEditModal = (debt: Debt) => {
@@ -140,7 +141,7 @@ export default function Debts() {
  const customer = await addCustomer(data);
  setFormData({ ...formData, customer: customer._id });
  setShowNewCustomerForm(false);
- setNewCustomer({ name: '', phone: '', region: '', district: '' });
+ setNewCustomer({ name: '', phone: '+998', region: '', district: '' });
  } catch (err) { console.error('Error creating customer:', err); }
  };
 
@@ -232,8 +233,8 @@ export default function Debts() {
  {t("Men qarzdorman")}
  </button>
  </div>
- <div className="flex-1 relative">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+ <div className="flex-1 relative flex items-center">
+ <Search className="absolute left-4 w-5 h-5 text-neutral-400 pointer-events-none" />
  <input
  type="text"
  placeholder="Mijoz nomi yoki telefon..."
@@ -550,16 +551,10 @@ export default function Debts() {
  value={newCustomer.name}
  onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} 
  />
- <div className="relative">
- <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
- <input 
- type="text" 
- className="w-full pl-12 pr-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" 
- placeholder="+998 (XX) XXX-XX-XX" 
+ <PhoneInput
  value={newCustomer.phone}
- onChange={e => setNewCustomer({ ...newCustomer, phone: formatPhone(e.target.value) })} 
+ onChange={(phone) => setNewCustomer({ ...newCustomer, phone })}
  />
- </div>
  <select 
  className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all text-sm" 
  value={newCustomer.region}

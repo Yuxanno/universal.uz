@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
  Search, RotateCcw, Save, CreditCard, Trash2, X, 
- Package, Banknote, Delete, AlertTriangle, Printer, User, Phone
+ Package, Banknote, Delete, AlertTriangle, Printer, User
 } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
@@ -16,6 +16,7 @@ import { useCustomers } from '../../context/CustomersContext';
 import CartItemRow from '../../components/pos/CartItemRow';
 import { regionNames } from '../../data/regions';
 import { searchProducts } from '../../utils/productSearch';
+import PhoneInput from '../../components/PhoneInput';
 import './Kassa.modern.css';
 
 interface SavedReceipt {
@@ -64,7 +65,7 @@ export default function Kassa() {
  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
  const [customerFormData, setCustomerFormData] = useState({
  name: '',
- phone: '',
+ phone: '+998',
  region: ''
  });
 
@@ -505,7 +506,7 @@ ${itemsHtml}
  setSelectedCustomer(newCustomer._id);
  
  // Reset form and close modal
- setCustomerFormData({ name: '', phone: '', region: '' });
+ setCustomerFormData({ name: '', phone: '+998', region: '' });
  setShowCustomerModal(false);
  
  showAlert('Mijoz muvaffaqiyatli qo\'shildi!', 'Muvaffaqiyat', 'success');
@@ -783,8 +784,8 @@ ${itemsHtml}
  <X className="w-6 h-6 text-slate-600 dark:text-neutral-400" strokeWidth={2.5} />
  </button>
  </div>
- <div className="relative">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+ <div className="relative flex items-center">
+ <Search className="absolute left-4 w-5 h-5 text-slate-500 pointer-events-none" />
  <input
  type="text"
  placeholder={tKey("Mahsulot nomi yoki kodi...")}
@@ -978,8 +979,8 @@ ${itemsHtml}
  <X className="w-6 h-6 text-slate-600 dark:text-neutral-400" strokeWidth={2.5} />
  </button>
  </div>
- <div className="relative">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+ <div className="relative flex items-center">
+ <Search className="absolute left-4 w-5 h-5 text-slate-500 pointer-events-none" />
  <input
  type="text"
  placeholder="Tovar nomi yoki kodi..."
@@ -1231,8 +1232,8 @@ ${itemsHtml}
  <X className="w-6 h-6 text-neutral-600" strokeWidth={2.5} />
  </button>
  </div>
- <div className="relative">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
+ <div className="relative flex items-center">
+ <Search className="absolute left-4 w-5 h-5 text-neutral-500 pointer-events-none" />
  <input
  type="text"
  placeholder="Mijoz ismi yoki telefon raqami..."
@@ -1404,7 +1405,7 @@ ${itemsHtml}
  <button
  onClick={() => {
  setShowCustomerModal(false);
- setCustomerFormData({ name: '', phone: '', region: '' });
+ setCustomerFormData({ name: '', phone: '+998', region: '' });
  }}
  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
  >
@@ -1434,16 +1435,10 @@ ${itemsHtml}
  <label className="block text-base font-bold text-neutral-900 dark:text-neutral-100 mb-3">
  Telefon
  </label>
- <div className="relative">
- <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
- <input
- type="tel"
+ <PhoneInput
  value={customerFormData.phone}
- onChange={(e) => setCustomerFormData(prev => ({ ...prev, phone: e.target.value }))}
- placeholder="+998 (XX) XXX-XX-XX"
- className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-2xl text-base text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
+ onChange={(phone) => setCustomerFormData(prev => ({ ...prev, phone }))}
  />
- </div>
  </div>
 
  {/* Viloyat */}
@@ -1478,7 +1473,7 @@ ${itemsHtml}
  <button
  onClick={() => {
  setShowCustomerModal(false);
- setCustomerFormData({ name: '', phone: '', region: '' });
+ setCustomerFormData({ name: '', phone: '+998', region: '' });
  }}
  className="flex-1 py-4 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-2xl font-bold hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-all border-2 border-neutral-200 dark:border-neutral-600"
  >

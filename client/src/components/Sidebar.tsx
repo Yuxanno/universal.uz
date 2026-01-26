@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { 
  LayoutDashboard, ShoppingCart, Package, Warehouse, Users, 
@@ -65,6 +66,7 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  };
 
  return (
+ <>
  <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-neutral-950 border-r-2 border-neutral-200 dark:border-neutral-800 transition-all duration-300 z-50 shadow-lg ${
  collapsed ? 'w-[72px]' : 'w-64'
  }`}>
@@ -178,12 +180,13 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  {!collapsed && <span>{tKey("Chiqish")}</span>}
  </button>
  </div>
+ </aside>
 
- {/* Edit Profile Modal */}
- {showEditModal && (
- <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+ {/* Edit Profile Modal - Rendered via Portal */}
+ {showEditModal && createPortal(
+ <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowEditModal(false)} />
- <div className="bg-white dark:bg-neutral-800 rounded-xl w-full max-w-md p-6 relative z-10 shadow-xl animate-scale-in">
+ <div className="bg-white dark:bg-neutral-800 rounded-xl w-full max-w-2xl p-8 relative z-10 shadow-xl animate-scale-in">
  <div className="flex items-center justify-between mb-6">
  <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">{tKey("Profilni tahrirlash")}</h3>
  <button 
@@ -196,8 +199,8 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  <form onSubmit={handleSubmit} className="space-y-4">
  <div>
  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Ismingiz")}</label>
- <div className="relative">
- <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+ <div className="relative flex items-center">
+ <User className="absolute left-3 w-4 h-4 text-neutral-400 pointer-events-none" />
  <input 
  type="text" 
  className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
@@ -210,8 +213,8 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  </div>
  <div>
  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Telefon")}</label>
- <div className="relative">
- <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+ <div className="relative flex items-center">
+ <Phone className="absolute left-3 w-4 h-4 text-neutral-400 pointer-events-none" />
  <input 
  type="tel" 
  className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
@@ -224,8 +227,8 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  </div>
  <div>
  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Yangi parol (ixtiyoriy)")}</label>
- <div className="relative">
- <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+ <div className="relative flex items-center">
+ <Lock className="absolute left-3 w-4 h-4 text-neutral-400 pointer-events-none" />
  <input 
  type="password" 
  className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
@@ -241,9 +244,10 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  </div>
  </form>
  </div>
- </div>
+ </div>,
+ document.body
  )}
- </aside>
+ </>
  );
 }
 
