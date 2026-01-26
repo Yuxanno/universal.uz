@@ -10,16 +10,16 @@
 import { uzLatToCyr } from './uzLatToCyr';
 
 export interface SearchableProduct {
-  code: string;
-  name: string;
-  [key: string]: any;
+ code: string;
+ name: string;
+ [key: string]: any;
 }
 
 /**
  * Нормализует текст для поиска (убирает лишние пробелы, приводит к нижнему регистру)
  */
 function normalizeText(text: string): string {
-  return text.toLowerCase().trim().replace(/\s+/g, ' ');
+ return text.toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
 /**
@@ -27,36 +27,36 @@ function normalizeText(text: string): string {
  * Поддерживает поиск на латинице и кириллице в обе стороны
  */
 function matchesQuery(text: string, query: string): boolean {
-  if (!text || !query) return false;
-  
-  const normalizedText = normalizeText(text);
-  const normalizedQuery = normalizeText(query);
-  
-  // 1. Прямое совпадение
-  if (normalizedText.includes(normalizedQuery)) {
-    return true;
-  }
-  
-  // 2. Конвертируем запрос из латиницы в кириллицу и проверяем
-  const cyrillicQuery = normalizeText(uzLatToCyr(normalizedQuery));
-  if (cyrillicQuery !== normalizedQuery && normalizedText.includes(cyrillicQuery)) {
-    return true;
-  }
-  
-  // 3. Конвертируем текст из латиницы в кириллицу и проверяем с оригинальным запросом
-  const cyrillicText = normalizeText(uzLatToCyr(normalizedText));
-  if (cyrillicText !== normalizedText && cyrillicText.includes(normalizedQuery)) {
-    return true;
-  }
-  
-  // 4. Оба в кириллице
-  if (cyrillicText !== normalizedText && cyrillicQuery !== normalizedQuery) {
-    if (cyrillicText.includes(cyrillicQuery)) {
-      return true;
-    }
-  }
-  
-  return false;
+ if (!text || !query) return false;
+ 
+ const normalizedText = normalizeText(text);
+ const normalizedQuery = normalizeText(query);
+ 
+ // 1. Прямое совпадение
+ if (normalizedText.includes(normalizedQuery)) {
+ return true;
+ }
+ 
+ // 2. Конвертируем запрос из латиницы в кириллицу и проверяем
+ const cyrillicQuery = normalizeText(uzLatToCyr(normalizedQuery));
+ if (cyrillicQuery !== normalizedQuery && normalizedText.includes(cyrillicQuery)) {
+ return true;
+ }
+ 
+ // 3. Конвертируем текст из латиницы в кириллицу и проверяем с оригинальным запросом
+ const cyrillicText = normalizeText(uzLatToCyr(normalizedText));
+ if (cyrillicText !== normalizedText && cyrillicText.includes(normalizedQuery)) {
+ return true;
+ }
+ 
+ // 4. Оба в кириллице
+ if (cyrillicText !== normalizedText && cyrillicQuery !== normalizedQuery) {
+ if (cyrillicText.includes(cyrillicQuery)) {
+ return true;
+ }
+ }
+ 
+ return false;
 }
 
 /**
@@ -88,28 +88,28 @@ function matchesQuery(text: string, query: string): boolean {
  * searchProducts(products, 'пакет') // найдет "paket 10kg" (конвертирует товар)
  */
 export function searchProducts<T extends SearchableProduct>(
-  products: T[],
-  query: string
+ products: T[],
+ query: string
 ): T[] {
-  if (!query || query.trim() === '') {
-    return products;
-  }
-  
-  const trimmedQuery = query.trim();
-  
-  return products.filter(product => {
-    // Поиск по коду
-    if (matchesQuery(product.code, trimmedQuery)) {
-      return true;
-    }
-    
-    // Поиск по названию
-    if (matchesQuery(product.name, trimmedQuery)) {
-      return true;
-    }
-    
-    return false;
-  });
+ if (!query || query.trim() === '') {
+ return products;
+ }
+ 
+ const trimmedQuery = query.trim();
+ 
+ return products.filter(product => {
+ // Поиск по коду
+ if (matchesQuery(product.code, trimmedQuery)) {
+ return true;
+ }
+ 
+ // Поиск по названию
+ if (matchesQuery(product.name, trimmedQuery)) {
+ return true;
+ }
+ 
+ return false;
+ });
 }
 
 /**
@@ -118,14 +118,14 @@ export function searchProducts<T extends SearchableProduct>(
  * 
  * @example
  * const filteredProducts = useMemo(() => {
- *   return createProductFilter(products, debouncedSearchQuery);
+ * return createProductFilter(products, debouncedSearchQuery);
  * }, [products, debouncedSearchQuery]);
  */
 export function createProductFilter<T extends SearchableProduct>(
-  products: T[],
-  query: string
+ products: T[],
+ query: string
 ): T[] {
-  return searchProducts(products, query);
+ return searchProducts(products, query);
 }
 
 /**
@@ -133,7 +133,7 @@ export function createProductFilter<T extends SearchableProduct>(
  * (только цифры)
  */
 export function isCodeSearch(query: string): boolean {
-  return /^\d+$/.test(query.trim());
+ return /^\d+$/.test(query.trim());
 }
 
 /**
@@ -141,29 +141,29 @@ export function isCodeSearch(query: string): boolean {
  * Полезно для отображения результатов поиска
  */
 export function highlightMatch(text: string, query: string): string {
-  if (!query || !text) return text;
-  
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  
-  // Прямое совпадение
-  let index = lowerText.indexOf(lowerQuery);
-  if (index !== -1) {
-    return text.substring(0, index) + 
-           '<mark>' + text.substring(index, index + query.length) + '</mark>' +
-           text.substring(index + query.length);
-  }
-  
-  // Совпадение с кириллицей
-  const cyrillicQuery = uzLatToCyr(lowerQuery);
-  if (cyrillicQuery !== lowerQuery) {
-    index = lowerText.indexOf(cyrillicQuery.toLowerCase());
-    if (index !== -1) {
-      return text.substring(0, index) + 
-             '<mark>' + text.substring(index, index + cyrillicQuery.length) + '</mark>' +
-             text.substring(index + cyrillicQuery.length);
-    }
-  }
-  
-  return text;
+ if (!query || !text) return text;
+ 
+ const lowerText = text.toLowerCase();
+ const lowerQuery = query.toLowerCase();
+ 
+ // Прямое совпадение
+ let index = lowerText.indexOf(lowerQuery);
+ if (index !== -1) {
+ return text.substring(0, index) + 
+ '<mark>' + text.substring(index, index + query.length) + '</mark>' +
+ text.substring(index + query.length);
+ }
+ 
+ // Совпадение с кириллицей
+ const cyrillicQuery = uzLatToCyr(lowerQuery);
+ if (cyrillicQuery !== lowerQuery) {
+ index = lowerText.indexOf(cyrillicQuery.toLowerCase());
+ if (index !== -1) {
+ return text.substring(0, index) + 
+ '<mark>' + text.substring(index, index + cyrillicQuery.length) + '</mark>' +
+ text.substring(index + cyrillicQuery.length);
+ }
+ }
+ 
+ return text;
 }

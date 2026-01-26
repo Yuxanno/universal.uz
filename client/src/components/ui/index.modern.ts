@@ -36,11 +36,11 @@ export { default as EmptyState } from './EmptyState.modern';
  * import { Button, Card, Input, Modal } from '@/components/ui/index.modern';
  * 
  * function MyComponent() {
- *   return (
- *     <Card>
- *       <Input label="Name" />
- *       <Button variant="primary">Submit</Button>
- *     </Card>
- *   );
+ * return (
+ * <Card>
+ * <Input label="Name" />
+ * <Button variant="primary">Submit</Button>
+ * </Card>
+ * );
  * }
  */

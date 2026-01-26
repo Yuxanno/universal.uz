@@ -5,6 +5,8 @@ const productSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   costPrice: { type: Number, default: 0 },
   price: { type: Number, required: true },
+  retailPrice: { type: Number }, // Dona narxi (optional) - legacy field
+  dona_narx: { type: Number }, // Dona narxi (optional) - new field
   quantity: { type: Number, default: 0 },
   soldCount: { type: Number, default: 0 }, // Количество проданных единиц
   warehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse' },

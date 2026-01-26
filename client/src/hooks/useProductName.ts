@@ -12,16 +12,16 @@ import { useLanguage } from '../context/LanguageContext';
  * в зависимости от текущего выбранного скрипта
  */
 export function useProductName() {
-  const { uz, uzScript } = useLanguage();
+ const { uz, uzScript } = useLanguage();
 
-  /**
-   * Конвертирует узбекский текст в нужный скрипт
-   * @param text - текст из БД (латиница или кириллица)
-   * @returns текст в текущем скрипте (латиница или кириллица)
-   */
-  const convertName = (text: string): string => {
-    return uz(text);
-  };
+ /**
+ * Конвертирует узбекский текст в нужный скрипт
+ * @param text - текст из БД (латиница или кириллица)
+ * @returns текст в текущем скрипте (латиница или кириллица)
+ */
+ const convertName = (text: string): string => {
+ return uz(text);
+ };
 
-  return { convertName, script: uzScript };
+ return { convertName, script: uzScript };
 }
