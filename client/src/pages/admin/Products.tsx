@@ -253,11 +253,11 @@ export default function Products() {
  _warehouseId: mainWarehouse._id
  }));
  
- // Sort by code (numeric) - DESCENDING (1023 -> 1)
+ // ИСПРАВЛЕНО: Сортировка по коду по возрастанию (1 -> 1094)
  productsData.sort((a: any, b: any) => {
  const codeA = parseInt(a.code) || 0;
  const codeB = parseInt(b.code) || 0;
- return codeB - codeA; // Reversed for descending order
+ return codeA - codeB; // По возрастанию
  });
  
  setProducts(productsData);

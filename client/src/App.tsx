@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ProductsProvider } from './context/ProductsContext';
@@ -7,20 +7,34 @@ import { CustomersProvider } from './context/CustomersContext';
 import { WarehousesProvider } from './context/WarehousesContext';
 import { startMemoryMonitoring, stopMemoryMonitoring, monitorMemory } from './utils/memoryOptimizer';
 import Login from './pages/Login';
-import AdminLayout from './layouts/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
-import Kassa from './pages/admin/Kassa';
-import Products from './pages/admin/Products';
-import Warehouses from './pages/admin/Warehouses';
-import Customers from './pages/admin/Customers';
-import Debts from './pages/admin/Debts';
-import Orders from './pages/admin/Orders';
-import Helpers from './pages/admin/Helpers';
-import StaffReceipts from './pages/admin/StaffReceipts';
-import CashierLayout from './layouts/CashierLayout';
-import CashierProducts from './pages/cashier/Products';
-import HelperLayout from './layouts/HelperLayout';
-import HelperScanner from './pages/helper/Scanner';
+
+// ОПТИМИЗАЦИЯ: Ленивая загрузка компонентов для быстрых переходов
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const Kassa = lazy(() => import('./pages/admin/Kassa'));
+const Products = lazy(() => import('./pages/admin/Products'));
+const Warehouses = lazy(() => import('./pages/admin/Warehouses'));
+const Customers = lazy(() => import('./pages/admin/Customers'));
+const Debts = lazy(() => import('./pages/admin/Debts'));
+const Orders = lazy(() => import('./pages/admin/Orders'));
+const Helpers = lazy(() => import('./pages/admin/Helpers'));
+const StaffReceipts = lazy(() => import('./pages/admin/StaffReceipts'));
+const CashierLayout = lazy(() => import('./layouts/CashierLayout'));
+const CashierProducts = lazy(() => import('./pages/cashier/Products'));
+const HelperLayout = lazy(() => import('./layouts/HelperLayout'));
+const HelperScanner = lazy(() => import('./pages/helper/Scanner'));
+
+// Компонент загрузки
+const PageLoader = () => (
+  <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+        <div className="spinner text-primary-600 dark:text-primary-400" />
+      </div>
+      <p className="text-neutral-500 dark:text-neutral-400 text-sm">Yuklanmoqda...</p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children, roles }: { children: React.ReactNode; roles?: string[] }) => {
  const { user, loading } = useAuth();
@@ -77,6 +91,7 @@ function App() {
  v7_relativeSplatPath: true
  }}
  >
+ <Suspense fallback={<PageLoader />}>
  <Routes>
  <Route path="/login" element={<Login />} />
  <Route path="/" element={<RoleRedirect />} />
@@ -107,6 +122,7 @@ function App() {
  <Route index element={<HelperScanner />} />
  </Route>
  </Routes>
+ </Suspense>
  </BrowserRouter>
  </WarehousesProvider>
  </CustomersProvider>

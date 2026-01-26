@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Search, Plus, Edit2, Trash2, Package, Image as ImageIcon, X, Printer, QrCode } from 'lucide-react';
 import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
@@ -120,11 +120,18 @@ export default function CashierProducts() {
  // Debounced search query
  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
- // Memoized filtered products - limit results
+ // ИСПРАВЛЕНИЕ: Загружаем товары при монтировании, если их нет
+ useEffect(() => {
+ if (displayedProducts.length === 0 && !loading) {
+ refreshProducts();
+ }
+ }, [displayedProducts.length, loading, refreshProducts]);
+
+ // Memoized filtered products - БЕЗ ограничений
  const filteredProducts = useMemo(() => {
- if (!debouncedSearchQuery) return displayedProducts.slice(0, 100);
+ if (!debouncedSearchQuery) return displayedProducts;
  // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
- return searchProducts(displayedProducts, debouncedSearchQuery).slice(0, 50); // Limit to 50 results
+ return searchProducts(displayedProducts, debouncedSearchQuery);
  }, [displayedProducts, debouncedSearchQuery]);
 
  const openAddModal = useCallback(() => {
@@ -445,7 +452,12 @@ export default function CashierProducts() {
 
  {/* Table Body - Desktop */}
  <div className="hidden lg:block divide-y divide-neutral-100 dark:divide-neutral-700">
- {filteredProducts.length === 0 ? (
+ {loading ? (
+ <div className="text-center py-12">
+ <div className="spinner text-primary-600 w-8 h-8 mx-auto mb-4" />
+ <p className="text-neutral-500 dark:text-neutral-400">Yuklanmoqda...</p>
+ </div>
+ ) : filteredProducts.length === 0 ? (
  <div className="text-center py-12">
  <Package className="w-16 h-16 mx-auto mb-4 text-neutral-400" />
  <p className="text-neutral-500 dark:text-neutral-400">
@@ -524,7 +536,12 @@ export default function CashierProducts() {
 
  {/* Mobile Cards */}
  <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
- {filteredProducts.length === 0 ? (
+ {loading ? (
+ <div className="text-center py-12">
+ <div className="spinner text-primary-600 w-8 h-8 mx-auto mb-4" />
+ <p className="text-neutral-500 dark:text-neutral-400">Yuklanmoqda...</p>
+ </div>
+ ) : filteredProducts.length === 0 ? (
  <div className="text-center py-12">
  <Package className="w-16 h-16 mx-auto mb-4 text-neutral-400" />
  <p className="text-neutral-500 dark:text-neutral-400">

@@ -34,11 +34,11 @@ productSchema.index({ name: 1 }, {
 // Compound index for warehouse + code (for faster queries)
 productSchema.index({ warehouse: 1, code: 1 });
 
-// Index for soldCount and createdAt (for sorting)
-productSchema.index({ soldCount: -1, createdAt: -1 });
+// ОПТИМИЗАЦИЯ: Составной индекс для быстрой сортировки по складу
+productSchema.index({ warehouse: 1, soldCount: -1, _id: -1 });
 
-// Index for warehouse filtering
-productSchema.index({ warehouse: 1 });
+// Index for soldCount (for sorting)
+productSchema.index({ soldCount: -1 });
 
 // Text index for search
 productSchema.index({ name: 'text', code: 'text' });

@@ -22,7 +22,6 @@ const CartItemRow = memo(({
  onPriceChange,
  onRemove,
  onClick,
- showAlert,
  showToast
 }: CartItemRowProps) => {
  const handleQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

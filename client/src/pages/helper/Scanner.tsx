@@ -529,18 +529,19 @@ export default function HelperScanner() {
  ));
  }
  }}
- onBlur={(e) => {
+ onBlur={() => {
  // Проверка на optom_narx только при выходе из инпута
  const currentPrice = item.price;
  if (currentPrice > 0 && item.optom_narx && currentPrice < item.optom_narx) {
  // Автоматически поднимаем цену до optom_narx
+ const optomPrice = item.optom_narx;
  setCart(prev => prev.map(p => 
- p._id === item._id ? { ...p, price: item.optom_narx } : p
+ p._id === item._id ? { ...p, price: optomPrice } : p
  ));
  // Показываем toast уведомление
  toast.warning(
  'Narx avtomatik ko\'tarildi',
- `Narx optom narxdan past bo'lgani uchun ${formatNumber(item.optom_narx)} so'mga ko'tarildi`,
+ `Narx optom narxdan past bo'lgani uchun ${formatNumber(optomPrice)} so'mga ko'tarildi`,
  4000
  );
  }
