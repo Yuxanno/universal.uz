@@ -7,6 +7,25 @@
    White • Red • Black • Premium • Fast
    ============================================ */
 
+/* FORCE LIGHT MODE - DISABLE DARK MODE COMPLETELY */
+html,
+html.light,
+html:not(.dark) {
+  color-scheme: light !important;
+}
+
+html.dark,
+html[data-theme="dark"] {
+  color-scheme: light !important;
+}
+
+/* Override any dark mode styles */
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: light !important;
+  }
+}
+
 /* CRITICAL PERFORMANCE OPTIMIZATIONS */
 * {
   -webkit-font-smoothing: antialiased;
