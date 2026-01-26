@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
  Plus, AlertTriangle, X, DollarSign, Calendar, User, 
- Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, UserPlus, Edit, Banknote, Search
+ Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, UserPlus, Edit, Banknote, Search, Phone
 } from 'lucide-react';
 import { Debt } from '../../types';
 import api from '../../utils/api';

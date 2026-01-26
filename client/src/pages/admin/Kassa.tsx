@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
  Search, RotateCcw, Save, CreditCard, Trash2, X, 
- Package, Banknote, Delete, AlertTriangle, Printer, User
+ Package, Banknote, Delete, AlertTriangle, Printer, User, Phone
 } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
