@@ -422,8 +422,8 @@ export default function CashierProducts() {
  <div className="p-4 lg:p-6">
  {/* Search */}
  <div className="mb-4 flex items-center gap-4">
- <div className="relative flex-1 max-w-md">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+ <div className="relative flex items-center flex-1 max-w-md">
+ <Search className="absolute left-3 w-5 h-5 text-neutral-400 pointer-events-none" />
  <input
  type="text"
  placeholder="Mahsulot nomi yoki kodi..."

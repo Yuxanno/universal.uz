@@ -253,11 +253,11 @@ export default function Products() {
  _warehouseId: mainWarehouse._id
  }));
  
- // ИСПРАВЛЕНО: Сортировка по коду по возрастанию (1 -> 1094)
+ // Сортировка по коду по убыванию (1100 -> 1)
  productsData.sort((a: any, b: any) => {
  const codeA = parseInt(a.code) || 0;
  const codeB = parseInt(b.code) || 0;
- return codeA - codeB; // По возрастанию
+ return codeB - codeA; // По убыванию (teskari tartib)
  });
  
  setProducts(productsData);

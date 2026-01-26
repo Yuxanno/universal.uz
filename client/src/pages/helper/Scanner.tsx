@@ -348,8 +348,8 @@ export default function HelperScanner() {
  {/* Search Bar */}
  <div className="card p-4">
  <div className="flex gap-3">
- <div className="relative flex-1">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
+ <div className="relative flex items-center flex-1">
+ <Search className="absolute left-4 w-5 h-5 text-surface-400 pointer-events-none" />
  <input
  type="text"
  value={searchQuery}

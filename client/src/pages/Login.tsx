@@ -1,24 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Phone, Lock, ArrowRight, Shield } from 'lucide-react';
-import { formatPhone, getRawPhone } from '../utils/format';
+import { Eye, EyeOff, Lock, ArrowRight, Shield } from 'lucide-react';
+import { getRawPhone } from '../utils/format';
 import { useLanguage } from '../context/LanguageContext';
+import PhoneInput from '../components/PhoneInput';
 
 export default function Login() {
  const { t } = useLanguage();
- const [phone, setPhone] = useState('');
+ const [phone, setPhone] = useState('+998');
  const [password, setPassword] = useState('');
  const [showPassword, setShowPassword] = useState(false);
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
  const { login } = useAuth();
  const navigate = useNavigate();
-
- const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const formatted = formatPhone(e.target.value);
- setPhone(formatted);
- };
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
@@ -97,18 +93,11 @@ export default function Login() {
  >
  {t("Telefon raqam")}
  </label>
- <div className="relative">
- <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
- <input
- id="phone"
- type="tel"
- placeholder="+998 (XX) XXX-XX-XX"
+ <PhoneInput
  value={phone}
- onChange={handlePhoneChange}
- className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 border-2 border-neutral-300 dark:border-slate-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:focus:ring-red-900/30 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+ onChange={setPhone}
  required
  />
- </div>
  </div>
 
  {/* Password Input */}
@@ -119,8 +108,8 @@ export default function Login() {
  >
  {t("Parol")}
  </label>
- <div className="relative">
- <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
+ <div className="relative flex items-center">
+ <Lock className="absolute left-4 w-5 h-5 text-slate-600 dark:text-slate-400 pointer-events-none" />
  <input
  id="password"
  type={showPassword ? 'text' : 'password'}
@@ -133,7 +122,7 @@ export default function Login() {
  <button
  type="button"
  onClick={() => setShowPassword(!showPassword)}
- className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+ className="absolute right-4 text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
  aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
  >
  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}

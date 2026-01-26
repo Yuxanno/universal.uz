@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '../../components/Header';
-import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2, Phone, Lock, User, Edit, Camera, Upload } from 'lucide-react';
+import { Plus, UserPlus, X, Shield, ShoppingCart, Trash2, Lock, User, Edit, Camera, Upload } from 'lucide-react';
 import { User as UserType } from '../../types';
 import api from '../../utils/api';
 import { useAlert } from '../../hooks/useAlert';
-import { formatPhone, getRawPhone, displayPhone } from '../../utils/format';
+import { getRawPhone, displayPhone } from '../../utils/format';
 import { useLanguage } from '../../context/LanguageContext';
+import PhoneInput from '../../components/PhoneInput';
 
 export default function Helpers() {
  const { t } = useLanguage();
@@ -17,7 +18,7 @@ export default function Helpers() {
  const [uploadingImage, setUploadingImage] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
  const [formData, setFormData] = useState({
- name: '', phone: '', password: '', role: 'helper' as 'cashier' | 'helper', image: ''
+ name: '', phone: '+998', password: '', role: 'helper' as 'cashier' | 'helper', image: ''
  });
  const [isSaving, setIsSaving] = useState(false);
  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,11 +31,6 @@ export default function Helpers() {
  setHelpers(res.data);
  } catch (err) { console.error('Error fetching helpers:', err); }
  finally { setLoading(false); }
- };
-
- const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const formatted = formatPhone(e.target.value);
- setFormData({...formData, phone: formatted});
  };
 
  // Input dan chiqganda saqlash
@@ -165,7 +161,7 @@ export default function Helpers() {
  }
  setShowModal(false);
  setEditingUser(null);
- setFormData({ name: '', phone: '', password: '', role: 'helper', image: '' });
+ setFormData({ name: '', phone: '+998', password: '', role: 'helper', image: '' });
  };
 
  return (
@@ -429,8 +425,8 @@ export default function Helpers() {
  <User className="w-4 h-4 text-red-600" />
  {t("Ism familiya")}
  </label>
- <div className="relative">
- <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+ <div className="relative flex items-center">
+ <User className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
  <input 
  type="text" 
  className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
@@ -446,21 +442,14 @@ export default function Helpers() {
  {/* Enhanced Phone Input */}
  <div>
  <label className="text-sm font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
- <Phone className="w-4 h-4 text-red-600" />
+ <User className="w-4 h-4 text-red-600" />
  {t("Telefon raqami")}
  </label>
- <div className="relative">
- <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
- <input 
- type="tel" 
- className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 
- placeholder="+998 XX XXX-XX-XX" 
+ <PhoneInput
  value={formData.phone}
- onChange={handlePhoneChange}
- onBlur={handleInputBlur}
- required 
+ onChange={(phone) => setFormData({...formData, phone})}
+ required
  />
- </div>
  </div>
  
  {/* Enhanced Password Input */}
@@ -469,8 +458,8 @@ export default function Helpers() {
  <Lock className="w-4 h-4 text-red-600" />
  {editingUser ? t('Yangi parol (ixtiyoriy)') : t('Parol')}
  </label>
- <div className="relative">
- <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+ <div className="relative flex items-center">
+ <Lock className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
  <input 
  type="password" 
  className="w-full pl-12 pr-4 py-3.5 text-base font-semibold text-slate-900 dark:text-white bg-white dark:bg-surface-700 border-2 border-neutral-300 dark:border-surface-600 rounded-xl transition-all focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10" 

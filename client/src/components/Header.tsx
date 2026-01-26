@@ -52,8 +52,8 @@ export default function Header({ title, showSearch, onSearch, actions, filterOpt
 
  {/* Search */}
  {showSearch && (
- <div className="relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+ <div className="relative flex items-center">
+ <Search className="absolute left-3 w-4 h-4 text-neutral-500 dark:text-neutral-400 pointer-events-none" />
  <input
  type="text"
  placeholder={tKey("Qidirish...")}

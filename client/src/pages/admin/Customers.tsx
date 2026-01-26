@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import Header from '../../components/Header';
-import { Plus, Users, X, Phone, Edit, Trash2, MapPin, ChevronDown, Package } from 'lucide-react';
+import { Plus, Users, X, Edit, Trash2, MapPin, ChevronDown, Package } from 'lucide-react';
 import { Customer } from '../../types';
-import { formatNumber, formatPhone, displayPhone } from '../../utils/format';
+import { formatNumber, displayPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useLanguage } from '../../context/LanguageContext';
+import PhoneInput from '../../components/PhoneInput';
 
 export default function Customers() {
  const { t } = useLanguage();
@@ -15,7 +16,7 @@ export default function Customers() {
  const [showModal, setShowModal] = useState(false);
  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
  const [searchQuery, setSearchQuery] = useState('');
- const [formData, setFormData] = useState({ name: '', phone: '', region: '', district: '' });
+ const [formData, setFormData] = useState({ name: '', phone: '+998', region: '', district: '' });
  const [filterRegion, setFilterRegion] = useState('');
  const [filterDistrict, setFilterDistrict] = useState('');
  const [showRegionFilter, setShowRegionFilter] = useState(false);
@@ -68,7 +69,7 @@ export default function Customers() {
  const closeModal = () => {
  setShowModal(false);
  setEditingCustomer(null);
- setFormData({ name: '', phone: '', region: '', district: '' });
+ setFormData({ name: '', phone: '+998', region: '', district: '' });
  };
 
  const filteredCustomers = customers.filter(c => {
@@ -350,11 +351,11 @@ export default function Customers() {
  </div>
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Telefon")}</label>
- <div className="relative">
- <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" />
- <input className="input pl-12" placeholder="+998 (XX) XXX-XX-XX" value={formData.phone}
- onChange={e => setFormData({ ...formData, phone: formatPhone(e.target.value) })} required />
- </div>
+ <PhoneInput
+ value={formData.phone}
+ onChange={(phone) => setFormData({ ...formData, phone })}
+ required
+ />
  </div>
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Viloyat")}</label>
