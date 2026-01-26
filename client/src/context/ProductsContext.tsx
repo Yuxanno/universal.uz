@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { Product } from '../types';
 import api from '../utils/api';
 import { PERFORMANCE_CONFIG, shouldUseCache, getCachedData, setCachedData } from '../performance.config';
-import { limitArraySize, clearLargeCache } from '../utils/memoryOptimizer';
+import { clearLargeCache } from '../utils/memoryOptimizer';
 
 interface ProductsContextType {
  products: Product[];
