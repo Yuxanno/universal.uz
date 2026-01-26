@@ -223,6 +223,7 @@ ProductModal.displayName = 'ProductModal';
 export default function CashierProducts() {
  const { showAlert, AlertComponent } = useAlert();
  const [products, setProducts] = useState<Product[]>([]);
+ const [loading, setLoading] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
  const [showModal, setShowModal] = useState(false);
  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -243,12 +244,15 @@ export default function CashierProducts() {
  }, []);
 
  const fetchProducts = useCallback(async () => {
+ setLoading(true);
  try {
  const res = await api.get('/products?warehouse=Asosiy ombor');
  setProducts(res.data);
  } catch (err) {
  console.error('Error fetching products:', err);
  showAlert('Mahsulotlarni yuklashda xatolik', 'Xatolik', 'danger');
+ } finally {
+ setLoading(false);
  }
  }, [showAlert]);
 
@@ -380,24 +384,29 @@ export default function CashierProducts() {
 
  {/* Products Grid */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
- {filteredProducts.map(product => (
+ {loading ? (
+ <div className="col-span-full text-center py-12">
+ <div className="spinner text-primary-600 w-8 h-8 mx-auto mb-4" />
+ <p className="text-gray-500 dark:text-gray-400">Yuklanmoqda...</p>
+ </div>
+ ) : filteredProducts.length === 0 ? (
+ <div className="col-span-full text-center py-12">
+ <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+ <p className="text-gray-500 dark:text-gray-400">
+ {searchQuery ? 'Mahsulot topilmadi' : 'Mahsulotlar yo\'q'}
+ </p>
+ </div>
+ ) : (
+ filteredProducts.map(product => (
  <ProductCard
  key={product._id}
  product={product}
  onEdit={openEditModal}
  onDelete={handleDelete}
  />
- ))}
- </div>
-
- {filteredProducts.length === 0 && (
- <div className="text-center py-12">
- <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
- <p className="text-gray-500 dark:text-gray-400">
- {searchQuery ? 'Mahsulot topilmadi' : 'Mahsulotlar yo\'q'}
- </p>
- </div>
+ ))
  )}
+ </div>
  </div>
 
  {/* Add/Edit Modal */}

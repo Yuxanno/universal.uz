@@ -38,7 +38,7 @@ export default function Kassa() {
  const location = useLocation();
  const { showAlert, AlertComponent } = useAlert();
  const toast = useToast();
- const { displayedProducts } = useProducts();
+ const { displayedProducts, loading, refreshProducts } = useProducts();
  const { customers, addCustomer } = useCustomers();
  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
  const [cart, setCart] = useState<CartItem[]>([]);
@@ -159,6 +159,13 @@ export default function Kassa() {
  console.log('🔄 Route changed to Kassa, checking for worker items...');
  loadWorkerItems();
  }, [location.pathname, loadWorkerItems]);
+
+ // ИСПРАВЛЕНИЕ: Загружаем товары при монтировании, если их нет
+ useEffect(() => {
+ if (displayedProducts.length === 0 && !loading) {
+ refreshProducts();
+ }
+ }, [displayedProducts.length, loading, refreshProducts]);
 
  const loadSavedReceipts = () => {
  const saved = localStorage.getItem('savedReceipts');

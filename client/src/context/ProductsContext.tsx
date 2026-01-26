@@ -32,16 +32,10 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  if (import.meta.env.DEV) {
  console.log('⚡ Instant load from cache:', cached.length, 'products');
  }
- // Limit size to prevent memory issues
- const limited = limitArraySize(cached, 2000);
- setProducts(limited);
- setDisplayedProducts(limited.slice(0, 100));
+ // ОПТИМИЗАЦИЯ: Показываем все товары сразу из кеша
+ setProducts(cached);
+ setDisplayedProducts(cached);
  setLastFetch(cacheTime ? parseInt(cacheTime) : Date.now());
- 
- // Load rest instantly (no delay!)
- requestAnimationFrame(() => {
- setDisplayedProducts(limited);
- });
  
  // Check if cache is valid
  if (cacheTime && shouldUseCache(cacheTime, PERFORMANCE_CONFIG.PRODUCTS_CACHE_TIME)) {
@@ -78,18 +72,18 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  const res = await api.get('/products?warehouse=Asosiy ombor');
  const endTime = Date.now();
  if (import.meta.env.DEV) {
- console.log(`✅ Loaded in ${endTime - startTime}ms`);
+ console.log(`✅ Loaded ${res.data.length} products in ${endTime - startTime}ms`);
  }
  
- // Limit size to prevent memory issues
- const productsData = limitArraySize(res.data, 2000) as Product[];
+ // ОПТИМИЗАЦИЯ: Убрали limitArraySize - не удаляем товары
+ const productsData = res.data as Product[];
  
- // Update state IMMEDIATELY
+ // Update state IMMEDIATELY - показываем все товары сразу
  setProducts(productsData);
- setDisplayedProducts(productsData.slice(0, 100));
+ setDisplayedProducts(productsData);
  setLastFetch(Date.now());
  
- // Cache the results (limit cache size)
+ // Cache the results
  try {
  setCachedData('products_cache', productsData);
  } catch (err) {
@@ -97,11 +91,6 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  clearLargeCache();
  setCachedData('products_cache', productsData);
  }
- 
- // Load rest instantly
- requestAnimationFrame(() => {
- setDisplayedProducts(productsData);
- });
  
  } catch (err: any) {
  console.error('Error fetching products:', err);

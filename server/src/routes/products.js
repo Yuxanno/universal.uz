@@ -69,12 +69,13 @@ router.get('/', auth, async (req, res) => {
     
     if (mainOnly === 'true') query.isMainWarehouse = true;
 
-    // Оптимизированный запрос с lean() для быстрой работы
+    // ОПТИМИЗАЦИЯ: Используем индексы и минимальные поля
     const products = await Product.find(query)
-      .select('name code price costPrice quantity warehouse image soldCount createdAt') // Выбираем только нужные поля
+      .select('name code price costPrice quantity warehouse image soldCount') // Убрали createdAt из select
       .populate('warehouse', 'name')
-      .sort({ soldCount: -1, createdAt: -1 })
-      .lean() // Возвращает plain JavaScript objects вместо Mongoose documents
+      .sort({ soldCount: -1, _id: -1 }) // Используем _id вместо createdAt (быстрее)
+      .lean() // Возвращает plain JavaScript objects
+      .limit(5000) // Ограничение для безопасности
       .exec();
     
     res.json(products);

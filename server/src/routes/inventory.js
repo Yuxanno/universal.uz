@@ -15,9 +15,12 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
 
     let query = { warehouse: warehouseId };
 
+    // ОПТИМИЗАЦИЯ: Используем lean() и минимальные поля
     const inventory = await WarehouseInventory.find(query)
-      .populate('product')
-      .populate('warehouse');
+      .populate('product', 'name code price costPrice image') // Только нужные поля
+      .populate('warehouse', 'name')
+      .lean() // Быстрее
+      .exec();
 
     // Filter out items where product was deleted
     let filtered = inventory.filter(item => item.product !== null);
@@ -38,11 +41,11 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
       );
     }
 
-    // Sort by product code (numeric) - DESCENDING (1023 -> 1)
+    // ИСПРАВЛЕНО: Сортировка по коду по возрастанию (1 -> 1094)
     filtered.sort((a, b) => {
       const codeA = parseInt(a.product.code) || 0;
       const codeB = parseInt(b.product.code) || 0;
-      return codeB - codeA; // Reversed for descending order
+      return codeA - codeB; // По возрастанию
     });
 
     res.json(filtered);
