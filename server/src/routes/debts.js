@@ -53,7 +53,7 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
     const debtData = {
       type: type || 'receivable',
       amount,
-      dueDate,
+      dueDate: dueDate || null, // If empty, set to null
       description,
       collateral,
       createdBy: req.user._id
@@ -182,7 +182,7 @@ router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
     }
     
     debt.amount = amount;
-    debt.dueDate = dueDate;
+    debt.dueDate = dueDate || null; // If empty, set to null
     debt.description = description;
     debt.collateral = collateral;
     

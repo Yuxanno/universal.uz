@@ -17,9 +17,9 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
 
     // ОПТИМИЗАЦИЯ: Используем lean() и минимальные поля
     const inventory = await WarehouseInventory.find(query)
-      .populate('product', 'name code price costPrice image') // Только нужные поля
+      .populate('product', 'name code price costPrice dona_narx image images') // Added dona_narx and images
       .populate('warehouse', 'name')
-      .lean() // Быстрее
+      .lean()
       .exec();
 
     // Filter out items where product was deleted

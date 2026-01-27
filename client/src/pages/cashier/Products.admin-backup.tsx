@@ -9,7 +9,6 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
-import { initSocket, getSocket } from '../../utils/socket';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -26,8 +25,8 @@ const ProductRow = memo(({
  formatNumber
 }: any) => {
  return (
- <div className="grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors" style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
- <div>
+ <div className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
+ <div className="col-span-1">
  {getProductImage(product) ? (
  <img 
  src={getProductImage(product)!} 
@@ -41,36 +40,32 @@ const ProductRow = memo(({
  </div>
  )}
  </div>
- <div>
+ <div className="col-span-1">
  <span className="font-mono text-sm bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">{product.code}</span>
  </div>
- <div className="min-w-0">
- <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{uz(product.name)}</p>
+ <div className="col-span-2">
+ <p className="font-medium text-neutral-900 dark:text-neutral-100">{uz(product.name)}</p>
  </div>
- <div>
- <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg whitespace-nowrap">
+ <div className="col-span-1">
+ <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">
  {product._warehouseName || 'N/A'}
  </span>
  </div>
- <div className="text-right">
+ <div className="col-span-1">
  <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.costPrice || 0)}</p>
  <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
  </div>
- <div className="text-right">
+ <div className="col-span-2">
  <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
  <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
  </div>
- <div className="text-right">
- <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.dona_narx || 0)}</p>
- <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
- </div>
- <div className="text-center">
+ <div className="col-span-1">
  <span className={`font-semibold ${
  product.quantity === 0 ? 'text-red-600 dark:text-red-400' :
  product.quantity <= (product.minStock || 5) ? 'text-red-600 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'
  }`}>{product.quantity}</span>
  </div>
- <div className="flex items-center justify-center gap-2">
+ <div className="col-span-3 flex items-center justify-center gap-2">
  <button onClick={() => onTransfer(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all" title="Omborga o'tkazish">
  <ArrowRightLeft className="w-4 h-4" />
  </button>
@@ -128,7 +123,7 @@ const ProductCard = memo(({
  </span>
  </div>
  </div>
- <div className="grid grid-cols-4 gap-2 mb-3">
+ <div className="grid grid-cols-3 gap-2 mb-3">
  <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tan narxi</p>
  <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber((product as any).costPrice || 0)}</p>
@@ -136,10 +131,6 @@ const ProductCard = memo(({
  <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Optom</p>
  <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
- </div>
- <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
- <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Dona</p>
- <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber((product as any).dona_narx || 0)}</p>
  </div>
  <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Miqdor</p>
@@ -227,61 +218,6 @@ export default function Products() {
  }
  }, [mainWarehouse]);
 
- // Auto-refresh removed - using Socket.IO for real-time updates instead
-
- // Socket.IO real-time updates
- useEffect(() => {
- if (!mainWarehouse) {
- console.log('⚠️ [Admin Products] mainWarehouse not set, skipping socket initialization');
- return;
- }
- 
- console.log('🔌 [Admin Products] Initializing socket...');
- console.log('🔌 [Admin Products] mainWarehouse:', mainWarehouse);
- const socket = initSocket();
-
- const handleInventoryUpdate = (data: any) => {
- console.log('📦 [Admin Products] ===== INVENTORY UPDATE RECEIVED =====');
- console.log('📦 [Admin Products] Event data:', data);
- console.log('📦 [Admin Products] Current mainWarehouse ID:', mainWarehouse._id);
- 
- // Fetch products directly without dependency on fetchProducts function
- console.log('📦 [Admin Products] Fetching updated products...');
- api.get(`/inventory/warehouse/${mainWarehouse._id}`)
- .then(res => {
- console.log('📦 [Admin Products] API response:', res.data.length, 'items');
- const productsData = res.data.map((inv: any) => ({
- ...inv.product,
- quantity: inv.quantity,
- minStock: inv.minStock,
- _inventoryId: inv._id,
- _warehouseName: inv.warehouse?.name || 'Asosiy ombor',
- _warehouseId: mainWarehouse._id
- }));
- 
- productsData.sort((a: any, b: any) => {
- const codeA = parseInt(a.code) || 0;
- const codeB = parseInt(b.code) || 0;
- return codeB - codeA;
- });
- 
- setProducts(productsData);
- console.log('✅ [Admin Products] Products updated via socket, total:', productsData.length);
- })
- .catch(err => {
- console.error('❌ [Admin Products] Error fetching products via socket:', err);
- });
- };
-
- socket.on('inventory:updated', handleInventoryUpdate);
- console.log('🔌 [Admin Products] Socket listener attached');
-
- return () => {
- console.log('🔌 [Admin Products] Cleaning up socket listener');
- socket.off('inventory:updated', handleInventoryUpdate);
- };
- }, [mainWarehouse]);
-
  const fetchMainWarehouse = async () => {
  try {
  const res = await api.get('/warehouses');
@@ -300,7 +236,7 @@ export default function Products() {
  }
  };
 
- const fetchProducts = useCallback(async () => {
+ const fetchProducts = async () => {
  if (!mainWarehouse) return;
  
  try {
@@ -330,7 +266,7 @@ export default function Products() {
  } finally {
  setLoading(false);
  }
- }, [mainWarehouse]);
+ };
 
  // Memoize formatted values to prevent unnecessary recalculations
  const formattedQuantity = useMemo(() => formatInputNumber(formData.quantity), [formData.quantity]);
@@ -473,13 +409,10 @@ export default function Products() {
  price: Number(formData.wholesalePrice),
  dona_narx: formData.donaNarx ? Number(formData.donaNarx) : undefined,
  quantity: finalQuantity,
- warehouse: mainWarehouse._id,
+ warehouse: mainWarehouse._id, // Always use mainWarehouse._id
  images,
  packageInfo
  };
- 
- console.log('📤 Sending data to backend:', data);
- console.log('📤 dona_narx value:', formData.donaNarx, '→', data.dona_narx);
  
  if (editingProduct) {
  await api.put(`/products/${editingProduct._id}`, data);
@@ -555,9 +488,6 @@ export default function Products() {
  setShowQuantityModal(false);
  setShowTransferModal(false);
  
- console.log('📝 Opening edit modal for product:', product);
- console.log('📝 dona_narx from product:', (product as any).dona_narx);
- 
  // Open edit modal
  setEditingProduct(product);
  setFormData({
@@ -568,9 +498,6 @@ export default function Products() {
  donaNarx: String((product as any).dona_narx || ''),
  quantity: String(product.quantity)
  });
- 
- console.log('📝 formData.donaNarx set to:', String((product as any).dona_narx || ''));
- 
  setImages((product as any).images || []);
  setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
  setCodeError('');
@@ -1052,16 +979,15 @@ export default function Products() {
  <>
  <div className="hidden lg:block">
  <div className="table-header">
- <div className="grid gap-4 px-6 py-4" style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
- <span className="table-header-cell">Rasm</span>
- <span className="table-header-cell">Kod</span>
- <span className="table-header-cell">Nomi</span>
- <span className="table-header-cell">Ombor</span>
- <span className="table-header-cell text-right">Tan narxi</span>
- <span className="table-header-cell text-right">Optom narxi</span>
- <span className="table-header-cell text-right">Dona narxi</span>
- <span className="table-header-cell text-center">Miqdori</span>
- <span className="table-header-cell text-center">Amallar</span>
+ <div className="grid grid-cols-12 gap-4 px-6 py-4">
+ <span className="table-header-cell col-span-1">Rasm</span>
+ <span className="table-header-cell col-span-1">Kod</span>
+ <span className="table-header-cell col-span-2">Nomi</span>
+ <span className="table-header-cell col-span-1">Ombor</span>
+ <span className="table-header-cell col-span-1">Tan narxi</span>
+ <span className="table-header-cell col-span-2">Optom narxi</span>
+ <span className="table-header-cell col-span-1">Miqdori</span>
+ <span className="table-header-cell col-span-3 text-center">Amallar</span>
  </div>
  </div>
  <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
@@ -1201,8 +1127,8 @@ export default function Products() {
  type="text" 
  className="input text-center font-semibold" 
  placeholder="0" 
- value={formData.quantity} 
- onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value.replace(/[^0-9]/g, '') }))} 
+ value={formattedQuantity} 
+ onChange={e => handleQuantityChange(e.target.value)} 
  required 
  />
  </div>
@@ -1230,16 +1156,16 @@ export default function Products() {
  <div className="grid grid-cols-2 gap-4">
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
- <input type="text" className="input" placeholder="0" value={formData.costPrice} onChange={e => setFormData(prev => ({ ...prev, costPrice: e.target.value.replace(/[^0-9]/g, '') }))} required />
+ <input type="text" className="input" placeholder="0" value={formattedCostPrice} onChange={e => handleCostPriceChange(e.target.value)} required />
  </div>
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
- <input type="text" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => setFormData(prev => ({ ...prev, wholesalePrice: e.target.value.replace(/[^0-9]/g, '') }))} required />
+ <input type="text" className="input" placeholder="0" value={formattedWholesalePrice} onChange={e => handleWholesalePriceChange(e.target.value)} required />
  </div>
  </div>
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Dona narxi (ixtiyoriy)</label>
- <input type="text" className="input" placeholder="0" value={formData.donaNarx} onChange={e => setFormData(prev => ({ ...prev, donaNarx: e.target.value.replace(/[^0-9]/g, '') }))} />
+ <input type="text" className="input" placeholder="0" value={formattedDonaNarx} onChange={e => handleDonaNarxChange(e.target.value)} />
  </div>
  
  <div className="flex gap-3 pt-4">

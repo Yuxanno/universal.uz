@@ -30,7 +30,31 @@ app.use(express.json());
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
+// Create HTTP server first
+const PORT = process.env.PORT || 5050;
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Socket.IO setup - BEFORE routes
+const io = require('socket.io')(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('✅ Client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('❌ Client disconnected:', socket.id);
+  });
+});
+
+// Export io for use in routes
+global.io = io;
+console.log('🔌 Socket.IO initialized');
+
+// Routes - AFTER socket setup
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/warehouses', warehouseRoutes);
@@ -67,6 +91,3 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal
     initCustomerBot();
   })
   .catch(err => console.error('MongoDB connection error:', err));
-
-const PORT = process.env.PORT || 5050;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

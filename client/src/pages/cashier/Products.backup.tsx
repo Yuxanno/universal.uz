@@ -9,7 +9,6 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
-import { initSocket, getSocket } from '../../utils/socket';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -227,61 +226,6 @@ export default function Products() {
  }
  }, [mainWarehouse]);
 
- // Auto-refresh removed - using Socket.IO for real-time updates instead
-
- // Socket.IO real-time updates
- useEffect(() => {
- if (!mainWarehouse) {
- console.log('⚠️ [Admin Products] mainWarehouse not set, skipping socket initialization');
- return;
- }
- 
- console.log('🔌 [Admin Products] Initializing socket...');
- console.log('🔌 [Admin Products] mainWarehouse:', mainWarehouse);
- const socket = initSocket();
-
- const handleInventoryUpdate = (data: any) => {
- console.log('📦 [Admin Products] ===== INVENTORY UPDATE RECEIVED =====');
- console.log('📦 [Admin Products] Event data:', data);
- console.log('📦 [Admin Products] Current mainWarehouse ID:', mainWarehouse._id);
- 
- // Fetch products directly without dependency on fetchProducts function
- console.log('📦 [Admin Products] Fetching updated products...');
- api.get(`/inventory/warehouse/${mainWarehouse._id}`)
- .then(res => {
- console.log('📦 [Admin Products] API response:', res.data.length, 'items');
- const productsData = res.data.map((inv: any) => ({
- ...inv.product,
- quantity: inv.quantity,
- minStock: inv.minStock,
- _inventoryId: inv._id,
- _warehouseName: inv.warehouse?.name || 'Asosiy ombor',
- _warehouseId: mainWarehouse._id
- }));
- 
- productsData.sort((a: any, b: any) => {
- const codeA = parseInt(a.code) || 0;
- const codeB = parseInt(b.code) || 0;
- return codeB - codeA;
- });
- 
- setProducts(productsData);
- console.log('✅ [Admin Products] Products updated via socket, total:', productsData.length);
- })
- .catch(err => {
- console.error('❌ [Admin Products] Error fetching products via socket:', err);
- });
- };
-
- socket.on('inventory:updated', handleInventoryUpdate);
- console.log('🔌 [Admin Products] Socket listener attached');
-
- return () => {
- console.log('🔌 [Admin Products] Cleaning up socket listener');
- socket.off('inventory:updated', handleInventoryUpdate);
- };
- }, [mainWarehouse]);
-
  const fetchMainWarehouse = async () => {
  try {
  const res = await api.get('/warehouses');
@@ -300,7 +244,7 @@ export default function Products() {
  }
  };
 
- const fetchProducts = useCallback(async () => {
+ const fetchProducts = async () => {
  if (!mainWarehouse) return;
  
  try {
@@ -330,7 +274,7 @@ export default function Products() {
  } finally {
  setLoading(false);
  }
- }, [mainWarehouse]);
+ };
 
  // Memoize formatted values to prevent unnecessary recalculations
  const formattedQuantity = useMemo(() => formatInputNumber(formData.quantity), [formData.quantity]);

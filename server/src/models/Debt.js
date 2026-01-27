@@ -11,7 +11,7 @@ const debtSchema = new mongoose.Schema({
   creditorName: { type: String }, // For own debts (who you owe to)
   amount: { type: Number, required: true },
   paidAmount: { type: Number, default: 0 },
-  dueDate: { type: Date, required: true },
+  dueDate: { type: Date, required: false }, // Optional - can be set or left empty
   status: { type: String, enum: ['pending', 'overdue', 'paid', 'blacklist'], default: 'pending' },
   type: { type: String, enum: ['receivable', 'payable'], default: 'receivable' }, // receivable = they owe me, payable = I owe them
   description: { type: String },

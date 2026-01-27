@@ -6,6 +6,7 @@ import { ProductsProvider } from './context/ProductsContext';
 import { CustomersProvider } from './context/CustomersContext';
 import { WarehousesProvider } from './context/WarehousesContext';
 import { startMemoryMonitoring, stopMemoryMonitoring, monitorMemory } from './utils/memoryOptimizer';
+import { initSocket } from './utils/socket';
 import Login from './pages/Login';
 
 // ОПТИМИЗАЦИЯ: Ленивая загрузка компонентов для быстрых переходов
@@ -66,6 +67,16 @@ const RoleRedirect = () => {
 };
 
 function App() {
+ // Initialize socket connection globally
+ useEffect(() => {
+ console.log('🔌 [App] Initializing global socket connection...');
+ const socket = initSocket();
+ 
+ return () => {
+ console.log('🔌 [App] App unmounting, keeping socket alive');
+ };
+ }, []);
+ 
  // Monitor memory usage
  useEffect(() => {
  if (import.meta.env.DEV) {

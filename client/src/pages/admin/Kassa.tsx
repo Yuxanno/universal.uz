@@ -330,6 +330,9 @@ export default function Kassa() {
  customer: selectedCustomer || null
  });
  
+ // Refresh products to update quantities in real-time
+ refreshProducts();
+ 
  // Delete worker receipts if they exist
  if (workerReceiptIds.length > 0) {
  for (const id of workerReceiptIds) {
