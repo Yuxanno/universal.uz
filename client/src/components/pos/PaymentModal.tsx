@@ -11,7 +11,7 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-export default function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
+export default function PaymentModal({ total, customerName, onConfirm, onClose }: PaymentModalProps) {
   const { t } = useLanguage();
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
@@ -64,7 +64,6 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
   };
 
   const paidAmount = (parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0);
-  const isFullyPaid = paidAmount >= total;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
