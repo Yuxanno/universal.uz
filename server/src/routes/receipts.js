@@ -356,10 +356,25 @@ router.post('/', auth, async (req, res) => {
     });
     
     if (!isHelper) {
+      const WarehouseInventory = require('../models/WarehouseInventory');
+      
       for (const item of items) {
         // If return mode, add to stock; otherwise subtract
         const quantityChange = isReturn ? item.quantity : -item.quantity;
+        
+        // Update Product model (legacy)
         await Product.findByIdAndUpdate(item.product, { $inc: { quantity: quantityChange } });
+        
+        // Update WarehouseInventory (new system)
+        // Find the inventory record for this product in the main warehouse
+        const inventory = await WarehouseInventory.findOne({ product: item.product });
+        if (inventory) {
+          inventory.quantity += quantityChange;
+          await inventory.save();
+          console.log(`📦 Updated inventory for product ${item.product}: ${quantityChange > 0 ? '+' : ''}${quantityChange}`);
+        } else {
+          console.warn(`⚠️ No inventory record found for product ${item.product}`);
+        }
       }
     }
     
@@ -413,6 +428,24 @@ router.post('/', auth, async (req, res) => {
             console.error('❌ Error sending Telegram notification:', err);
           });
       }
+    }
+    
+    // Emit socket event for real-time inventory update
+    if (global.io) {
+      if (!isHelper) {
+        const eventData = {
+          type: isReturn ? 'return' : 'sale',
+          items: items.map(item => ({
+            productId: item.product,
+            quantity: item.quantity
+          }))
+        };
+        console.log('📡 [Socket] Emitting inventory:updated event:', eventData);
+        global.io.emit('inventory:updated', eventData);
+        console.log('📡 [Socket] Event emitted to', global.io.engine.clientsCount, 'clients');
+      }
+    } else {
+      console.error('❌ [Socket] global.io is undefined! Socket not initialized.');
     }
     
     res.status(201).json(receipt);

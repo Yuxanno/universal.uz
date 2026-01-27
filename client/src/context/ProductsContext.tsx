@@ -3,6 +3,7 @@ import { Product } from '../types';
 import api from '../utils/api';
 import { PERFORMANCE_CONFIG, shouldUseCache, getCachedData, setCachedData } from '../performance.config';
 import { clearLargeCache } from '../utils/memoryOptimizer';
+import { getSocket } from '../utils/socket';
 
 interface ProductsContextType {
  products: Product[];
@@ -66,19 +67,35 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  setError(null);
  
  if (import.meta.env.DEV) {
- console.log('🔄 Fetching products...');
+ console.log('🔄 Fetching products from WarehouseInventory...');
  }
  const startTime = Date.now();
- const res = await api.get('/products?warehouse=Asosiy ombor');
- const endTime = Date.now();
- if (import.meta.env.DEV) {
- console.log(`✅ Loaded ${res.data.length} products in ${endTime - startTime}ms`);
+ 
+ // Get main warehouse first
+ const warehousesRes = await api.get('/warehouses');
+ const mainWarehouse = warehousesRes.data.find((w: any) => w.name === 'Asosiy ombor');
+ 
+ if (!mainWarehouse) {
+ throw new Error('Main warehouse not found');
  }
  
- // ОПТИМИЗАЦИЯ: Убрали limitArraySize - не удаляем товары
- const productsData = res.data as Product[];
+ // Fetch from WarehouseInventory instead of Product model
+ const res = await api.get(`/inventory/warehouse/${mainWarehouse._id}`);
+ const endTime = Date.now();
+ if (import.meta.env.DEV) {
+ console.log(`✅ Loaded ${res.data.length} products from inventory in ${endTime - startTime}ms`);
+ }
  
- // Update state IMMEDIATELY - показываем все товары сразу
+ // Map inventory data to product format
+ const productsData = res.data.map((inv: any) => ({
+ ...inv.product,
+ quantity: inv.quantity,
+ minStock: inv.minStock,
+ _inventoryId: inv._id,
+ _warehouseId: mainWarehouse._id
+ })) as Product[];
+ 
+ // Update state IMMEDIATELY
  setProducts(productsData);
  setDisplayedProducts(productsData);
  setLastFetch(Date.now());
@@ -99,6 +116,27 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  setLoading(false);
  }
  }, [lastFetch]);
+
+ // Socket.IO real-time updates for ProductsContext
+ useEffect(() => {
+ const socket = getSocket();
+ if (!socket) {
+ console.log('⚠️ [ProductsContext] Socket not initialized yet');
+ return;
+ }
+
+ const handleInventoryUpdate = (data: any) => {
+ console.log('📦 [ProductsContext] Inventory updated via socket, refreshing products...');
+ fetchProducts(true); // Force refresh
+ };
+
+ socket.on('inventory:updated', handleInventoryUpdate);
+ console.log('🔌 [ProductsContext] Socket listener attached');
+
+ return () => {
+ socket.off('inventory:updated', handleInventoryUpdate);
+ };
+ }, [fetchProducts]);
 
  const refreshProducts = useCallback(async () => {
  await fetchProducts(true);

@@ -123,7 +123,7 @@ export default function Debts() {
  customer: debt.customer?._id || '',
  creditorName: (debt as any).creditorName || '',
  amount: String(debt.amount),
- dueDate: debt.dueDate.split('T')[0],
+ dueDate: debt.dueDate ? debt.dueDate.split('T')[0] : '',
  description: (debt as any).description || '',
  collateral: (debt as any).collateral || ''
  });
@@ -153,11 +153,15 @@ export default function Debts() {
  
  let matchesStatus = true;
  if (statusFilter === 'today') {
+ if (debt.dueDate) {
  const today = new Date();
  today.setHours(0, 0, 0, 0);
  const tomorrow = new Date(today.getTime() + 86400000);
  const dueDate = new Date(debt.dueDate);
  matchesStatus = dueDate >= today && dueDate < tomorrow && debt.status !== 'paid';
+ } else {
+ matchesStatus = false; // No due date, can't be "today"
+ }
  } else if (statusFilter !== 'all') {
  matchesStatus = debt.status === statusFilter;
  }
@@ -340,7 +344,7 @@ export default function Debts() {
  </div>
  <div className="col-span-2 flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
  <Calendar className="w-4 h-4" />
- {new Date(debt.dueDate).toLocaleDateString('uz-UZ')}
+ {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('uz-UZ') : 'Muddatsiz'}
  </div>
  {debtType === 'receivable' && (
  <div className="col-span-2">
@@ -450,7 +454,7 @@ export default function Debts() {
  <div className="flex items-center justify-between pt-3 border-t border-neutral-200 dark:border-neutral-700">
  <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 font-medium">
  <Calendar className="w-4 h-4" />
- {new Date(debt.dueDate).toLocaleDateString('uz-UZ')}
+ {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('uz-UZ') : 'Muddatsiz'}
  </div>
  <div className="flex gap-2">
  {debt.status !== 'paid' && (
@@ -619,9 +623,9 @@ export default function Debts() {
  onChange={e => setFormData({...formData, amount: parseNumber(e.target.value)})} required />
  </div>
  <div>
- <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Muddat</label>
+ <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Muddat (ixtiyoriy)</label>
  <input type="date" className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.dueDate}
- onChange={e => setFormData({...formData, dueDate: e.target.value})} required />
+ onChange={e => setFormData({...formData, dueDate: e.target.value})} />
  </div>
  <div>
  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 block">Izoh (ixtiyoriy)</label>
