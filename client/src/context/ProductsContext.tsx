@@ -125,7 +125,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  return;
  }
 
- const handleInventoryUpdate = (data: any) => {
+ const handleInventoryUpdate = () => {
  console.log('📦 [ProductsContext] Inventory updated via socket, refreshing products...');
  fetchProducts(true); // Force refresh
  };

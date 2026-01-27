@@ -70,7 +70,7 @@ function App() {
  // Initialize socket connection globally
  useEffect(() => {
  console.log('🔌 [App] Initializing global socket connection...');
- const socket = initSocket();
+ initSocket();
  
  return () => {
  console.log('🔌 [App] App unmounting, keeping socket alive');
