@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 const purchaseHistorySchema = new mongoose.Schema({
   date: { type: Date, required: true },
   amount: { type: Number, required: true },
-  receiptId: { type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' }
+  receiptId: { type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' },
+  type: { type: String, enum: ['purchase', 'debt_payment'], default: 'purchase' },
+  debtId: { type: mongoose.Schema.Types.ObjectId, ref: 'Debt' }, // For debt payments
+  paymentMethod: { type: String, enum: ['cash', 'card', 'mixed'] } // Payment method
 }, { _id: false });
 
 const customerSchema = new mongoose.Schema({

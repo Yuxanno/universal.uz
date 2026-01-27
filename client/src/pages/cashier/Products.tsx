@@ -566,10 +566,24 @@ export default function Products() {
     .price-row { width: 100%; text-align: center; margin-bottom: 2mm; }
     .price { font-size: 22pt; font-weight: bold; color: #000; line-height: 1; white-space: nowrap; display: inline-block; }
     .content-row { display: flex; align-items: center; justify-content: space-between; gap: 2mm; }
-    .left-section { flex: 0 0 28mm; max-width: 28mm; display: flex; flex-direction: column; justify-content: center; }
-    .right-section { flex: 0 0 24mm; }
-    .name { font-size: 15pt; font-weight: bold; margin-bottom: 1.5mm; line-height: 1.1; color: #000; word-wrap: break-word; overflow-wrap: break-word; }
-    .code { font-size: 13pt; color: #333; font-weight: 600; }
+    .left-section { flex: 0 0 28mm; max-width: 28mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+    .right-section { flex: 0 0 24mm; flex-shrink: 0; }
+    .name { 
+      font-size: 11pt; 
+      font-weight: bold; 
+      margin-bottom: 1mm; 
+      line-height: 1.2; 
+      color: #000; 
+      word-wrap: break-word; 
+      overflow-wrap: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 13mm;
+    }
+    .code { font-size: 11pt; color: #333; font-weight: 600; }
     .qr-container { width: 24mm; height: 24mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
     .qr-container img { width: 100%; height: 100%; display: block; }
   </style>

@@ -99,7 +99,7 @@ export default function Orders() {
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-4 text-sm text-surface-500">
  <span>{order.items.length} {t("ta mahsulot")}</span>
- <span>{new Date(order.createdAt).toLocaleDateString('uz-UZ')}</span>
+ <span>{new Date(order.createdAt).toLocaleDateString('en-GB').replace(/\//g, '.')}</span>
  </div>
  <p className="font-bold text-surface-900">{(order.total || 0).toLocaleString()} {t("so'm")}</p>
  </div>

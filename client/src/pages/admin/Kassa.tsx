@@ -14,6 +14,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useProducts } from '../../context/ProductsContext';
 import { useCustomers } from '../../context/CustomersContext';
 import CartItemRow from '../../components/pos/CartItemRow';
+import PaymentModal from '../../components/pos/PaymentModal';
 import { regionNames } from '../../data/regions';
 import { searchProducts } from '../../utils/productSearch';
 import PhoneInput from '../../components/PhoneInput';
@@ -295,9 +296,24 @@ export default function Kassa() {
  setSearchResults(displayedProducts.slice(0, 50));
  setShowSearch(true);
  }, [displayedProducts]);
+ 
+ // Calculate total amount
+ const totalAmount = useMemo(() => {
+ return cart.reduce((sum, item) => {
+ const localPrice = localPrices[item._id];
+ const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
+ return sum + (price * item.cartQuantity);
+ }, 0);
+ }, [cart, localPrices]);
 
- const handlePayment = async (method: 'cash' | 'card') => {
+ const handlePayment = async (cashAmount: number, cardAmount: number, debtAmount: number) => {
  if (cart.length === 0) return;
+ 
+ // Check if debt exists but no customer selected
+ if (debtAmount > 0 && !selectedCustomer) {
+ showAlert('Qarz yaratish uchun mijoz tanlang!', 'Xatolik', 'danger');
+ return;
+ }
  
  const saleItems = cart.map(item => {
  const localPrice = localPrices[item._id];
@@ -312,12 +328,20 @@ export default function Kassa() {
  });
 
  const finalTotal = saleItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+ 
+ // Determine payment method
+ let paymentMethod: 'cash' | 'card' | 'mixed' = 'cash';
+ if (cashAmount > 0 && cardAmount > 0) {
+ paymentMethod = 'mixed';
+ } else if (cardAmount > 0) {
+ paymentMethod = 'card';
+ }
 
  const receiptData: PrintReceipt = {
  items: saleItems,
  total: finalTotal,
- paymentMethod: method,
- date: new Date().toLocaleString('uz-UZ'),
+ paymentMethod: paymentMethod as 'cash' | 'card',
+ date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.') + ' ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
  receiptNumber: Date.now().toString().slice(-8)
  };
 
@@ -325,7 +349,10 @@ export default function Kassa() {
  await api.post('/receipts', {
  items: saleItems,
  total: finalTotal,
- paymentMethod: method,
+ paymentMethod: paymentMethod,
+ cashAmount: cashAmount,
+ cardAmount: cardAmount,
+ debtAmount: debtAmount,
  isReturn: isReturnMode,
  customer: selectedCustomer || null
  });
@@ -352,6 +379,13 @@ export default function Kassa() {
  setIsReturnMode(false);
  setPrintReceipt(receiptData);
  setShowReceipt(true);
+ 
+ // Show success message
+ if (debtAmount > 0) {
+ toast.success(`Savdo muvaffaqiyatli! Qarz: ${debtAmount.toLocaleString()} so'm`);
+ } else {
+ toast.success('Savdo muvaffaqiyatli yakunlandi!');
+ }
  } catch (err: any) {
  console.error('Error creating receipt:', err);
  const message = err.response?.data?.message || 'Xatolik yuz berdi';
@@ -429,7 +463,6 @@ body {
 <div class="line"></div>
 
 <div class="meta">Sana: ${printReceipt.date}</div>
-<div class="meta">Vaqt: ${new Date().toLocaleTimeString('uz-UZ')}</div>
 <div class="meta">Chek: #${printReceipt.receiptNumber}</div>
 
 <div class="line"></div>
@@ -910,7 +943,7 @@ ${itemsHtml}
  {/* Payment Options */}
  <div className="px-6 pb-6 space-y-4 bg-white dark:bg-neutral-900">
  <button 
- onClick={() => handlePayment('cash')} 
+ onClick={() => setShowPayment(true)} 
  className={`group w-full relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-2xl ${
  isReturnMode 
  ? 'bg-gradient-to-r from-warning-500 to-warning-600 hover:from-warning-600 hover:to-warning-700' 
@@ -923,39 +956,26 @@ ${itemsHtml}
  <Banknote className="w-8 h-8 text-white" strokeWidth={2.5} />
  </div>
  <div className="flex-1 text-left">
- <p className="text-2xl font-black text-white drop-shadow">Naqd pul</p>
- <p className="text-sm text-white/80 font-semibold">Kassa orqali to'lov</p>
+ <p className="text-2xl font-black text-white drop-shadow">{isReturnMode ? 'Qaytarishni tasdiqlash' : "To'lov qilish"}</p>
+ <p className="text-sm text-white/80 font-semibold">Naqd, karta yoki qarz</p>
  </div>
- <span className="text-4xl group-hover:scale-110 transition-transform">💵</span>
+ <span className="text-4xl group-hover:scale-110 transition-transform">💰</span>
  </div>
  </button>
+ </div>
+ </div>
+ </div>
+ )}
  
- <button 
- onClick={() => handlePayment('card')} 
- className="group w-full relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-2xl"
- >
- <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors" />
- <div className="relative flex items-center gap-4 p-6">
- <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg border border-white/30 group-hover:scale-110 transition-transform">
- <CreditCard className="w-8 h-8 text-white" strokeWidth={2.5} />
- </div>
- <div className="flex-1 text-left">
- <p className="text-2xl font-black text-white drop-shadow">Plastik karta</p>
- <p className="text-sm text-white/80 font-semibold">Terminal orqali to'lov</p>
- </div>
- <span className="text-4xl group-hover:scale-110 transition-transform">💳</span>
- </div>
- </button>
- 
- <button 
- onClick={() => setShowPayment(false)} 
- className="w-full py-4 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors font-bold text-lg rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800"
- >
- Bekor qilish
- </button>
- </div>
- </div>
- </div>
+ {/* Payment Modal */}
+ {showPayment && (
+ <PaymentModal
+ total={totalAmount}
+ customerName={customers.find(c => c._id === selectedCustomer)?.name}
+ customerId={selectedCustomer}
+ onConfirm={handlePayment}
+ onClose={() => setShowPayment(false)}
+ />
  )}
 
  {/* Return Search Modal */}

@@ -12,6 +12,7 @@ import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import PhoneInput from '../../components/PhoneInput';
+import DebtDetailsModal from '../../components/debts/DebtDetailsModal';
 
 export default function Debts() {
  const { t } = useLanguage();
@@ -26,6 +27,8 @@ export default function Debts() {
  const [showModal, setShowModal] = useState(false);
  const [showPaymentModal, setShowPaymentModal] = useState(false);
  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+ const [showDetailsModal, setShowDetailsModal] = useState(false);
+ const [selectedDebtForDetails, setSelectedDebtForDetails] = useState<Debt | null>(null);
  const [loading, setLoading] = useState(true);
  const [debtType, setDebtType] = useState<'receivable' | 'payable'>('receivable');
  const [formData, setFormData] = useState({ 
@@ -186,6 +189,21 @@ export default function Debts() {
  return debt.customer?.phone || '';
  };
 
+ const handleRowClick = (debt: Debt) => {
+ setSelectedDebtForDetails(debt);
+ setShowDetailsModal(true);
+ };
+
+ const handleDetailsModalClose = () => {
+ setShowDetailsModal(false);
+ setSelectedDebtForDetails(null);
+ };
+
+ const handleDetailsModalUpdate = () => {
+ fetchDebts();
+ fetchStats();
+ };
+
  return (
  <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 pb-20 lg:pb-0">
  {AlertComponent}
@@ -203,16 +221,19 @@ export default function Debts() {
  </p>
  </div>
  </div>
+ {isAdmin && (
  <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all hover:scale-105 shadow-sm font-medium">
  <Plus className="w-4 h-4" />
  <span className="hidden sm:inline">{t("Yangi qarz")}</span>
  </button>
+ )}
  </header>
 
  <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
- {/* Type Toggle & Search - only for admin */}
- {isAdmin && (
+ {/* Type Toggle & Search */}
  <div className="flex flex-col sm:flex-row gap-4">
+ {/* Type Toggle - only for admin */}
+ {isAdmin && (
  <div className="inline-flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl shadow-sm">
  <button
  onClick={() => { setDebtType('receivable'); setStatusFilter('all'); }}
@@ -237,6 +258,8 @@ export default function Debts() {
  {t("Men qarzdorman")}
  </button>
  </div>
+ )}
+ {/* Search - for both admin and cashier */}
  <div className="flex-1 relative flex items-center">
  <Search className="absolute left-4 w-5 h-5 text-neutral-400 pointer-events-none" />
  <input
@@ -248,7 +271,6 @@ export default function Debts() {
  />
  </div>
  </div>
- )}
 
  {/* Stats */}
  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
@@ -322,7 +344,11 @@ export default function Debts() {
  </div>
  <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
  {filteredDebts.map(debt => (
- <div key={debt._id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
+ <div 
+ key={debt._id} 
+ onClick={() => handleRowClick(debt)}
+ className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors cursor-pointer"
+ >
  <div className="col-span-2 flex items-center gap-3">
  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary-100 dark:bg-primary-900/30">
  <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
@@ -344,7 +370,7 @@ export default function Debts() {
  </div>
  <div className="col-span-2 flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
  <Calendar className="w-4 h-4" />
- {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('uz-UZ') : 'Muddatsiz'}
+ {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('en-GB').replace(/\//g, '.') : 'Muddatsiz'}
  </div>
  {debtType === 'receivable' && (
  <div className="col-span-2">
@@ -368,29 +394,34 @@ export default function Debts() {
  debt.status === 'overdue' ? "Muddati o'tgan" : 'Kutilmoqda'}
  </span>
  </div>
- <div className="col-span-1 flex items-center justify-center gap-2">
+ <div className="col-span-1 flex items-center justify-center gap-1">
  {debt.status !== 'paid' && (
  <button 
- onClick={() => { setSelectedDebt(debt); setShowPaymentModal(true); }} 
+ onClick={(e) => { e.stopPropagation(); setSelectedDebt(debt); setShowPaymentModal(true); }} 
  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-100 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all"
  title="To'lov"
  >
  <DollarSign className="w-4 h-4" />
  </button>
  )}
+ {isAdmin && (
+ <>
  <button 
- onClick={() => openEditModal(debt)} 
- className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-100 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all"
+ onClick={(e) => { e.stopPropagation(); openEditModal(debt); }} 
+ className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-all"
  title="Tahrirlash"
  >
  <Edit className="w-4 h-4" />
  </button>
  <button 
- onClick={() => handleDelete(debt._id)} 
+ onClick={(e) => { e.stopPropagation(); handleDelete(debt._id); }} 
  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all"
+ title="O'chirish"
  >
  <Trash2 className="w-4 h-4" />
  </button>
+ </>
+ )}
  </div>
  </div>
  ))}
@@ -400,7 +431,11 @@ export default function Debts() {
  {/* Mobile Cards */}
  <div className="lg:hidden space-y-3 p-4">
  {filteredDebts.map(debt => (
- <div key={debt._id} className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 p-4 hover:border-primary-500 transition-all hover:shadow-lg">
+ <div 
+ key={debt._id} 
+ onClick={() => handleRowClick(debt)}
+ className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 p-4 hover:border-primary-500 transition-all hover:shadow-lg cursor-pointer"
+ >
  <div className="flex items-start gap-3 mb-4">
  <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-900/40">
  <User className="w-7 h-7 text-primary-600 dark:text-primary-400" />
@@ -454,29 +489,36 @@ export default function Debts() {
  <div className="flex items-center justify-between pt-3 border-t border-neutral-200 dark:border-neutral-700">
  <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 font-medium">
  <Calendar className="w-4 h-4" />
- {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('uz-UZ') : 'Muddatsiz'}
+ {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('en-GB').replace(/\//g, '.') : 'Muddatsiz'}
  </div>
  <div className="flex gap-2">
  {debt.status !== 'paid' && (
  <button 
- onClick={() => { setSelectedDebt(debt); setShowPaymentModal(true); }} 
+ onClick={(e) => { e.stopPropagation(); setSelectedDebt(debt); setShowPaymentModal(true); }} 
  className="w-9 h-9 flex items-center justify-center rounded-xl bg-primary-100 text-primary-600 hover:bg-primary-200 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 transition-all hover:scale-110"
+ title="To'lov"
  >
  <DollarSign className="w-5 h-5" />
  </button>
  )}
+ {isAdmin && (
+ <>
  <button 
- onClick={() => openEditModal(debt)} 
- className="w-9 h-9 flex items-center justify-center rounded-xl bg-primary-100 text-primary-600 hover:bg-primary-200 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 transition-all hover:scale-110"
+ onClick={(e) => { e.stopPropagation(); openEditModal(debt); }} 
+ className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-all hover:scale-110"
+ title="Tahrirlash"
  >
  <Edit className="w-5 h-5" />
  </button>
  <button 
- onClick={() => handleDelete(debt._id)} 
+ onClick={(e) => { e.stopPropagation(); handleDelete(debt._id); }} 
  className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-all hover:scale-110"
+ title="O'chirish"
  >
  <Trash2 className="w-5 h-5" />
  </button>
+ </>
+ )}
  </div>
  </div>
  </div>
@@ -705,13 +747,24 @@ export default function Debts() {
  </div>
  )}
 
+ {/* Debt Details Modal */}
+ {showDetailsModal && selectedDebtForDetails && (
+ <DebtDetailsModal
+ debt={selectedDebtForDetails}
+ onClose={handleDetailsModalClose}
+ onUpdate={handleDetailsModalUpdate}
+ />
+ )}
+
  {/* Mobile FAB */}
+ {isAdmin && (
  <button
  onClick={() => setShowModal(true)}
  className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-primary-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-primary-600 active:scale-95 transition-all z-30"
  >
  <Plus className="w-6 h-6" />
  </button>
+ )}
  </div>
  );
 }

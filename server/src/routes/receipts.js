@@ -327,7 +327,7 @@ router.post('/bulk', auth, authorize('admin', 'cashier'), async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { items, total, paymentMethod, customer, isReturn } = req.body;
+    const { items, total, paymentMethod, customer, isReturn, cashAmount, cardAmount, debtAmount } = req.body;
     const isHelper = req.user.role === 'helper';
     
     // Check stock availability before sale (not for returns)
@@ -349,6 +349,9 @@ router.post('/', auth, async (req, res) => {
       items,
       total,
       paymentMethod,
+      cashAmount: cashAmount || 0,
+      cardAmount: cardAmount || 0,
+      debtAmount: debtAmount || 0,
       customer,
       status: isHelper ? 'pending' : 'completed',
       isReturn: isReturn || false,
@@ -379,6 +382,56 @@ router.post('/', auth, async (req, res) => {
     }
     
     await receipt.save();
+    
+    // Create debt if there's unpaid amount
+    if (customer && debtAmount && debtAmount > 0 && !isReturn) {
+      const Debt = require('../models/Debt');
+      const Customer = require('../models/Customer');
+      
+      // Get customer info
+      const customerDoc = await Customer.findById(customer);
+      const customerName = customerDoc?.name || 'Mijoz';
+      
+      // Format date as DD.MM.YYYY HH:MM
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const dateStr = `${day}.${month}.${year} ${hours}:${minutes}`;
+      
+      // Build items description
+      const itemsDesc = items.map(item => 
+        `${item.name} (${item.quantity} ta × ${item.price.toLocaleString('uz-UZ')} so'm)`
+      ).join(', ');
+      
+      // Build payment info
+      const paymentInfo = [];
+      if (cashAmount > 0) paymentInfo.push(`naqd ${cashAmount.toLocaleString('uz-UZ')} so'm`);
+      if (cardAmount > 0) paymentInfo.push(`karta ${cardAmount.toLocaleString('uz-UZ')} so'm`);
+      const paymentStr = paymentInfo.length > 0 ? paymentInfo.join(' va ') : 'to\'lanmagan';
+      
+      // Create description
+      const description = `${dateStr} sanada ${customerName} quyidagi mahsulotlarni sotib oldi: ${itemsDesc}. Jami summa: ${total.toLocaleString('uz-UZ')} so'm. To'langan: ${paymentStr}. Qarzga qolgan: ${debtAmount.toLocaleString('uz-UZ')} so'm.`;
+      
+      const debt = new Debt({
+        type: 'receivable',
+        customer: customer,
+        amount: debtAmount,
+        paidAmount: 0,
+        status: 'pending',
+        description: description,
+        receipt: receipt._id,
+        dueDate: null // No due date for sales debts
+      });
+      await debt.save();
+      
+      // Update customer debt
+      await Customer.findByIdAndUpdate(customer, {
+        $inc: { debt: debtAmount }
+      });
+    }
     
     // Update customer purchase history and total purchases if customer is selected and not return
     if (customer && !isReturn) {
