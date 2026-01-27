@@ -9,7 +9,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
-import { initSocket, getSocket } from '../../utils/socket';
+import { initSocket } from '../../utils/socket';
 const API_URL = 'https://pos.universalbozor.uz';
 
 // ProductRow Component - Desktop (8 columns, no warehouse)

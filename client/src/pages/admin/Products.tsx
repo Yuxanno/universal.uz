@@ -9,7 +9,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
-import { initSocket, getSocket } from '../../utils/socket';
+import { initSocket } from '../../utils/socket';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -332,12 +332,6 @@ export default function Products() {
  }
  }, [mainWarehouse]);
 
- // Memoize formatted values to prevent unnecessary recalculations
- const formattedQuantity = useMemo(() => formatInputNumber(formData.quantity), [formData.quantity]);
- const formattedCostPrice = useMemo(() => formatInputNumber(formData.costPrice), [formData.costPrice]);
- const formattedWholesalePrice = useMemo(() => formatInputNumber(formData.wholesalePrice), [formData.wholesalePrice]);
- const formattedDonaNarx = useMemo(() => formatInputNumber(formData.donaNarx), [formData.donaNarx]);
-
  // Optimized input handlers with useCallback
  const handleCodeChange = useCallback((value: string) => {
  setFormData(prev => ({ ...prev, code: value }));
@@ -347,22 +341,6 @@ export default function Products() {
  setFormData(prev => ({ ...prev, name: value }));
  if (nameError) setNameError('');
  }, [nameError]);
-
- const handleCostPriceChange = useCallback((value: string) => {
- setFormData(prev => ({ ...prev, costPrice: parseNumber(value) }));
- }, []);
-
- const handleWholesalePriceChange = useCallback((value: string) => {
- setFormData(prev => ({ ...prev, wholesalePrice: parseNumber(value) }));
- }, []);
-
- const handleDonaNarxChange = useCallback((value: string) => {
- setFormData(prev => ({ ...prev, donaNarx: parseNumber(value) }));
- }, []);
-
- const handleQuantityChange = useCallback((value: string) => {
- setFormData(prev => ({ ...prev, quantity: parseNumber(value) }));
- }, []);
 
  const applyQuantityChange = useCallback(() => {
  if (!quantityInput || Number(quantityInput) <= 0) return;

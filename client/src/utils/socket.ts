@@ -32,7 +32,7 @@ export const initSocket = () => {
       console.log('🔌 Socket disconnected');
     });
 
-    socket.on('connect_error', (error) => {
+    socket.on('connect_error', (error: Error) => {
       console.error('🔌 Socket connection error:', error);
     });
   } else {
