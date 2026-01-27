@@ -13,7 +13,16 @@ router.get('/', auth, async (req, res) => {
     if (status) query.status = status;
     if (type) query.type = type;
     
-    const debts = await Debt.find(query).populate('customer', 'name phone').sort({ createdAt: -1 });
+    const debts = await Debt.find(query)
+      .populate('customer', 'name phone')
+      .populate({
+        path: 'receipt',
+        populate: [
+          { path: 'items.product', select: 'name code' },
+          { path: 'createdBy', select: 'name' }
+        ]
+      })
+      .sort({ createdAt: -1 });
     res.json(debts);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -100,6 +109,22 @@ router.post('/:id/payment', auth, authorize('admin', 'cashier'), async (req, res
     // Only update customer debt for receivable type
     if (debt.type === 'receivable' && debt.customer) {
       await Customer.findByIdAndUpdate(debt.customer, { $inc: { debt: -amount } });
+      
+      // Add debt payment to customer's purchase history
+      const customerDoc = await Customer.findById(debt.customer);
+      if (customerDoc) {
+        // Add as debt payment entry
+        customerDoc.purchaseHistory.push({
+          date: new Date(),
+          amount: amount,
+          receiptId: debt.receipt || null,
+          type: 'debt_payment',
+          debtId: debt._id,
+          paymentMethod: method
+        });
+        
+        await customerDoc.save();
+      }
       
       // Send Telegram notification to customer
       try {

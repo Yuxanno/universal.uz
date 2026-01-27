@@ -1,0 +1,232 @@
+import { useState, useEffect } from 'react';
+import { X, Banknote, CreditCard, AlertTriangle, User, Calculator } from 'lucide-react';
+import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
+import { useLanguage } from '../../context/LanguageContext';
+
+interface PaymentModalProps {
+  total: number;
+  customerName?: string;
+  customerId?: string;
+  onConfirm: (cashAmount: number, cardAmount: number, debtAmount: number) => void;
+  onClose: () => void;
+}
+
+export default function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
+  const { t } = useLanguage();
+  const [cashAmount, setCashAmount] = useState('');
+  const [cardAmount, setCardAmount] = useState('');
+  const [debtAmount, setDebtAmount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Don't allow debt for "Oddiy mijoz" (regular customer without ID)
+  const allowDebt = customerName !== 'Oddiy mijoz' && customerName !== undefined;
+
+  // Auto-calculate debt when cash or card changes
+  useEffect(() => {
+    const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
+    const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
+    const paid = cash + card;
+    const remaining = Math.max(0, total - paid);
+    
+    // Only set debt if allowed
+    if (allowDebt) {
+      setDebtAmount(remaining);
+    } else {
+      setDebtAmount(0);
+    }
+  }, [cashAmount, cardAmount, total, allowDebt]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isSubmitting) return; // Prevent double submission
+    
+    const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
+    const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
+    
+    // If debt not allowed, must pay full amount
+    if (!allowDebt && cash + card < total) {
+      alert(t('To\'lov summasi to\'liq bo\'lishi kerak!'));
+      return;
+    }
+    
+    if (cash + card + debtAmount < total) {
+      alert(t('To\'lov summasi yetarli emas!'));
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await onConfirm(cash, card, allowDebt ? debtAmount : 0);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const paidAmount = (parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0);
+  const isFullyPaid = paidAmount >= total;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 animate-scaleIn border-2 border-neutral-200 dark:border-neutral-700 max-h-[95vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                <Calculator className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">{t("To'lov")}</h3>
+                <p className="text-white/80 text-sm">{t("To'lov turini tanlang")}</p>
+              </div>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all hover:scale-110 active:scale-95"
+            >
+              <X className="w-6 h-6" strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Customer Info */}
+            {customerName && (
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl p-3 border-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t("Mijoz")}</p>
+                    <p className="text-sm font-bold text-blue-900 dark:text-blue-100">{customerName}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Total Amount */}
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-2xl p-4 border-2 border-emerald-200 dark:border-emerald-800">
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">{t("Jami summa")}</p>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                {formatNumber(total)} <span className="text-base">{t("so'm")}</span>
+              </p>
+            </div>
+
+            {/* Cash Payment */}
+            <div>
+              <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-emerald-600" />
+                {t("Naqd pul")}
+              </label>
+              <input
+                type="text"
+                className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
+                placeholder="0"
+                value={formatInputNumber(cashAmount)}
+                onChange={e => setCashAmount(parseNumber(e.target.value))}
+              />
+            </div>
+
+            {/* Card Payment */}
+            <div>
+              <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-blue-600" />
+                {t("Plastik karta")}
+              </label>
+              <input
+                type="text"
+                className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all text-lg font-bold text-center"
+                placeholder="0"
+                value={formatInputNumber(cardAmount)}
+                onChange={e => setCardAmount(parseNumber(e.target.value))}
+              />
+            </div>
+
+            {/* Debt Amount (Auto-calculated) */}
+            {allowDebt && debtAmount > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30 rounded-2xl p-3 border-2 border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-3 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <p className="text-sm font-bold text-red-600 dark:text-red-400">{t("Qarz summasi")}</p>
+                </div>
+                <p className="text-xl font-black text-red-700 dark:text-red-300">
+                  {formatNumber(debtAmount)} <span className="text-sm">{t("so'm")}</span>
+                </p>
+                {!customerName && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                    ⚠️ {t("Qarz yaratish uchun mijoz tanlang!")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Warning for regular customer */}
+            {!allowDebt && paidAmount < total && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 text-center">
+                  ⚠️ {t("Oddiy mijoz uchun to'liq to'lov talab qilinadi!")}
+                </p>
+              </div>
+            )}
+
+            {/* Summary */}
+            <div className="bg-neutral-50 dark:bg-neutral-700 rounded-2xl p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-600 dark:text-neutral-400">{t("To'langan")}:</span>
+                <span className="font-bold text-neutral-900 dark:text-neutral-100">
+                  {formatNumber(paidAmount)} {t("so'm")}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-600 flex justify-between">
+                <span className="font-bold text-neutral-700 dark:text-neutral-300">{t("Jami")}:</span>
+                <span className="font-black text-lg text-neutral-900 dark:text-neutral-100">
+                  {formatNumber(total)} {t("so'm")}
+                </span>
+              </div>
+            </div>
+
+            {/* Warning if debt without customer */}
+            {allowDebt && debtAmount > 0 && !customerName && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 text-center">
+                  ⚠️ {t("Qarz yaratish uchun avval mijoz tanlang!")}
+                </p>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Fixed Footer with Action Buttons */}
+        <div className="flex-shrink-0 p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
+          <div className="flex gap-3">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95 disabled:opacity-50"
+            >
+              {t("Bekor qilish")}
+            </button>
+            <button 
+              type="submit"
+              form="payment-form"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSubmit(e);
+              }}
+              disabled={isSubmitting || (allowDebt && debtAmount > 0 && !customerName) || (!allowDebt && paidAmount < total)}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? t("Yuklanmoqda...") : t("To'lash")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

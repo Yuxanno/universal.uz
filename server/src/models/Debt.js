@@ -16,6 +16,7 @@ const debtSchema = new mongoose.Schema({
   type: { type: String, enum: ['receivable', 'payable'], default: 'receivable' }, // receivable = they owe me, payable = I owe them
   description: { type: String },
   collateral: { type: String }, // Garov - what was left as collateral
+  receipt: { type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' }, // Link to sale receipt
   payments: [paymentSchema],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });

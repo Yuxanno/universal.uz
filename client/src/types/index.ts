@@ -37,7 +37,10 @@ export interface Receipt {
  _id: string;
  items: CartItem[];
  total: number;
- paymentMethod: 'cash' | 'card';
+ paymentMethod: 'cash' | 'card' | 'mixed';
+ cashAmount?: number;
+ cardAmount?: number;
+ debtAmount?: number;
  cashier: User;
  customer?: Customer;
  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'draft';
@@ -72,6 +75,7 @@ export interface Debt {
  dueDate: string;
  status: 'pending' | 'overdue' | 'paid' | 'blacklist';
  payments: Payment[];
+ receipt?: Receipt; // Link to the sale receipt
  createdAt: string;
 }
 

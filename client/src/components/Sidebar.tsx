@@ -264,6 +264,7 @@ export const adminMenuItems: MenuItem[] = [
 export const cashierMenuItems: MenuItem[] = [
  { icon: <ShoppingCart className="w-5 h-5" />, label: 'Kassa (POS)', path: '' },
  { icon: <Package className="w-5 h-5" />, label: 'Mahsulotlar', path: '/products' },
+ { icon: <Users className="w-5 h-5" />, label: 'Mijozlar', path: '/customers' },
  { icon: <CreditCard className="w-5 h-5" />, label: 'Qarz daftarcha', path: '/debts' },
  { icon: <Receipt className="w-5 h-5" />, label: "Xodimlar cheklari", path: '/staff-receipts' },
 ];

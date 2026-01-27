@@ -53,13 +53,13 @@ export default function Header({ title, showSearch, onSearch, actions, filterOpt
  {/* Search */}
  {showSearch && (
  <div className="relative flex items-center">
- <Search className="absolute left-3 w-4 h-4 text-neutral-500 dark:text-neutral-400 pointer-events-none" />
+ <Search className="absolute left-3 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
  <input
  type="text"
  placeholder={tKey("Qidirish...")}
  value={searchQuery}
  onChange={(e) => handleSearch(e.target.value)}
- className="w-48 lg:w-64 pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-900 border-2 border-neutral-300 dark:border-neutral-700 rounded-lg text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm"
+ className="w-48 lg:w-64 pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm hover:bg-white"
  />
  </div>
  )}

@@ -61,7 +61,43 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id);
     if (!customer) return res.status(404).json({ message: 'Mijoz topilmadi' });
-    res.json(customer);
+    
+    // Get detailed purchase history with receipts
+    const receipts = await Receipt.find({
+      customer: req.params.id,
+      status: { $in: ['completed', 'approved'] }
+    }).sort({ createdAt: -1 }).limit(50);
+    
+    // Get debt payments from purchase history
+    const debtPayments = customer.purchaseHistory
+      .filter(entry => entry.type === 'debt_payment')
+      .map(entry => ({
+        date: entry.date,
+        amount: entry.amount,
+        paymentMethod: entry.paymentMethod,
+        debtId: entry.debtId,
+        receiptId: entry.receiptId,
+        type: 'debt_payment'
+      }));
+    
+    const customerData = customer.toObject();
+    customerData.detailedPurchaseHistory = [
+      ...receipts.map(r => ({
+        date: r.createdAt,
+        items: r.items,
+        total: r.total,
+        cashAmount: r.cashAmount || 0,
+        cardAmount: r.cardAmount || 0,
+        debtAmount: r.debtAmount || 0,
+        paymentMethod: r.paymentMethod,
+        receiptId: r._id,
+        isReturn: r.isReturn,
+        type: 'purchase'
+      })),
+      ...debtPayments
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    res.json(customerData);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }

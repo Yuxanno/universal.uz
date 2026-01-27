@@ -22,6 +22,7 @@ const Helpers = lazy(() => import('./pages/admin/Helpers'));
 const StaffReceipts = lazy(() => import('./pages/admin/StaffReceipts'));
 const CashierLayout = lazy(() => import('./layouts/CashierLayout'));
 const CashierProducts = lazy(() => import('./pages/cashier/Products'));
+const CashierCustomers = lazy(() => import('./pages/cashier/Customers'));
 const HelperLayout = lazy(() => import('./layouts/HelperLayout'));
 const HelperScanner = lazy(() => import('./pages/helper/Scanner'));
 
@@ -124,6 +125,7 @@ function App() {
  <Route path="/cashier" element={<ProtectedRoute roles={['cashier']}><CashierLayout /></ProtectedRoute>}>
  <Route index element={<Kassa />} />
  <Route path="products" element={<CashierProducts />} />
+ <Route path="customers" element={<CashierCustomers />} />
  <Route path="debts" element={<Debts />} />
  <Route path="staff-receipts" element={<StaffReceipts />} />
  </Route>

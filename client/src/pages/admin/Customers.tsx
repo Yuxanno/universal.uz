@@ -455,14 +455,10 @@ export default function Customers() {
  <div key={index} className="flex items-center justify-between p-4 bg-surface-50 dark:bg-surface-700 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-600 transition-colors">
  <div>
  <p className="font-medium text-surface-900 dark:text-surface-100">
- {new Date(purchase.date).toLocaleDateString('uz-UZ', { 
- year: 'numeric', 
- month: 'long', 
- day: 'numeric' 
- })}
+ {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')}
  </p>
  <p className="text-xs text-surface-500 dark:text-surface-400">
- {new Date(purchase.date).toLocaleDateString('uz-UZ', { weekday: 'long' })}
+ {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
  </p>
  </div>
  <div className="text-right">
