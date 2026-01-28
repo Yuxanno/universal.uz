@@ -63,7 +63,7 @@ export default function StaffReceipts() {
  setWorkers(uniqueHelpers);
  
  // Remove duplicate receipts by _id (defensive filtering)
- // Include archived receipts as well
+ // Don't include archived receipts - those are helper's private archive
  const uniqueReceipts = receiptsRes.data.filter((r: WorkerReceipt, index: number, self: WorkerReceipt[]) => 
  index === self.findIndex((t) => t._id === r._id)
  );
@@ -87,10 +87,10 @@ export default function StaffReceipts() {
  }, [fetchData]);
 
  const getWorkerReceipts = (workerId: string) => {
- // Return all receipts for this worker (each receipt is a separate purchase)
+ // Return draft, archived, and pending receipts (all active worker receipts)
  const filtered = receipts.filter(r => 
  r.createdBy?._id === workerId && 
- (r.status === 'pending' || r.status === 'draft' || r.status === 'archived')
+ (r.status === 'draft' || r.status === 'archived' || r.status === 'pending')
  );
  // Remove duplicates by _id (defensive)
  const unique = filtered.filter((r, index, self) => 
@@ -231,7 +231,6 @@ export default function StaffReceipts() {
  // Show each receipt as a separate card
  return allReceipts.map((receipt) => {
  const isReady = receipt.status === 'approved';
- const isDraft = receipt.status === 'draft';
  const isPending = receipt.status === 'pending';
  const isArchived = receipt.status === 'archived';
  const customerName = receipt.customer?.name || 'Oddiy mijoz';
@@ -252,8 +251,6 @@ export default function StaffReceipts() {
  className={`rounded-2xl border-2 overflow-hidden transition-all bg-white shadow-sm ${
  isReady 
  ? 'border-success-500 shadow-lg shadow-success-500/10' 
- : isArchived
- ? 'border-blue-500 shadow-lg shadow-blue-500/10'
  : isPending
  ? 'border-warning-500 shadow-lg shadow-warning-500/10'
  : 'border-surface-200'
@@ -261,26 +258,26 @@ export default function StaffReceipts() {
  >
  {/* Header */}
  <div className={`px-5 py-4 ${
- isReady ? 'bg-success-500' : isArchived ? 'bg-blue-500' : isPending ? 'bg-warning-500' : 'bg-surface-100'
+ isReady ? 'bg-success-500' : isPending ? 'bg-warning-500' : 'bg-surface-100'
  }`}>
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
- isReady ? 'bg-success-400' : isArchived ? 'bg-blue-400' : isPending ? 'bg-warning-400' : 'bg-white'
+ isReady ? 'bg-success-400' : isPending ? 'bg-warning-400' : 'bg-white'
  }`}>
- <User className={`w-6 h-6 ${isReady || isPending || isArchived ? 'text-white' : 'text-surface-600'}`} />
+ <User className={`w-6 h-6 ${isReady || isPending ? 'text-white' : 'text-surface-600'}`} />
  </div>
  <div>
- <h3 className={`font-semibold text-lg ${isReady || isPending || isArchived ? 'text-white' : 'text-surface-900'}`}>
+ <h3 className={`font-semibold text-lg ${isReady || isPending ? 'text-white' : 'text-surface-900'}`}>
  {worker.name || `Xodim ${workerIndex + 1}`}
  </h3>
- <p className={`text-sm ${isReady || isPending || isArchived ? 'text-white/80' : 'text-surface-500'}`}>
+ <p className={`text-sm ${isReady || isPending ? 'text-white/80' : 'text-surface-500'}`}>
  {customerName}
  </p>
  </div>
  </div>
  {isReady && <CheckCircle className="w-7 h-7 text-white" />}
- {isDraft && !isPending && !isReady && !isArchived && (
+ {(isDraft || isArchived) && !isPending && !isReady && (
  <div className="w-3 h-3 bg-brand-500 rounded-full animate-pulse" />
  )}
  </div>
@@ -294,17 +291,17 @@ export default function StaffReceipts() {
  </p>
  </div>
  )}
- {isArchived && !isReady && (
- <div className="bg-blue-50 border-b border-blue-200 px-5 py-3">
- <p className="text-blue-700 text-sm font-medium text-center">
- 📦 {t("Arxivda - kassaga yuklash mumkin")}
+ {(isDraft || isArchived) && !isReady && !isPending && (
+ <div className="bg-gray-50 border-b border-gray-200 px-5 py-3">
+ <p className="text-gray-700 text-sm font-medium text-center">
+ 📋 {t("Yig'ilayotgan xarid (real-time)")}
  </p>
  </div>
  )}
- {isPending && !isReady && !isArchived && (
+ {isPending && !isReady && (
  <div className="bg-warning-50 border-b border-warning-200 px-5 py-3">
  <p className="text-warning-700 text-sm font-medium text-center">
- ⏳ {t("Tasdiqlash kutilmoqda")}
+ ⏳ {t("Kassaga yuborilgan - tayyor")}
  </p>
  </div>
  )}
@@ -438,10 +435,7 @@ export default function StaffReceipts() {
 
  {/* Footer */}
  <div className={`px-5 py-4 border-t ${
- isReady ? 'border-success-200 bg-success-50' : 
- isPending ? 'border-warning-200 bg-warning-50' : 
- isArchived ? 'border-blue-200 bg-blue-50' :
- 'border-surface-200 bg-surface-50'
+ isPending ? 'border-warning-200 bg-warning-50' : 'border-surface-200 bg-surface-50'
  }`}>
  {showPrices && (
  <div className="flex items-center justify-between mb-4">
@@ -452,18 +446,35 @@ export default function StaffReceipts() {
  </div>
  )}
  
- {(isReady || isPending || isArchived) && (
+ {isPending && (
  <button
  onClick={async () => {
- // Load only this receipt to kassa
- const kassaItems = receipt.items.map(item => ({
+ try {
+ // Call backend to mark receipt as completed and update inventory
+ const response = await api.put(`/receipts/${receipt._id}/load-to-kassa`);
+ 
+ console.log('✅ Receipt loaded to kassa successfully:', response.data);
+ 
+ // Fetch full product details to get current inventory quantities
+ const productIds = receipt.items.map(item => item.product);
+ const productsResponse = await api.post('/products/by-ids', { ids: productIds });
+ const productsMap = new Map(productsResponse.data.map((p: any) => [p._id, p]));
+ 
+ // Load only this receipt to kassa with full product details
+ const kassaItems = receipt.items.map(item => {
+ const product: any = productsMap.get(item.product);
+ return {
  _id: item.product,
  name: item.name,
  code: item.code,
  price: item.price,
  cartQuantity: item.quantity,
- quantity: 0
- }));
+ quantity: product?.quantity || 0, // Current inventory quantity
+ costPrice: product?.costPrice || 0,
+ tan_narx: product?.costPrice || 0,
+ optom_narx: item.price
+ };
+ });
  
  console.log('📦 Loading single receipt to kassa:', {
  receiptId: receipt._id,
@@ -478,12 +489,20 @@ export default function StaffReceipts() {
  // Dispatch custom event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));
  
+ // Refresh receipts to remove this one from the list
+ await fetchData();
+ 
  navigate('/cashier');
  }
+ } catch (err: any) {
+ console.error('Error loading to kassa:', err);
+ const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';
+ alert(errorMsg);
+ // Refresh to show current state
+ await fetchData();
+ }
  }}
- className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors ${
- isReady ? 'bg-success-500 hover:bg-success-600' : isArchived ? 'bg-blue-500 hover:bg-blue-600' : 'bg-warning-500 hover:bg-warning-600'
- }`}
+ className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors bg-warning-500 hover:bg-warning-600"
  >
  <Download className="w-5 h-5" />
  {t("Kassaga yuklash")}

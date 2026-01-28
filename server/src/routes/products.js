@@ -252,6 +252,40 @@ router.post('/check-stock', auth, async (req, res) => {
   }
 });
 
+// Get products by IDs (for loading to kassa)
+router.post('/by-ids', auth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: 'IDs array required' });
+    }
+    
+    // Get products from WarehouseInventory to get current quantities
+    const inventories = await WarehouseInventory.find({ 
+      product: { $in: ids } 
+    })
+    .populate('product', 'name code price costPrice images')
+    .lean();
+    
+    // Map to product format with current inventory quantity
+    const products = inventories.map(inv => ({
+      _id: inv.product._id,
+      name: inv.product.name,
+      code: inv.product.code,
+      price: inv.product.price,
+      costPrice: inv.product.costPrice,
+      quantity: inv.quantity, // Current inventory quantity
+      images: inv.product.images
+    }));
+    
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching products by IDs:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.get('/:id', auth, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('warehouse', 'name');

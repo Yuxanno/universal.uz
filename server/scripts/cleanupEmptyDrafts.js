@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: './server/.env' });
 
 const Receipt = require('../src/models/Receipt');
 
@@ -8,30 +8,33 @@ async function cleanupEmptyDrafts() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Find all draft receipts with no items or empty items array
-    const emptyDrafts = await Receipt.find({
-      status: 'draft',
+    // Find all receipts with no items or empty items array (any status)
+    const emptyReceipts = await Receipt.find({
       $or: [
         { items: { $exists: false } },
         { items: { $size: 0 } }
       ]
     });
 
-    console.log(`📋 Found ${emptyDrafts.length} empty draft receipts`);
+    console.log(`📋 Found ${emptyReceipts.length} empty receipts`);
 
-    if (emptyDrafts.length > 0) {
-      // Delete all empty drafts
+    if (emptyReceipts.length > 0) {
+      // Show details
+      emptyReceipts.forEach(receipt => {
+        console.log(`  - ID: ${receipt._id}, Status: ${receipt.status}, Created: ${receipt.createdAt}`);
+      });
+
+      // Delete all empty receipts
       const result = await Receipt.deleteMany({
-        status: 'draft',
         $or: [
           { items: { $exists: false } },
           { items: { $size: 0 } }
         ]
       });
 
-      console.log(`🗑️  Deleted ${result.deletedCount} empty draft receipts`);
+      console.log(`🗑️  Deleted ${result.deletedCount} empty receipts`);
     } else {
-      console.log('✨ No empty drafts found');
+      console.log('✨ No empty receipts found');
     }
 
     await mongoose.disconnect();

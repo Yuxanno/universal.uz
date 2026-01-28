@@ -83,16 +83,16 @@ router.get('/draft/check', auth, authorize('helper'), async (req, res) => {
 // Update draft receipt (add/remove items) - only for draft status
 router.put('/draft', auth, authorize('helper'), async (req, res) => {
   try {
-    const { items, customer, draftId } = req.body;
+    const { items, customer, draftId, status } = req.body;
     
     let draft;
     
-    // If draftId provided, find that specific draft
+    // If draftId provided, find that specific draft or archived receipt
     if (draftId) {
       draft = await Receipt.findOne({ 
         _id: draftId,
         createdBy: req.user._id, 
-        status: 'draft' 
+        status: { $in: ['draft', 'archived'] } // Allow updating both draft and archived
       });
     }
     
@@ -101,7 +101,7 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
       draft = new Receipt({
         items: [],
         total: 0,
-        status: 'draft',
+        status: status || 'archived', // Default to archived (no draft status)
         createdBy: req.user._id
       });
     }
@@ -110,6 +110,10 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
     draft.total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     if (customer !== undefined) {
       draft.customer = customer;
+    }
+    // Update status if provided
+    if (status) {
+      draft.status = status;
     }
     await draft.save();
     
@@ -163,9 +167,15 @@ router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
 router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { status } = req.query;
-    // Show all helper receipts: draft, pending, approved, and archived
-    const query = { status: { $in: ['draft', 'pending', 'approved', 'archived'] } };
-    if (status && status !== 'all') query.status = status;
+    // Show draft, archived, and pending receipts (all active worker receipts)
+    const query = { 
+      status: { $in: ['draft', 'archived', 'pending'] },
+      // Only show receipts with items (not empty)
+      'items.0': { $exists: true }
+    };
+    if (status && status !== 'all' && ['draft', 'archived', 'pending'].includes(status)) {
+      query.status = status;
+    }
     
     const receipts = await Receipt.find(query)
       .populate('createdBy', 'name role')
@@ -189,17 +199,37 @@ router.get('/archived', auth, authorize('admin', 'cashier'), async (req, res) =>
   }
 });
 
-// Get helper's own archived receipts (both archived and pending)
+// Get helper's own archived receipts (archived, pending, and draft)
 router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
   try {
+    console.log('📦 [my-archived] Request from user:', {
+      userId: req.user._id,
+      userName: req.user.name,
+      role: req.user.role
+    });
+    
     const receipts = await Receipt.find({ 
-      status: { $in: ['archived', 'pending'] },
-      createdBy: req.user._id 
+      status: { $in: ['archived', 'pending', 'draft'] }, // Include draft status
+      createdBy: req.user._id,
+      // Only show receipts with items (not empty)
+      'items.0': { $exists: true }
     })
     .populate('customer', 'name phone')
     .sort({ createdAt: -1 });
+    
+    console.log('📦 [my-archived] Found receipts:', {
+      count: receipts.length,
+      receipts: receipts.map(r => ({
+        id: r._id,
+        status: r.status,
+        itemsCount: r.items.length,
+        createdBy: r.createdBy
+      }))
+    });
+    
     res.json(receipts);
   } catch (error) {
+    console.error('❌ [my-archived] Error:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });
@@ -208,36 +238,77 @@ router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
 router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
-    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
-    if (receipt.status !== 'pending' && receipt.status !== 'approved') {
+    if (!receipt) {
+      console.error('❌ Receipt not found:', req.params.id);
+      return res.status(404).json({ message: 'Chek topilmadi' });
+    }
+    
+    console.log('📦 Loading receipt to kassa:', {
+      id: receipt._id,
+      status: receipt.status,
+      itemsCount: receipt.items.length
+    });
+    
+    // Allow loading from pending, approved, or archived status
+    if (!['pending', 'approved', 'archived'].includes(receipt.status)) {
+      console.error('❌ Invalid status:', receipt.status);
       return res.status(400).json({ message: 'Bu chek allaqachon yuklangan' });
     }
 
     // Check stock availability
+    const WarehouseInventory = require('../models/WarehouseInventory');
+    
     for (const item of receipt.items) {
+      console.log('🔍 Checking product:', item.product, item.name);
+      
       const product = await Product.findById(item.product);
       if (!product) {
+        console.error('❌ Product not found:', item.product, item.name);
         return res.status(400).json({ message: `Tovar topilmadi: ${item.name}` });
       }
-      if (product.quantity < item.quantity) {
+      
+      // Check inventory instead of product.quantity
+      const inventory = await WarehouseInventory.findOne({ product: item.product });
+      const availableQty = inventory ? inventory.quantity : 0;
+      
+      console.log('📊 Stock check:', {
+        product: item.name,
+        available: availableQty,
+        requested: item.quantity
+      });
+      
+      if (availableQty < item.quantity) {
+        console.error('❌ Insufficient stock:', {
+          product: item.name,
+          available: availableQty,
+          requested: item.quantity
+        });
         return res.status(400).json({ 
-          message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${product.quantity}, So'ralgan: ${item.quantity}` 
+          message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${availableQty}, So'ralgan: ${item.quantity}` 
         });
       }
     }
 
     // Update stock and soldCount
-    const WarehouseInventory = require('../models/WarehouseInventory');
+    console.log('✅ All checks passed, updating inventory...');
+    
     for (const item of receipt.items) {
+      // Update product soldCount
       await Product.findByIdAndUpdate(item.product, { 
-        $inc: { quantity: -item.quantity, soldCount: item.quantity } 
+        $inc: { soldCount: item.quantity } 
       });
       
-      // Update warehouse inventory
+      // Update warehouse inventory quantity
       const inventory = await WarehouseInventory.findOne({ product: item.product });
       if (inventory) {
         inventory.quantity -= item.quantity;
         await inventory.save();
+        console.log('✅ Updated inventory:', {
+          product: item.name,
+          newQuantity: inventory.quantity
+        });
+      } else {
+        console.warn('⚠️ Inventory not found for product:', item.product, item.name);
       }
     }
 
@@ -246,8 +317,14 @@ router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req
     receipt.processedBy = req.user._id;
     await receipt.save();
     
+    console.log('✅ Receipt marked as completed:', receipt._id);
+    
+    // Clear inventory cache to refresh products
+    clearInventoryCache();
+    
     res.json(receipt);
   } catch (error) {
+    console.error('❌ Error in load-to-kassa:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });
@@ -723,26 +800,43 @@ router.put('/:id/archive', auth, authorize('admin', 'cashier'), async (req, res)
 router.delete('/:id', auth, async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
-    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    if (!receipt) {
+      console.log('❌ [DELETE] Receipt not found:', req.params.id);
+      return res.status(404).json({ message: 'Chek topilmadi' });
+    }
     
-    // Helpers can only delete their own archived receipts
+    console.log('🗑️ [DELETE] Deleting receipt:', {
+      id: req.params.id,
+      status: receipt.status,
+      createdBy: receipt.createdBy,
+      userRole: req.user.role,
+      userId: req.user._id
+    });
+    
+    // Helpers can delete their own receipts (archived, draft, or pending)
     if (req.user.role === 'helper') {
       if (receipt.createdBy.toString() !== req.user._id.toString()) {
+        console.log('❌ [DELETE] Permission denied - not owner');
         return res.status(403).json({ message: 'Ruxsat yo\'q' });
       }
-      if (receipt.status !== 'archived') {
-        return res.status(400).json({ message: 'Faqat arxivlangan cheklar o\'chiriladi' });
+      // Allow deleting archived, draft, or pending receipts (for loading from archive)
+      if (!['archived', 'draft', 'pending'].includes(receipt.status)) {
+        console.log('❌ [DELETE] Can only delete archived/draft/pending receipts, current status:', receipt.status);
+        return res.status(400).json({ message: `Faqat arxivlangan, qoralama yoki kutilayotgan cheklar o'chiriladi. Hozirgi status: ${receipt.status}` });
       }
     } else {
       // Admin/cashier can delete draft, pending, approved, or archived (not completed)
       if (receipt.status === 'completed') {
+        console.log('❌ [DELETE] Cannot delete completed receipt');
         return res.status(400).json({ message: 'Yakunlangan chekni o\'chirish mumkin emas' });
       }
     }
 
     await Receipt.findByIdAndDelete(req.params.id);
+    console.log('✅ [DELETE] Receipt deleted successfully');
     res.json({ message: 'Chek o\'chirildi', deleted: true });
   } catch (error) {
+    console.error('❌ [DELETE] Error:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });

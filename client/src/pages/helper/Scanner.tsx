@@ -40,6 +40,7 @@ export default function HelperScanner() {
  const hasLocalChanges = useRef(false);
  const isFirstLoad = useRef(true);
  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+ const isLoadingFromArchive = useRef(false); // Flag to prevent sync when loading from archive
 
  useEffect(() => {
  const init = async () => {
@@ -88,7 +89,8 @@ export default function HelperScanner() {
  
  const res = await api.put('/receipts/draft', { 
  items: serverItems,
- draftId: currentDraftId 
+ draftId: currentDraftId,
+ status: 'archived' // Always save as archived (no draft status)
  });
  
  // Update draft ID if it changed
@@ -111,6 +113,11 @@ export default function HelperScanner() {
  // Пропускаем первую загрузку
  if (isFirstLoad.current) return;
  if (receiptStatus === 'pending') return;
+ // Skip sync when loading from archive
+ if (isLoadingFromArchive.current) {
+ isLoadingFromArchive.current = false;
+ return;
+ }
  
  // Отмечаем что есть локальные изменения
  hasLocalChanges.current = true;
@@ -120,10 +127,10 @@ export default function HelperScanner() {
  clearTimeout(syncTimeoutRef.current);
  }
  
- // Синхронизируем через 1 секунду
+ // Синхронизируем через 300ms (быстрее для real-time)
  syncTimeoutRef.current = setTimeout(() => {
  syncToServer(cart);
- }, 1000);
+ }, 300);
  
  }, [cart, syncToServer, receiptStatus]);
 
@@ -140,12 +147,38 @@ export default function HelperScanner() {
  
  console.log('🎥 Starting QR scanner...');
  
+ // Get available cameras and prefer back camera
+ const cameras = await Html5Qrcode.getCameras();
+ const backCamera = cameras.find(cam => 
+ cam.label.toLowerCase().includes('back') || 
+ cam.label.toLowerCase().includes('rear') ||
+ cam.label.toLowerCase().includes('environment')
+ );
+ 
+ const cameraId = backCamera?.id || { facingMode: 'environment' };
+ 
  await html5QrCode.start(
- { facingMode: 'environment' },
+ cameraId,
  { 
- fps: 10, 
- qrbox: { width: 250, height: 250 },
- aspectRatio: 1.0
+ fps: 30, // Increased from 10 to 30 for faster scanning
+ qrbox: function(viewfinderWidth, viewfinderHeight) {
+ // Dynamic qrbox size based on screen
+ const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+ const qrboxSize = Math.floor(minEdge * 0.7); // 70% of smaller dimension
+ return {
+ width: qrboxSize,
+ height: qrboxSize
+ };
+ },
+ aspectRatio: 1.0,
+ disableFlip: false, // Allow flipping for better detection
+ videoConstraints: {
+ facingMode: 'environment',
+ advanced: [
+ { focusMode: 'continuous' }, // Continuous autofocus
+ { zoom: 1.0 }
+ ]
+ }
  },
  (decodedText) => {
  console.log('✅ QR Code scanned:', decodedText);
@@ -221,6 +254,9 @@ export default function HelperScanner() {
  return;
  }
  
+ // Mark that we're no longer in first load (enable auto-sync)
+ isFirstLoad.current = false;
+ 
  setCart(prev => {
  const existing = prev.find(p => p._id === product._id);
  if (existing) {
@@ -240,22 +276,39 @@ export default function HelperScanner() {
  setScannedProduct(null);
  };
 
- const removeFromCart = useCallback((id: string) => {
+ const removeFromCart = useCallback(async (id: string) => {
  // Don't allow removing if receipt is pending
  if (receiptStatus === 'pending') {
  showAlert('Chek yuborilgan, o\'zgartirish mumkin emas', 'Ogohlantirish', 'warning');
  return;
  }
  
- setCart(prev => prev.filter(item => item._id !== id));
- }, [receiptStatus, showAlert]);
+ const newCart = cart.filter(item => item._id !== id);
+ setCart(newCart);
+ 
+ // If cart becomes empty, delete the receipt from archive
+ if (newCart.length === 0 && currentDraftId) {
+ try {
+ await api.delete(`/receipts/${currentDraftId}`);
+ setCurrentDraftId(null);
+ console.log('🗑️ Receipt deleted from archive (cart empty)');
+ } catch (err) {
+ console.error('Error deleting empty receipt:', err);
+ }
+ }
+ }, [receiptStatus, showAlert, cart, currentDraftId]);
 
  const loadArchive = async () => {
  try {
+ console.log('📦 [Helper] Loading archived receipts...');
  const res = await api.get('/receipts/my-archived');
+ console.log('📦 [Helper] Archived receipts loaded:', {
+ count: res.data.length,
+ receipts: res.data
+ });
  setArchivedReceipts(res.data);
  } catch (err) {
- console.error('Error loading archive:', err);
+ console.error('❌ [Helper] Error loading archive:', err);
  }
  };
 
@@ -281,12 +334,8 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  })),
  customer: selectedCustomer,
- draftId: currentDraftId
- });
- 
- await api.put('/receipts/draft/submit', { 
- sendToArchive: false,
- draftId: currentDraftId 
+ draftId: currentDraftId,
+ status: 'pending' // Change status to pending when sending to cashier
  });
  
  showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
@@ -296,6 +345,7 @@ export default function HelperScanner() {
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
+ isFirstLoad.current = true; // Reset to first load for next cart
  } catch (err: any) {
  console.error('Error sending receipt:', err);
  showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
@@ -316,6 +366,7 @@ export default function HelperScanner() {
  if (selectedCustomer) {
  setSending(true);
  try {
+ // Just save with archived status directly
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -325,12 +376,8 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  })),
  customer: selectedCustomer,
- draftId: currentDraftId
- });
- 
- await api.put('/receipts/draft/submit', { 
- sendToArchive: true,
- draftId: currentDraftId 
+ draftId: currentDraftId,
+ status: 'archived' // Set status to archived directly
  });
  
  showAlert("Chek arxivga saqlandi!", 'Muvaffaqiyat', 'success');
@@ -340,6 +387,7 @@ export default function HelperScanner() {
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
+ isFirstLoad.current = true; // Reset to first load for next cart
  loadArchive();
  } catch (err: any) {
  console.error('Error sending receipt:', err);
@@ -359,7 +407,7 @@ export default function HelperScanner() {
  setShowCustomerModal(false);
  
  try {
- // Update draft with customer info
+ // Update draft with customer info and set status
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -369,13 +417,8 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  })),
  customer: selectedCustomer || null,
- draftId: currentDraftId
- });
- 
- // Submit the draft with sendToArchive flag
- await api.put('/receipts/draft/submit', {
- sendToArchive: sendToArchive,
- draftId: currentDraftId
+ draftId: currentDraftId,
+ status: sendToArchive ? 'archived' : 'pending' // Set status based on action
  });
  
  showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
@@ -385,6 +428,7 @@ export default function HelperScanner() {
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
+ isFirstLoad.current = true; // Reset to first load for next cart
  if (sendToArchive) {
  loadArchive(); // Reload archive only if saved to archive
  }
@@ -398,19 +442,13 @@ export default function HelperScanner() {
 
  const handleLoadFromArchive = async (receipt: any) => {
  try {
+ // Set flag to prevent sync when loading from archive
+ isLoadingFromArchive.current = true;
+ 
  // Save current cart to archive if not empty
- if (cart.length > 0) {
- await api.put('/receipts/draft', {
- items: cart.map(item => ({
- product: item._id,
- name: item.name,
- code: item.code,
- price: item.price || 0,
- quantity: item.cartQuantity
- })),
- customer: selectedCustomer || null
- });
- await api.put('/receipts/draft/submit', { sendToArchive: true });
+ if (cart.length > 0 && currentDraftId) {
+ // Current cart already has a draft ID, it will stay in archive
+ console.log('💾 Current cart already saved in archive');
  }
  
  // Load archived receipt items to cart
@@ -428,8 +466,24 @@ export default function HelperScanner() {
  // Set customer from archived receipt
  setSelectedCustomer(receipt.customer?._id || '');
  
- // Delete the archived receipt
- await api.delete(`/receipts/${receipt._id}`);
+ // Keep the receipt ID and change status to draft (real-time updates)
+ setCurrentDraftId(receipt._id);
+ 
+ // Update status to draft so it shows as "real-time" in kassa
+ await api.put('/receipts/draft', {
+ items: items.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price,
+ quantity: item.cartQuantity
+ })),
+ customer: receipt.customer?._id || null,
+ draftId: receipt._id,
+ status: 'draft' // Change from archived to draft
+ });
+ 
+ console.log('📝 Loaded receipt from archive, changed to draft status:', receipt._id);
  
  // Reload archive and close modal
  loadArchive();
@@ -438,6 +492,7 @@ export default function HelperScanner() {
  toast.success('Xarid davom ettirilmoqda');
  } catch (err) {
  console.error('Error loading from archive:', err);
+ isLoadingFromArchive.current = false; // Reset flag on error
  showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
  }
  };
@@ -482,59 +537,103 @@ export default function HelperScanner() {
  <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
  
  {/* Search Bar */}
- <div className="card p-4">
- <div className="flex gap-3">
+ <div className="bg-white rounded-2xl shadow-sm border border-surface-200 p-3">
+ <div className="flex gap-2">
  <div className="relative flex items-center flex-1">
- <Search className="absolute left-4 w-5 h-5 text-surface-400 pointer-events-none" />
+ <Search className="absolute left-3 w-4 h-4 text-surface-400 pointer-events-none" />
  <input
  type="text"
  value={searchQuery}
  onChange={e => handleSearch(e.target.value)}
  placeholder="Tovar qidirish..."
- className="input pl-12"
+ className="w-full pl-10 pr-3 py-2.5 text-sm bg-white border border-surface-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
  />
  </div>
  <button
  onClick={() => setShowArchive(true)}
- className="btn-lg bg-neutral-500 hover:bg-neutral-600 text-white px-4"
+ className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-sm hover:shadow transition-all"
  >
- <Package className="w-5 h-5" />
- Arxiv
+ <Package className="w-4 h-4" />
+ <span className="hidden sm:inline">Arxiv</span>
  </button>
  <button
  onClick={scanning ? stopScanner : startScanner}
- className={`btn-lg ${scanning ? 'btn-secondary' : 'btn-primary'}`}
+ className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm hover:shadow transition-all ${
+ scanning 
+ ? 'bg-gray-500 hover:bg-gray-600 text-white' 
+ : 'bg-red-500 hover:bg-red-600 text-white'
+ }`}
  >
- <QrCode className="w-5 h-5" />
- {scanning ? 'Stop' : 'QR'}
+ <QrCode className="w-4 h-4" />
+ <span className="hidden sm:inline">{scanning ? 'Stop' : 'QR'}</span>
  </button>
  </div>
  </div>
 
  {/* QR Scanner - Fullscreen Modal */}
  {scanning && (
- <div className="fixed inset-0 z-50 bg-black">
+ <div className="fixed inset-0 z-50 bg-black flex flex-col">
  {/* Header */}
- <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
- <div className="flex items-center justify-between">
- <h3 className="text-white text-lg font-bold">QR kodni skanerlash</h3>
+ <div className="relative z-20 bg-gradient-to-b from-black via-black/80 to-transparent">
+ <div className="safe-top px-4 py-4 flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
+ <QrCode className="w-5 h-5 text-white" />
+ </div>
+ <div>
+ <h3 className="text-white text-lg font-bold">QR Skaner</h3>
+ <p className="text-white/70 text-xs">Kodni markazga qo'ying</p>
+ </div>
+ </div>
  <button
  onClick={stopScanner}
- className="w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-all backdrop-blur-sm"
+ className="w-10 h-10 flex items-center justify-center bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-full transition-all"
  >
  <X className="w-6 h-6" />
  </button>
  </div>
  </div>
 
- {/* Scanner */}
- <div id="qr-reader" className="w-full h-full" />
+ {/* Scanner Container */}
+ <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+ {/* Video Background */}
+ <div id="qr-reader" className="absolute inset-0 w-full h-full object-cover" />
+ 
+ {/* Scanning Frame Overlay */}
+ <div className="relative z-10 w-72 h-72 sm:w-80 sm:h-80">
+ {/* Corner Borders */}
+ <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-white rounded-tl-2xl" />
+ <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-white rounded-tr-2xl" />
+ <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-white rounded-bl-2xl" />
+ <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-white rounded-br-2xl" />
+ 
+ {/* Scanning Line Animation */}
+ <div className="absolute inset-0 overflow-hidden">
+ <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-white to-transparent animate-scan" />
+ </div>
+ 
+ {/* Center Dot */}
+ <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-pulse" />
+ </div>
+ 
+ {/* Dark Overlay (outside scanning area) */}
+ <div className="absolute inset-0 bg-black/40" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, calc(50% - 10rem) calc(50% - 10rem), calc(50% - 10rem) calc(50% + 10rem), calc(50% + 10rem) calc(50% + 10rem), calc(50% + 10rem) calc(50% - 10rem), calc(50% - 10rem) calc(50% - 10rem))' }} />
+ </div>
 
- {/* Footer */}
- <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-6">
- <p className="text-center text-white text-base font-medium">
- QR kodni kameraga ko'rsating
- </p>
+ {/* Footer Instructions */}
+ <div className="relative z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
+ <div className="safe-bottom px-6 py-6 space-y-3">
+ <div className="flex items-center justify-center gap-2 text-white/90">
+ <div className="w-8 h-8 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
+ <Package className="w-4 h-4" />
+ </div>
+ <p className="text-sm font-medium">QR kodni ramka ichiga joylashtiring</p>
+ </div>
+ <div className="flex items-center justify-center gap-4 text-white/60 text-xs">
+ <span>• Yaxshi yoritilgan joy</span>
+ <span>• Barqaror ushlab turing</span>
+ </div>
+ </div>
  </div>
  </div>
  )}
@@ -631,15 +730,13 @@ export default function HelperScanner() {
  <p className="text-surface-500">Savat bo'sh</p>
  </div>
  ) : (
- <div className="space-y-3 divide-y divide-surface-200">
+ <div className="space-y-2 divide-y divide-surface-200">
  {cart.map(item => (
- <div key={item._id} className="pt-3 first:pt-0">
- <div className="p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors">
- <div className="flex flex-col gap-2">
- {/* Product name - full width */}
- <div className="flex items-start justify-between gap-2">
+ <div key={item._id} className="bg-surface-50 rounded-lg p-2 hover:bg-surface-100 transition-colors pt-3 first:pt-2">
+ {/* Product name and delete - full width */}
+ <div className="flex items-start justify-between gap-2 mb-2">
  <div className="flex-1 min-w-0">
- <p className="font-medium text-surface-900 text-sm break-words">{item.name}</p>
+ <p className="font-medium text-surface-900 text-sm truncate">{item.name}</p>
  <p className="text-xs text-surface-500">Kod: {item.code}</p>
  </div>
  <button 
@@ -649,14 +746,15 @@ export default function HelperScanner() {
  removeFromCart(item._id);
  }} 
  disabled={receiptStatus === 'pending'}
- className="p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+ className="p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded transition-colors disabled:opacity-50 flex-shrink-0"
  >
  <Trash2 className="w-4 h-4" />
  </button>
  </div>
  
- {/* Controls row */}
- <div className="flex items-center gap-1 xxs:gap-1.5 md:gap-3">
+ {/* Controls - compact row */}
+ <div className="flex items-center gap-1.5 flex-wrap">
+ {/* Tag button */}
  <button
  onClick={(e) => {
  e.preventDefault();
@@ -668,11 +766,13 @@ export default function HelperScanner() {
  fillOriginalPrice(item._id);
  }}
  disabled={receiptStatus === 'pending'}
- className="p-1.5 xxs:p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 -mr-1 xxs:-mr-0.5"
+ className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 flex-shrink-0"
  title={`Dona narx: ${item.originalPrice ? formatNumber(item.originalPrice) + ' so\'m' : 'Kiritilmagan'}`}
  >
- <Tag className="w-4 h-4 xxs:w-5 xxs:h-5" />
+ <Tag className="w-4 h-4" />
  </button>
+ 
+ {/* Price input - compact */}
  <input
  type="text"
  value={item.price === 0 ? '' : formatNumber(item.price)}
@@ -687,7 +787,6 @@ export default function HelperScanner() {
  const val = e.target.value.replace(/\s/g, '');
  if (val === '' || /^\d+$/.test(val)) {
  const newPrice = val === '' ? 0 : parseInt(val);
- 
  setCart(prev => prev.map(p => 
  p._id === item._id ? { ...p, price: newPrice } : p
  ));
@@ -708,12 +807,13 @@ export default function HelperScanner() {
  }
  }}
  disabled={receiptStatus === 'pending'}
- className="w-20 xxs:w-24 md:w-28 h-8 xxs:h-9 md:h-10 text-right text-sm xxs:text-base font-medium border border-surface-200 rounded-lg px-2 xxs:px-3 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300 flex-shrink-0"
+ className="w-20 h-8 text-right text-xs font-medium border border-surface-200 rounded px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300 flex-shrink-0"
  />
- <span className="text-surface-400 flex-shrink-0 text-sm xxs:text-base">×</span>
  
- {/* Quantity with +/- buttons */}
- <div className="flex items-center gap-1 xxs:gap-1.5 bg-white border border-surface-200 rounded-lg flex-shrink-0">
+ <span className="text-surface-400 flex-shrink-0 text-sm">×</span>
+ 
+ {/* Quantity - compact */}
+ <div className="flex items-center gap-0.5 bg-white border border-surface-200 rounded flex-shrink-0">
  <button
  onClick={(e) => {
  e.preventDefault();
@@ -726,10 +826,9 @@ export default function HelperScanner() {
  ));
  }}
  disabled={receiptStatus === 'pending' || item.cartQuantity <= 1}
- className="p-1 xxs:p-1.5 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
- title="Kamaytirish"
+ className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-l transition-colors disabled:opacity-30"
  >
- <Minus className="w-3.5 h-3.5 xxs:w-4 xxs:h-4" />
+ <Minus className="w-3.5 h-3.5" />
  </button>
  
  <input
@@ -759,7 +858,7 @@ export default function HelperScanner() {
  }
  }}
  disabled={receiptStatus === 'pending'}
- className="w-14 xxs:w-16 md:w-20 h-8 xxs:h-9 md:h-10 text-center text-sm xxs:text-base font-bold border-0 focus:outline-none focus:ring-0 disabled:opacity-50 bg-transparent"
+ className="w-12 h-8 text-center text-xs font-bold border-0 focus:outline-none focus:ring-0 disabled:opacity-50 bg-transparent"
  />
  
  <button
@@ -774,18 +873,18 @@ export default function HelperScanner() {
  ));
  }}
  disabled={receiptStatus === 'pending'}
- className="p-1 xxs:p-1.5 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-r-lg transition-colors disabled:opacity-50"
- title="Oshirish"
+ className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-r transition-colors disabled:opacity-50"
  >
- <Plus className="w-3.5 h-3.5 xxs:w-4 xxs:h-4" />
+ <Plus className="w-3.5 h-3.5" />
  </button>
  </div>
  
- <span className="ml-auto font-semibold text-surface-900 text-sm xxs:text-base md:text-lg whitespace-nowrap flex-shrink-0">
+ {/* Total - compact with smaller font for large numbers */}
+ <span className={`ml-auto font-semibold text-surface-900 whitespace-nowrap flex-shrink-0 ${
+ ((item.price || 0) * item.cartQuantity) > 999999 ? 'text-xs' : 'text-sm'
+ }`}>
  {formatNumber((item.price || 0) * item.cartQuantity)}
  </span>
- </div>
- </div>
  </div>
  </div>
  ))}
@@ -798,32 +897,32 @@ export default function HelperScanner() {
  <span className="text-surface-500">Jami:</span>
  <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
  </div>
- <div className="flex gap-3">
+ <div className="flex gap-2">
  <button 
  onClick={sendToCashier} 
  disabled={sending || syncing} 
- className="btn-primary flex-1 py-4 text-lg"
+ className="btn-primary flex-1 py-3 text-base font-semibold rounded-xl flex items-center justify-center gap-2"
  >
  {sending && !sendToArchive ? (
  <div className="spinner" />
  ) : (
  <>
- <Send className="w-5 h-5" />
- Kassaga yuborish
+ <Send className="w-4 h-4" />
+ Kassaga
  </>
  )}
  </button>
  <button 
  onClick={sendToArchiveFunc} 
  disabled={sending || syncing} 
- className="bg-blue-500 hover:bg-blue-600 text-white flex-1 py-4 text-lg rounded-xl font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+ className="bg-blue-500 hover:bg-blue-600 text-white flex-1 py-3 text-base font-semibold rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
  >
  {sending && sendToArchive ? (
  <div className="spinner" />
  ) : (
  <>
- <Package className="w-5 h-5" />
- Arxivga saqlash
+ <Package className="w-4 h-4" />
+ Arxivga
  </>
  )}
  </button>
@@ -953,32 +1052,32 @@ export default function HelperScanner() {
  
  {/* Archive Modal */}
  {showArchive && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-0 sm:p-4">
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowArchive(false)} />
- <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+ <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden h-[95vh] sm:max-h-[90vh] flex flex-col mt-auto sm:mt-0">
  {/* Header */}
- <div className="p-6 bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200">
+ <div className="p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200 flex-shrink-0">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
- <div className="w-12 h-12 bg-neutral-500 rounded-xl flex items-center justify-center shadow-lg">
- <Package className="w-6 h-6 text-white" />
+ <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+ <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
  </div>
  <div>
- <h3 className="text-xl font-bold text-neutral-900">Arxiv</h3>
- <p className="text-sm text-neutral-600">{archivedReceipts.length} ta saqlangan xarid</p>
+ <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Arxiv</h3>
+ <p className="text-xs sm:text-sm text-neutral-600">{archivedReceipts.length} ta saqlangan xarid</p>
  </div>
  </div>
  <button
  onClick={() => setShowArchive(false)}
- className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors"
+ className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors flex-shrink-0"
  >
- <X className="w-6 h-6 text-neutral-500" />
+ <X className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-500" />
  </button>
  </div>
  </div>
  
  {/* Content */}
- <div className="flex-1 overflow-auto p-4">
+ <div className="flex-1 overflow-auto p-3 sm:p-4">
  {archivedReceipts.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
  <div className="w-20 h-20 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4">
@@ -993,6 +1092,7 @@ export default function HelperScanner() {
  const isExpanded = expandedArchiveId === receipt._id;
  const customerName = receipt.customer?.name || 'Oddiy mijoz';
  const isPending = receipt.status === 'pending';
+ const isArchived = receipt.status === 'archived';
  
  return (
  <div 
@@ -1023,6 +1123,11 @@ export default function HelperScanner() {
  {isPending && (
  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full whitespace-nowrap">
  Kassada
+ </span>
+ )}
+ {isArchived && (
+ <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full whitespace-nowrap">
+ Arxiv
  </span>
  )}
  </div>
@@ -1099,7 +1204,7 @@ export default function HelperScanner() {
  )}
  </div>
  
- <div className="p-4 border-t border-neutral-200 bg-neutral-50">
+ <div className="p-3 sm:p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
  <p className="text-xs text-neutral-500 text-center">
  💡 Xaridni davom ettirish uchun card'ni bosing
  </p>
