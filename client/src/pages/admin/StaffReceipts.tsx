@@ -277,7 +277,7 @@ export default function StaffReceipts() {
  </div>
  </div>
  {isReady && <CheckCircle className="w-7 h-7 text-white" />}
- {(isDraft || isArchived) && !isPending && !isReady && (
+ {isArchived && !isPending && !isReady && (
  <div className="w-3 h-3 bg-brand-500 rounded-full animate-pulse" />
  )}
  </div>
@@ -291,7 +291,7 @@ export default function StaffReceipts() {
  </p>
  </div>
  )}
- {(isDraft || isArchived) && !isReady && !isPending && (
+ {isArchived && !isReady && !isPending && (
  <div className="bg-gray-50 border-b border-gray-200 px-5 py-3">
  <p className="text-gray-700 text-sm font-medium text-center">
  📋 {t("Yig'ilayotgan xarid (real-time)")}
