@@ -169,9 +169,9 @@ export default function HelperScanner() {
  { 
  fps: 30, // Increased from 10 to 30 for faster scanning
  qrbox: function(viewfinderWidth, viewfinderHeight) {
- // Dynamic qrbox size based on screen
+ // Larger qrbox for better detection - 85% of screen
  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
- const qrboxSize = Math.floor(minEdge * 0.7); // 70% of smaller dimension
+ const qrboxSize = Math.floor(minEdge * 0.85);
  return {
  width: qrboxSize,
  height: qrboxSize
