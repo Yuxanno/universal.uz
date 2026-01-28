@@ -7,6 +7,14 @@ interface FilterOption {
  label: string;
 }
 
+interface PaginationProps {
+ currentPage: number;
+ totalPages: number;
+ onPageChange: (page: number) => void;
+ totalItems: number;
+ itemsPerPage: number;
+}
+
 interface HeaderProps {
  title: string;
  showSearch?: boolean;
@@ -15,9 +23,10 @@ interface HeaderProps {
  filterOptions?: FilterOption[];
  filterValue?: string;
  onFilterChange?: (value: string) => void;
+ pagination?: PaginationProps;
 }
 
-export default function Header({ title, showSearch, onSearch, actions, filterOptions, filterValue, onFilterChange }: HeaderProps) {
+export default function Header({ title, showSearch, onSearch, actions, filterOptions, filterValue, onFilterChange, pagination }: HeaderProps) {
  const { tKey } = useLanguage();
  const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,6 +40,53 @@ export default function Header({ title, showSearch, onSearch, actions, filterOpt
  <div className="px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
  {/* Title */}
  <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{tKey(title)}</h1>
+ 
+ {/* Center - Pagination */}
+ {pagination && pagination.totalPages > 1 && (
+ <div className="flex items-center gap-2">
+ <button
+ onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
+ disabled={pagination.currentPage === 1}
+ className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+ >
+ Oldingi
+ </button>
+ <div className="flex items-center gap-1.5">
+ {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+ let pageNum;
+ if (pagination.totalPages <= 5) {
+ pageNum = i + 1;
+ } else if (pagination.currentPage <= 3) {
+ pageNum = i + 1;
+ } else if (pagination.currentPage >= pagination.totalPages - 2) {
+ pageNum = pagination.totalPages - 4 + i;
+ } else {
+ pageNum = pagination.currentPage - 2 + i;
+ }
+ return (
+ <button
+ key={pageNum}
+ onClick={() => pagination.onPageChange(pageNum)}
+ className={`w-9 h-9 rounded-lg font-semibold text-sm transition-all ${
+ pagination.currentPage === pageNum
+ ? 'bg-brand-500 text-white shadow-md'
+ : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+ }`}
+ >
+ {pageNum}
+ </button>
+ );
+ })}
+ </div>
+ <button
+ onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+ disabled={pagination.currentPage === pagination.totalPages}
+ className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+ >
+ Keyingi
+ </button>
+ </div>
+ )}
  
  {/* Right Section */}
  <div className="flex items-center gap-3">
