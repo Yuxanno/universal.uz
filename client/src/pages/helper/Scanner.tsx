@@ -25,6 +25,7 @@ export default function HelperScanner() {
  const [syncing, setSyncing] = useState(false);
  const [receiptStatus, setReceiptStatus] = useState<'draft' | 'pending'>('draft');
  const [lastSyncedCart, setLastSyncedCart] = useState<string>('');
+ void lastSyncedCart; // Used for cart sync tracking
  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
  const [showArchive, setShowArchive] = useState(false);
  const [archivedReceipts, setArchivedReceipts] = useState<any[]>([]);
@@ -38,7 +39,6 @@ export default function HelperScanner() {
  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
  const hasLocalChanges = useRef(false);
  const isFirstLoad = useRef(true);
- const lastServerUpdate = useRef<string | null>(null);
  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
  useEffect(() => {
