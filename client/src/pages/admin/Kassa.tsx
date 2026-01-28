@@ -433,8 +433,18 @@ body {
  text-align: center;
 }
 .title { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
-.subtitle { font-size: 9px; margin-bottom: 2mm; }
-.contacts { font-size: 8px; margin-bottom: 3mm; line-height: 1.4; }
+.subtitle { font-size: 9px; margin-bottom: 3mm; }
+.contacts { 
+ display: grid; 
+ grid-template-columns: 1fr 1fr; 
+ gap: 1mm 2mm; 
+ font-size: 8px; 
+ margin-bottom: 3mm; 
+ text-align: left;
+ line-height: 1.3;
+}
+.contact-item { white-space: nowrap; }
+.contact-item strong { font-weight: bold; }
 .line { border-top: 1px dashed #000; margin: 2mm 0; }
 .meta { font-size: 10px; text-align: left; margin-bottom: 1mm; }
 .items { text-align: left; }
@@ -442,9 +452,8 @@ body {
 .item-name { font-weight: bold; }
 .item-calc { display: flex; justify-content: space-between; font-size: 10px; }
 .price { font-weight: bold; }
-.total-box { border: 1px solid #000; padding: 2mm; margin: 2mm 0; }
-.total-label { font-size: 12px; font-weight: bold; }
-.total-sum { font-size: 14px; font-weight: bold; }
+.total-box { border: 2px solid #000; padding: 2mm; margin: 2mm 0; text-align: center; }
+.total-sum { font-size: 13px; font-weight: bold; }
 .payment { font-size: 10px; margin: 2mm 0; }
 .footer { font-size: 11px; font-weight: bold; }
 .footer-sub { font-size: 9px; }
@@ -455,9 +464,10 @@ body {
 <div class="title">UNIVERSAL</div>
 <div class="subtitle">Savdo markazi</div>
 <div class="contacts">
-+99893 140-00-04 ASADBEK<br>
-+99893 657-66-87 RAMAZON<br>
-+99888 866-66-59 UYG'UNJON
+ <div class="contact-item"><strong>+99893 140-00-04</strong><br>ASADBEK</div>
+ <div class="contact-item"><strong>+99893 657-66-87</strong><br>RAMAZON</div>
+ <div class="contact-item"><strong>+99888 866-66-59</strong><br>UYG'UNJON</div>
+ <div class="contact-item"><strong>+99850 779-22-03</strong><br>OPERATOR</div>
 </div>
 
 <div class="line"></div>
@@ -474,8 +484,7 @@ ${itemsHtml}
 <div class="line"></div>
 
 <div class="total-box">
- <div class="total-label">JAMI:</div>
- <div class="total-sum">${formatNum(printReceipt.total)} so'm</div>
+ <div class="total-sum">JAMI: ${formatNum(printReceipt.total)} so'm</div>
 </div>
 
 <div class="payment">To'lov: ${printReceipt.paymentMethod === 'cash' ? 'Naqd pul' : 'Plastik karta'}</div>
@@ -564,7 +573,7 @@ ${itemsHtml}
  <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
  
  {/* Header */}
- <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 sticky top-0 z-10 shadow-sm">
+ <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 sticky top-0 z-40 shadow-sm">
  <div className="flex items-center justify-between gap-4">
  <div className="flex items-center gap-3">
  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -582,8 +591,10 @@ ${itemsHtml}
  <h1 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
  {isReturnMode ? tKey('Qaytarish rejimi') : tKey('Kassa (POS)')}
  </h1>
- <p className="text-xs text-neutral-500 dark:text-neutral-400">
- {cart.length} {tKey('ta mahsulot')} • {total.toLocaleString()} {tKey("so'm")}
+ <p className="text-sm font-semibold">
+ <span className="text-neutral-600 dark:text-neutral-400">{cart.length} {tKey('ta mahsulot')}</span>
+ <span className="mx-2 text-neutral-300 dark:text-neutral-600">•</span>
+ <span className="text-pink-600 dark:text-pink-400 font-bold">{total.toLocaleString()} {tKey("so'm")}</span>
  </p>
  </div>
  </div>
@@ -594,23 +605,23 @@ ${itemsHtml}
  <div className="flex items-center gap-2">
  <button
  onClick={() => setShowCustomerSelect(true)}
- className="relative flex items-center gap-2 pl-10 pr-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
+ className="relative flex items-center gap-2 px-3 py-2.5 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
  >
- <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+ <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
  <div className="flex-1 text-left min-w-0">
  {selectedCustomer ? (
  <>
- <div className="truncate font-bold">
+ <div className="truncate font-bold leading-tight">
  {customers.find(c => c._id === selectedCustomer)?.name || tKey("Oddiy mijoz")}
  </div>
  {customers.find(c => c._id === selectedCustomer)?.phone && (
- <div className="text-xs text-neutral-500 truncate">
+ <div className="text-xs text-neutral-500 truncate leading-tight">
  {customers.find(c => c._id === selectedCustomer)?.phone}
  </div>
  )}
  </>
  ) : (
- <div className="truncate">{tKey("Oddiy mijoz")}</div>
+ <div className="truncate leading-tight">{tKey("Oddiy mijoz")}</div>
  )}
  </div>
  <svg className="w-4 h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -619,10 +630,10 @@ ${itemsHtml}
  </button>
  <button
  onClick={() => setShowCustomerModal(true)}
- className="flex items-center justify-center w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
+ className="flex items-center justify-center w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
  title="Yangi mijoz qo'shish"
  >
- <span className="text-lg font-bold">+</span>
+ <span className="text-xl font-bold leading-none">+</span>
  </button>
  </div>
 
@@ -652,7 +663,7 @@ ${itemsHtml}
  <div className="flex-1 overflow-x-auto overflow-y-auto">
  <div className="min-w-[1000px]">{/* Минимальная ширина для таблицы */}
  {/* Table Header */}
- <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600 sticky top-0 z-10">
+ <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600">
  <div className="col-span-1 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("Kod")}</div>
  <div className="col-span-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
  <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
@@ -700,17 +711,17 @@ ${itemsHtml}
  {/* Right - Numpad & Total */}
  <div className="flex w-96 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6 flex-col shadow-sm">
  {/* Total Display */}
- <div className="total-display mb-4 p-5 bg-gradient-to-br from-pink-100 via-pink-50 to-white dark:from-pink-900/40 dark:via-pink-900/30 dark:to-gray-800 rounded-3xl border-2 border-pink-300 dark:border-pink-700 shadow-xl relative overflow-hidden">
- <div className="absolute top-0 right-0 w-24 h-24 bg-pink-200/40 dark:bg-pink-600/30 rounded-full -mr-12 -mt-12"></div>
- <div className="absolute bottom-0 left-0 w-20 h-20 bg-pink-200/40 dark:bg-pink-600/30 rounded-full -ml-10 -mb-10"></div>
+ <div className="total-display mb-4 p-5 bg-gradient-to-br from-blue-50 via-sky-50 to-white dark:from-blue-900/30 dark:via-blue-800/20 dark:to-gray-800 rounded-3xl border-2 border-blue-200 dark:border-blue-700 shadow-xl relative overflow-hidden">
+ <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100/40 dark:bg-blue-600/20 rounded-full -mr-12 -mt-12"></div>
+ <div className="absolute bottom-0 left-0 w-20 h-20 bg-sky-100/40 dark:bg-sky-600/20 rounded-full -ml-10 -mb-10"></div>
  <div className="relative z-10">
- <p className="text-sm font-black text-pink-800 dark:text-pink-200 mb-2 uppercase tracking-widest flex items-center gap-2">
- <span className="w-2 h-2 bg-pink-600 dark:bg-pink-400 rounded-full animate-pulse"></span>
- {tKey("JAMI SUMMA")}
+ <p className="text-sm font-black mb-2 uppercase tracking-widest flex items-center gap-2">
+ <span className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></span>
+ <span style={{ color: '#1e3a8a' }}>{tKey("JAMI SUMMA")}</span>
  </p>
- <p className={`text-4xl font-black ${isReturnMode ? 'text-warning-900 dark:text-warning-200' : 'text-pink-900 dark:text-pink-100'}`}>
- {total.toLocaleString()}
- <span className="text-xl ml-2 font-bold opacity-80">so'm</span>
+ <p className="text-4xl font-black" style={{ color: '#1e3a8a !important' }}>
+ <span style={{ color: '#1e3a8a' }}>{total.toLocaleString()}</span>
+ <span className="text-xl ml-2 font-bold" style={{ color: '#2563eb' }}> so'm</span>
  </p>
  </div>
  </div>
@@ -722,7 +733,8 @@ ${itemsHtml}
  onChange={e => setInputValue(e.target.value)}
  onKeyDown={e => e.key === 'Enter' && addProductByCode(inputValue)}
  placeholder={tKey("Kod kiriting...")}
- className="modern-input w-full px-4 py-4 text-center text-xl font-mono font-bold bg-white dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-600 rounded-2xl mb-4 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 dark:text-neutral-100 transition-all shadow-md"
+ className="modern-input w-full px-4 py-4 text-center text-xl font-mono font-bold bg-white dark:bg-neutral-700 border-2 border-blue-300 dark:border-neutral-600 rounded-2xl mb-4 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all shadow-md"
+ style={{ color: '#1e3a8a' }}
  />
 
  {/* Numpad */}
@@ -747,49 +759,49 @@ ${itemsHtml}
  </div>
  </div>
 
- {/* Bottom Action Bar - Fixed */}
- <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-800 border-t-2 border-neutral-200 dark:border-neutral-700 shadow-2xl z-20 pl-64">{/* pl-64 для сайдбара */}
- <div className="px-6 py-4">
- <div className="max-w-7xl mx-auto flex items-center gap-3">
- {/* Action Buttons */}
+ {/* Bottom Action Bar - Fixed - Responsive to sidebar */}
+ <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-900 dark:to-neutral-800 border-t border-neutral-200 dark:border-neutral-700 shadow-lg z-20 transition-all duration-300 pl-0 lg:pl-64">
+ <div className="px-6 py-2">
+ <div className="flex items-center gap-2">
+ {/* Action Buttons - Responsive positioning */}
  <button
  onClick={openSearch}
- className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl hover:from-slate-700 hover:to-slate-800 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
+ className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95"
  >
- <Search className="w-5 h-5" strokeWidth={2.5} />
+ <Search className="w-4 h-4" strokeWidth={2.5} />
  <span>Qidirish</span>
  </button>
  
  <button
  onClick={toggleReturnMode}
- className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 ${
+ className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 ${
  isReturnMode
- ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white hover:from-yellow-600 hover:to-yellow-700'
- : 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-slate-900 hover:from-yellow-500 hover:to-yellow-600'
+ ? 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
+ : 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900'
  }`}
  >
- <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
+ <RotateCcw className="w-4 h-4" strokeWidth={2.5} />
  <span>{isReturnMode ? 'Bekor qilish' : 'Qaytarish'}</span>
  </button>
  
  <button
  onClick={saveReceipt}
- className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-br from-gray-400 to-gray-500 text-white rounded-2xl hover:from-gray-500 hover:to-gray-600 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
+ className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95"
  >
- <Save className="w-5 h-5" strokeWidth={2.5} />
+ <Save className="w-4 h-4" strokeWidth={2.5} />
  <span>Saqlash</span>
  </button>
 
  {/* Spacer */}
  <div className="flex-1"></div>
 
- {/* Payment Button */}
+ {/* Payment Button - Always on right */}
  <button
  onClick={() => setShowPayment(true)}
  disabled={cart.length === 0}
- className="flex items-center justify-center gap-3 px-10 py-4 bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-500 hover:via-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-lg shadow-xl hover:shadow-2xl active:scale-95"
+ className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm shadow-lg hover:shadow-xl active:scale-95"
  >
- <CreditCard className="w-6 h-6" strokeWidth={2.5} />
+ <CreditCard className="w-5 h-5" strokeWidth={2.5} />
  <span>To'lov qilish</span>
  </button>
  </div>
@@ -1237,39 +1249,39 @@ ${itemsHtml}
  />
  <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-red-200">
  {/* Header */}
- <div className="p-6 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
- <div className="flex items-center justify-between mb-4">
- <div className="flex items-center gap-4">
- <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg">
- <User className="w-8 h-8 text-white" strokeWidth={2.5} />
+ <div className="p-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
+ <div className="flex items-center justify-between mb-3">
+ <div className="flex items-center gap-3">
+ <div className="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center shadow-lg">
+ <User className="w-6 h-6 text-white" strokeWidth={2.5} />
  </div>
  <div>
- <h3 className="text-2xl font-black text-neutral-900 mb-1">Mijozni tanlang</h3>
- <p className="text-sm font-bold text-neutral-700">Ism yoki telefon bo'yicha qidiring</p>
+ <h3 className="text-lg font-black text-neutral-900 mb-0.5">Mijozni tanlang</h3>
+ <p className="text-xs font-semibold text-neutral-700">Ism yoki telefon bo'yicha qidiring</p>
  </div>
  </div>
  <button
  onClick={() => setShowCustomerSelect(false)}
- className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors"
+ className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/50 transition-colors"
  >
- <X className="w-6 h-6 text-neutral-600" strokeWidth={2.5} />
+ <X className="w-5 h-5 text-neutral-600" strokeWidth={2.5} />
  </button>
  </div>
  <div className="relative flex items-center">
- <Search className="absolute left-4 w-5 h-5 text-neutral-500 pointer-events-none" />
+ <Search className="absolute left-3 w-4 h-4 text-neutral-500 pointer-events-none" />
  <input
  type="text"
  placeholder="Mijoz ismi yoki telefon raqami..."
  value={customerSearchQuery}
  onChange={(e) => setCustomerSearchQuery(e.target.value)}
- className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white border-2 border-red-300 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-neutral-900 placeholder:text-neutral-400 transition-all"
+ className="w-full pl-10 pr-3 py-3 text-sm font-semibold bg-white border-2 border-red-300 rounded-xl focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-neutral-900 placeholder:text-neutral-400 transition-all"
  autoFocus
  />
  </div>
  </div>
  
  {/* Results */}
- <div className="flex-1 overflow-auto p-4 bg-neutral-50">
+ <div className="flex-1 overflow-auto p-3 bg-neutral-50">
  {/* Oddiy mijoz option */}
  <button
  onClick={() => {
@@ -1277,32 +1289,32 @@ ${itemsHtml}
  setShowCustomerSelect(false);
  setCustomerSearchQuery('');
  }}
- className={`w-full flex items-center gap-4 p-5 mb-3 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
+ className={`w-full flex items-center gap-3 p-3 mb-2 rounded-xl transition-all text-left border-2 hover:shadow-md group ${
  selectedCustomer === '' 
- ? 'bg-red-500 border-red-600 shadow-lg' 
+ ? 'bg-red-500 border-red-600 shadow-md' 
  : 'bg-white border-neutral-300 hover:border-red-400'
  }`}
  >
- <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
  selectedCustomer === '' 
  ? 'bg-white/20' 
  : 'bg-red-100'
  }`}>
- <User className={`w-7 h-7 ${
+ <User className={`w-5 h-5 ${
  selectedCustomer === '' 
  ? 'text-white' 
  : 'text-red-600'
  }`} strokeWidth={2.5} />
  </div>
  <div className="flex-1">
- <p className={`text-lg font-black mb-1 ${
+ <p className={`text-sm font-black ${
  selectedCustomer === '' 
  ? 'text-white' 
  : 'text-neutral-900'
  }`}>
  {tKey("Oddiy mijoz")}
  </p>
- <p className={`text-sm font-semibold ${
+ <p className={`text-xs font-medium ${
  selectedCustomer === '' 
  ? 'text-white/90' 
  : 'text-neutral-600'
@@ -1311,14 +1323,14 @@ ${itemsHtml}
  </p>
  </div>
  {selectedCustomer === '' && (
- <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
- <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+ <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+ <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
  </div>
  )}
  </button>
 
  {/* Customer list */}
- <div className="space-y-3">
+ <div className="space-y-2">
  {customers
  .filter(customer => {
  const query = customerSearchQuery.toLowerCase();
@@ -1333,38 +1345,38 @@ ${itemsHtml}
  setShowCustomerSelect(false);
  setCustomerSearchQuery('');
  }}
- className={`w-full flex items-center gap-4 p-5 rounded-2xl transition-all text-left border-2 hover:shadow-lg group ${
+ className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left border-2 hover:shadow-md group ${
  selectedCustomer === customer._id 
- ? 'bg-red-500 border-red-600 shadow-lg' 
+ ? 'bg-red-500 border-red-600 shadow-md' 
  : 'bg-white border-neutral-300 hover:border-red-400'
  }`}
  >
- <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${
  selectedCustomer === customer._id 
  ? 'bg-white/20' 
  : 'bg-red-100'
  }`}>
- <User className={`w-7 h-7 ${
+ <User className={`w-5 h-5 ${
  selectedCustomer === customer._id 
  ? 'text-white' 
  : 'text-red-600'
  }`} strokeWidth={2.5} />
  </div>
  <div className="flex-1 min-w-0">
- <p className={`text-lg font-black mb-1 truncate ${
+ <p className={`text-sm font-black truncate ${
  selectedCustomer === customer._id 
  ? 'text-white' 
  : 'text-neutral-900'
  }`}>
  {customer.name}
  </p>
- <div className="flex items-center gap-2">
- <Phone className={`w-4 h-4 ${
+ <div className="flex items-center gap-1.5">
+ <Phone className={`w-3 h-3 ${
  selectedCustomer === customer._id 
  ? 'text-white/90' 
  : 'text-neutral-600'
  }`} />
- <p className={`text-sm font-semibold ${
+ <p className={`text-xs font-semibold ${
  selectedCustomer === customer._id 
  ? 'text-white' 
  : 'text-neutral-900'
@@ -1373,7 +1385,7 @@ ${itemsHtml}
  </p>
  </div>
  {customer.address && (
- <p className={`text-xs font-medium mt-1 ${
+ <p className={`text-xs font-medium mt-0.5 ${
  selectedCustomer === customer._id 
  ? 'text-white/80' 
  : 'text-neutral-600'
@@ -1383,8 +1395,8 @@ ${itemsHtml}
  )}
  </div>
  {selectedCustomer === customer._id && (
- <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
- <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+ <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+ <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
  </div>
  )}
  </button>

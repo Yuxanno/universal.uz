@@ -123,11 +123,16 @@ function buildReceipt(data) {
   addCmd(CMD.BOLD_OFF);
   addLine('Savdo markazi');
   addLine('');
-  // Contact information
+  
+  // Contact information - 4 phone numbers
+  addCmd(CMD.ALIGN_LEFT);
   addLine('+99893 140-00-04 ASADBEK');
   addLine('+99893 657-66-87 RAMAZON');
   addLine('+99888 866-66-59 UYG\'UNJON');
+  addLine('+99890 000-00-00 OPERATOR');
   addLine('');
+  
+  addCmd(CMD.ALIGN_CENTER);
   addLine(LINE);
   
   // === PAYMENT METHOD ===
@@ -143,7 +148,7 @@ function buildReceipt(data) {
   addLine('');
   
   // === ITEMS ===
-  addCmd(CMD.ALIGN_LEFT);
+  addCmd(CMD.ALIGN_CENTER);
   
   for (const item of items) {
     // Item name (wrap if too long)
@@ -171,8 +176,8 @@ function buildReceipt(data) {
   addCmd(CMD.BOLD_ON);
   addCmd(CMD.SIZE_DOUBLE);
   addCmd(CMD.ALIGN_CENTER);
-  addLine('JAMI:');
-  addLine(formatNum(total) + " so'm");
+  // JAMI and sum on one line
+  addLine('JAMI: ' + formatNum(total) + " so'm");
   addCmd(CMD.SIZE_NORMAL);
   addCmd(CMD.BOLD_OFF);
   addLine(LINE);

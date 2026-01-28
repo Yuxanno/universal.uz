@@ -56,7 +56,10 @@ export const monitorMemory = () => {
  const total = (memory.totalJSHeapSize / 1024 / 1024).toFixed(2);
  const limit = (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2);
  
+ // OPTIMIZED: Only log in development mode
+ if (import.meta.env.DEV) {
  console.log(`Memory: ${used}MB / ${total}MB (Limit: ${limit}MB)`);
+ }
  
  // Warning if using > 500MB
  if (memory.usedJSHeapSize > 500 * 1024 * 1024) {
@@ -72,9 +75,12 @@ let cleanupInterval: NodeJS.Timeout | null = null;
 export const startMemoryMonitoring = () => {
  if (cleanupInterval) return;
  
+ // OPTIMIZED: Only in development mode
+ if (!import.meta.env.DEV) return;
+ 
  cleanupInterval = setInterval(() => {
  monitorMemory();
- }, 30000); // Every 30 seconds
+ }, 60000); // Every 60 seconds (reduced frequency)
 };
 
 export const stopMemoryMonitoring = () => {

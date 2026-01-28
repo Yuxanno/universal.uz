@@ -10,6 +10,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
 import { initSocket } from '../../utils/socket';
+import { useAuth } from '../../context/AuthContext';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -23,10 +24,28 @@ const ProductRow = memo(({
  onDelete,
  getProductImage,
  uz,
- formatNumber
+ formatNumber,
+ isCashier,
+ selectionMode,
+ isSelected,
+ onToggleSelect
 }: any) => {
  return (
- <div className="grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors" style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
+ <div 
+ className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
+ style={{gridTemplateColumns: selectionMode ? (isCashier ? 'auto auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto auto 80px 1fr 110px 110px 110px 110px 90px 140px') : (isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px')}}
+ onClick={() => selectionMode && onToggleSelect(product._id)}
+ >
+ {selectionMode && (
+ <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+ <input
+ type="checkbox"
+ checked={isSelected}
+ onChange={() => onToggleSelect(product._id)}
+ className="w-5 h-5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+ />
+ </div>
+ )}
  <div>
  {getProductImage(product) ? (
  <img 
@@ -47,11 +66,13 @@ const ProductRow = memo(({
  <div className="min-w-0">
  <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{uz(product.name)}</p>
  </div>
+ {!isCashier && (
  <div>
  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg whitespace-nowrap">
  {product._warehouseName || 'N/A'}
  </span>
  </div>
+ )}
  <div className="text-right">
  <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.costPrice || 0)}</p>
  <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
@@ -71,19 +92,21 @@ const ProductRow = memo(({
  }`}>{product.quantity}</span>
  </div>
  <div className="flex items-center justify-center gap-2">
- <button onClick={() => onTransfer(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all" title="Omborga o'tkazish">
+ {!isCashier && (
+ <button onClick={(e) => { e.stopPropagation(); onTransfer(product); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all" title="Omborga o'tkazish">
  <ArrowRightLeft className="w-4 h-4" />
  </button>
- <button onClick={() => onQR(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="QR kod">
+ )}
+ <button onClick={(e) => { e.stopPropagation(); onQR(product); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="QR kod">
  <QrCode className="w-4 h-4" />
  </button>
- <button onClick={() => onPrint(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="Ценник чоп этиш">
+ <button onClick={(e) => { e.stopPropagation(); onPrint(product); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all" title="Ценник чоп этиш">
  <Printer className="w-4 h-4" />
  </button>
- <button onClick={() => onEdit(product)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-100 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onEdit(product); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-primary-100 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-all">
  <Edit className="w-4 h-4" />
  </button>
- <button onClick={() => onDelete(product._id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-all">
  <Trash2 className="w-4 h-4" />
  </button>
  </div>
@@ -103,7 +126,8 @@ const ProductCard = memo(({
  onDelete,
  getProductImage,
  uz,
- formatNumber
+ formatNumber,
+ isCashier
 }: any) => {
  return (
  <div className="p-4">
@@ -123,9 +147,11 @@ const ProductCard = memo(({
  <div className="flex-1 min-w-0">
  <h4 className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">{uz(product.name)}</h4>
  <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono">Kod: {product.code}</p>
+ {!isCashier && (
  <span className="inline-block mt-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">
  {(product as any)._warehouseName}
  </span>
+ )}
  </div>
  </div>
  <div className="grid grid-cols-4 gap-2 mb-3">
@@ -150,10 +176,12 @@ const ProductCard = memo(({
  </div>
  </div>
  <div className="flex gap-2">
+ {!isCashier && (
  <button onClick={() => onTransfer(product)} className="flex-1 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-all font-medium text-sm">
  <ArrowRightLeft className="w-4 h-4 inline mr-1" />
  Transfer
  </button>
+ )}
  <button onClick={() => onQR(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
  <QrCode className="w-4 h-4" />
  </button>
@@ -176,9 +204,12 @@ ProductCard.displayName = 'ProductCard';
 export default function Products() {
  const { tKey, uz } = useLanguage();
  const { showAlert, showConfirm, AlertComponent } = useAlert();
+ const { user } = useAuth();
+ const isCashier = user?.role === 'cashier';
  const [products, setProducts] = useState<Product[]>([]);
  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
  const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
+ const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
  const [showModal, setShowModal] = useState(false);
  const [showQRModal, setShowQRModal] = useState(false);
  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -197,6 +228,8 @@ export default function Products() {
  const debouncedSearchQuery = useDebounce(searchQuery, 300);
  const [stockFilter, setStockFilter] = useState('all');
  const [loading, setLoading] = useState(true);
+ const [currentPage, setCurrentPage] = useState(1);
+ const ITEMS_PER_PAGE = 50; // Har safar 50 ta mahsulot ko'rsatish
  const [uploading, setUploading] = useState(false);
  const [formData, setFormData] = useState({
  code: '', name: '', costPrice: '', wholesalePrice: '', donaNarx: '', quantity: ''
@@ -215,21 +248,33 @@ export default function Products() {
  const [transferToWarehouse, setTransferToWarehouse] = useState('');
  const [transferQuantity, setTransferQuantity] = useState('');
  const [transferring, setTransferring] = useState(false);
+ const [loadingCode, setLoadingCode] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
+ 
+ // Bulk selection state
+ const [selectionMode, setSelectionMode] = useState(false);
+ const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+ const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
+ const [bulkPrintQuantity, setBulkPrintQuantity] = useState('1');
+
+ // Prevent double fetch with ref
+ const hasFetchedRef = useRef(false);
 
  useEffect(() => {
  fetchMainWarehouse();
  }, []);
 
  useEffect(() => {
- if (mainWarehouse) {
+ if (mainWarehouse && !hasFetchedRef.current) {
+ hasFetchedRef.current = true;
  fetchProducts();
  }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [mainWarehouse]);
 
  // Auto-refresh removed - using Socket.IO for real-time updates instead
 
- // Socket.IO real-time updates
+ // Socket.IO real-time updates - OPTIMIZED: Prevent duplicate listeners
  useEffect(() => {
  if (!mainWarehouse) {
  console.log('⚠️ [Admin Products] mainWarehouse not set, skipping socket initialization');
@@ -237,54 +282,58 @@ export default function Products() {
  }
  
  console.log('🔌 [Admin Products] Initializing socket...');
- console.log('🔌 [Admin Products] mainWarehouse:', mainWarehouse);
  const socket = initSocket();
 
- const handleInventoryUpdate = (data: any) => {
- console.log('📦 [Admin Products] ===== INVENTORY UPDATE RECEIVED =====');
- console.log('📦 [Admin Products] Event data:', data);
- console.log('📦 [Admin Products] Current mainWarehouse ID:', mainWarehouse._id);
- 
- // Fetch products directly without dependency on fetchProducts function
- console.log('📦 [Admin Products] Fetching updated products...');
- api.get(`/inventory/warehouse/${mainWarehouse._id}`)
- .then(res => {
- console.log('📦 [Admin Products] API response:', res.data.length, 'items');
- const productsData = res.data.map((inv: any) => ({
- ...inv.product,
- quantity: inv.quantity,
- minStock: inv.minStock,
- _inventoryId: inv._id,
- _warehouseName: inv.warehouse?.name || 'Asosiy ombor',
- _warehouseId: mainWarehouse._id
- }));
- 
- productsData.sort((a: any, b: any) => {
- const codeA = parseInt(a.code) || 0;
- const codeB = parseInt(b.code) || 0;
- return codeB - codeA;
- });
- 
- setProducts(productsData);
- console.log('✅ [Admin Products] Products updated via socket, total:', productsData.length);
- })
- .catch(err => {
- console.error('❌ [Admin Products] Error fetching products via socket:', err);
- });
+ const handleInventoryUpdate = () => {
+ console.log('📦 [Admin Products] Inventory update received, refreshing...');
+ // Reset fetch ref to allow refresh
+ hasFetchedRef.current = false;
+ fetchProducts();
  };
 
+ const handleCacheCleared = () => {
+ console.log('🗑️  [Admin Products] Cache cleared, refreshing...');
+ // Reset fetch ref to allow refresh
+ hasFetchedRef.current = false;
+ fetchProducts();
+ };
+
+ // Remove any existing listeners first
+ socket.off('inventory:updated', handleInventoryUpdate);
+ socket.off('inventory:cache-cleared', handleCacheCleared);
+ 
+ // Add new listeners
  socket.on('inventory:updated', handleInventoryUpdate);
- console.log('🔌 [Admin Products] Socket listener attached');
+ socket.on('inventory:cache-cleared', handleCacheCleared);
+ console.log('🔌 [Admin Products] Socket listeners attached');
 
  return () => {
- console.log('🔌 [Admin Products] Cleaning up socket listener');
+ console.log('🔌 [Admin Products] Cleaning up socket listeners');
  socket.off('inventory:updated', handleInventoryUpdate);
+ socket.off('inventory:cache-cleared', handleCacheCleared);
  };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [mainWarehouse]);
 
  const fetchMainWarehouse = async () => {
  try {
  const res = await api.get('/warehouses');
+ 
+ // Kassir uchun faqat asosiy ombor
+ if (isCashier) {
+ const main = res.data.find((w: Warehouse) => w.name === 'Asosiy ombor');
+ if (main) {
+ setWarehouses([main]);
+ setMainWarehouse(main);
+ setSelectedWarehouse(main._id);
+ } else {
+ const newMain = await api.post('/warehouses', { name: 'Asosiy ombor', address: '' });
+ setWarehouses([newMain.data]);
+ setMainWarehouse(newMain.data);
+ setSelectedWarehouse(newMain.data._id);
+ }
+ } else {
+ // Admin uchun barcha omborlar
  setWarehouses(res.data);
  const main = res.data.find((w: Warehouse) => w.name === 'Asosiy ombor');
  if (main) {
@@ -293,6 +342,7 @@ export default function Products() {
  const newMain = await api.post('/warehouses', { name: 'Asosiy ombor', address: '' });
  setMainWarehouse(newMain.data);
  setWarehouses([...res.data, newMain.data]);
+ }
  }
  } catch (err) {
  console.error('Error fetching warehouses:', err);
@@ -305,8 +355,15 @@ export default function Products() {
  
  try {
  setLoading(true);
+ console.log('🔄 [FRONTEND] Starting fetch...');
+ const fetchStart = performance.now();
+ 
  // Fetch from WarehouseInventory system for main warehouse
  const res = await api.get(`/inventory/warehouse/${mainWarehouse._id}`);
+ const fetchEnd = performance.now();
+ console.log(`✅ [FRONTEND] API fetch took: ${(fetchEnd - fetchStart).toFixed(0)}ms`);
+ 
+ const mapStart = performance.now();
  // Map inventory items to products format
  const productsData = res.data.map((inv: any) => ({
  ...inv.product,
@@ -317,17 +374,24 @@ export default function Products() {
  _warehouseId: mainWarehouse._id
  }));
  
- // Сортировка по коду по убыванию (1100 -> 1)
- productsData.sort((a: any, b: any) => {
- const codeA = parseInt(a.code) || 0;
- const codeB = parseInt(b.code) || 0;
- return codeB - codeA; // По убыванию (teskari tartib)
- });
+ const mapEnd = performance.now();
+ console.log(`✅ [FRONTEND] Mapping took: ${(mapEnd - mapStart).toFixed(0)}ms`);
+ console.log(`✅ [FRONTEND] Total products: ${productsData.length}`);
  
+ // Use setTimeout to defer state update and allow UI to breathe
+ setTimeout(() => {
+ const renderStart = performance.now();
  setProducts(productsData);
+ setLoading(false);
+ 
+ requestAnimationFrame(() => {
+ const renderEnd = performance.now();
+ console.log(`✅ [FRONTEND] Render took: ${(renderEnd - renderStart).toFixed(0)}ms`);
+ console.log(`🎯 [FRONTEND] TOTAL TIME: ${(renderEnd - fetchStart).toFixed(0)}ms`);
+ });
+ }, 0);
  } catch (err) {
  console.error('Error fetching products:', err);
- } finally {
  setLoading(false);
  }
  }, [mainWarehouse]);
@@ -335,12 +399,36 @@ export default function Products() {
  // Optimized input handlers with useCallback
  const handleCodeChange = useCallback((value: string) => {
  setFormData(prev => ({ ...prev, code: value }));
+ setCodeError(''); // Clear error immediately for better UX
  }, []);
 
  const handleNameChange = useCallback((value: string) => {
  setFormData(prev => ({ ...prev, name: value }));
- if (nameError) setNameError('');
- }, [nameError]);
+ setNameError(''); // Clear error immediately for better UX
+ }, []);
+
+ const handleQuantityChange = useCallback((value: string) => {
+ const cleaned = value.replace(/[^0-9]/g, '');
+ setFormData(prev => ({ ...prev, quantity: cleaned }));
+ }, []);
+
+ const handleCostPriceChange = useCallback((value: string) => {
+ // Remove spaces and format
+ const formatted = formatInputNumber(value);
+ setFormData(prev => ({ ...prev, costPrice: formatted }));
+ }, []);
+
+ const handleWholesalePriceChange = useCallback((value: string) => {
+ // Remove spaces and format
+ const formatted = formatInputNumber(value);
+ setFormData(prev => ({ ...prev, wholesalePrice: formatted }));
+ }, []);
+
+ const handleDonaNarxChange = useCallback((value: string) => {
+ // Remove spaces and format
+ const formatted = formatInputNumber(value);
+ setFormData(prev => ({ ...prev, donaNarx: formatted }));
+ }, []);
 
  const applyQuantityChange = useCallback(() => {
  if (!quantityInput || Number(quantityInput) <= 0) return;
@@ -515,7 +603,7 @@ export default function Products() {
  }
  };
 
- const handleDelete = async (id: string) => {
+ const handleDelete = useCallback(async (id: string) => {
  const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
  if (!confirmed) return;
  try {
@@ -524,9 +612,9 @@ export default function Products() {
  } catch (err) {
  console.error('Error deleting product:', err);
  }
- };
+ }, [showConfirm, tKey, fetchProducts]);
 
- const openEditModal = (product: Product) => {
+ const openEditModal = useCallback((product: Product) => {
  // Close other modals first
  setShowQRModal(false);
  setShowPrintModal(false);
@@ -555,7 +643,7 @@ export default function Products() {
  setNameError('');
  setShowPackageInput(false);
  setShowModal(true);
- };
+ }, []);
 
  const closeModal = () => {
  setShowModal(false);
@@ -568,8 +656,7 @@ export default function Products() {
  setShowPackageInput(false);
  };
 
- // ✅ TRANSFER FUNCTIONS
- const openTransferModal = (product: Product) => {
+ const openTransferModal = useCallback((product: Product) => {
  // Close other modals first
  setShowQRModal(false);
  setShowPrintModal(false);
@@ -581,7 +668,7 @@ export default function Products() {
  setTransferToWarehouse('');
  setTransferQuantity('1');
  setShowTransferModal(true);
- };
+ }, []);
 
  const closeTransferModal = () => {
  setShowTransferModal(false);
@@ -651,19 +738,27 @@ export default function Products() {
  setShowQuantityModal(false);
  setShowTransferModal(false);
  
- try {
- const warehouseParam = mainWarehouse?._id ? `?warehouseId=${mainWarehouse._id}` : '';
- const res = await api.get(`/products/next-code${warehouseParam}`);
- setFormData({ code: res.data.code, name: '', costPrice: '', wholesalePrice: '', donaNarx: '', quantity: '' });
- } catch (err) {
- console.error('Error getting next code:', err);
- }
+ // OPTIMIZED: Open modal immediately with loading placeholder
+ setFormData({ code: '...', name: '', costPrice: '', wholesalePrice: '', donaNarx: '', quantity: '' });
  setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
  setImages([]);
  setCodeError('');
  setNameError('');
  setShowPackageInput(false);
- setShowModal(true);
+ setLoadingCode(true);
+ setShowModal(true); // Modal opens instantly!
+ 
+ // Fetch next code in background
+ try {
+ const warehouseParam = mainWarehouse?._id ? `?warehouseId=${mainWarehouse._id}` : '';
+ const res = await api.get(`/products/next-code${warehouseParam}`);
+ setFormData(prev => ({ ...prev, code: res.data.code }));
+ } catch (err) {
+ console.error('Error getting next code:', err);
+ setFormData(prev => ({ ...prev, code: '1' })); // Fallback
+ } finally {
+ setLoadingCode(false);
+ }
  };
 
  const checkCodeExists = async (code: string) => {
@@ -736,7 +831,7 @@ export default function Products() {
  }
  };
 
- const openQRModal = (product: Product) => {
+ const openQRModal = useCallback((product: Product) => {
  // Close other modals first
  setShowPrintModal(false);
  setShowModal(false);
@@ -746,9 +841,9 @@ export default function Products() {
  // Open QR modal
  setSelectedProduct(product);
  setShowQRModal(true);
- };
+ }, []);
 
- const openPrintModal = (product: Product) => {
+ const openPrintModal = useCallback((product: Product) => {
  // Close other modals first
  setShowQRModal(false);
  setShowModal(false);
@@ -761,7 +856,7 @@ export default function Products() {
  setPrintCodePrefix('');
  setPrinting(false);
  setShowPrintModal(true);
- };
+ }, []);
 
  // Печать ценника через браузер
  const handlePrint = () => {
@@ -913,6 +1008,193 @@ export default function Products() {
  setShowPrintModal(false);
  };
 
+ // Bulk selection functions
+ const toggleSelectionMode = () => {
+ setSelectionMode(!selectionMode);
+ setSelectedProducts([]);
+ };
+
+ const toggleProductSelection = (productId: string) => {
+ setSelectedProducts(prev => 
+ prev.includes(productId) 
+ ? prev.filter(id => id !== productId)
+ : [...prev, productId]
+ );
+ };
+
+ const selectAllProducts = () => {
+ if (selectedProducts.length === filteredProducts.length) {
+ setSelectedProducts([]);
+ } else {
+ setSelectedProducts(filteredProducts.map(p => p._id));
+ }
+ };
+
+ const handleBulkPrint = () => {
+ if (selectedProducts.length === 0) {
+ showAlert('Mahsulot tanlanmagan', 'Ogohlantirish', 'warning');
+ return;
+ }
+ setShowBulkPrintModal(true);
+ };
+
+ const executeBulkPrint = () => {
+ const qty = Number(bulkPrintQuantity) || 1;
+ if (qty < 1 || qty > 100) {
+ showAlert('Miqdor 1 dan 100 gacha bo\'lishi kerak', 'Xatolik', 'warning');
+ return;
+ }
+
+ const selectedProductsData = products.filter(p => selectedProducts.includes(p._id));
+ 
+ const printWindow = window.open('', '_blank', 'width=400,height=600');
+ if (!printWindow) {
+ showAlert('Popup bloklangan. Ruxsat bering.', 'Xatolik', 'danger');
+ return;
+ }
+
+ let allLabelsHtml = '';
+ 
+ selectedProductsData.forEach(product => {
+ const qrData = JSON.stringify({ id: product._id, code: product.code, name: product.name });
+ const price = product.price;
+ const displayPrice = price.toLocaleString();
+ 
+ const labelsHtml = Array(qty).fill(`
+ <div class="label">
+ ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
+ <div class="content-row">
+ <div class="left-section">
+ <div class="name">${uz(product.name)}</div>
+ <div class="code">Kod: ${product.code}</div>
+ </div>
+ <div class="right-section">
+ <div class="qr-container">
+ <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR" />
+ </div>
+ </div>
+ </div>
+ </div>
+ `).join('');
+ 
+ allLabelsHtml += labelsHtml;
+ });
+
+ const printHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <title>Ценники - ${selectedProducts.length} ta mahsulot</title>
+ <style>
+ * { margin: 0; padding: 0; box-sizing: border-box; }
+ @page { size: 58mm 40mm; margin: 0; }
+ @media print {
+ body { width: 58mm; }
+ .label { page-break-after: always; }
+ .label:last-child { page-break-after: auto; }
+ }
+ body { font-family: Arial, sans-serif; background: white; }
+ .label { 
+ width: 58mm; 
+ height: 40mm; 
+ padding: 2mm;
+ display: flex; 
+ flex-direction: column;
+ justify-content: center;
+ }
+ .price-row {
+ width: 100%;
+ text-align: center;
+ margin-bottom: 2mm;
+ }
+ .price { 
+ font-size: 22pt; 
+ font-weight: bold; 
+ color: #000;
+ line-height: 1;
+ white-space: nowrap;
+ display: inline-block;
+ }
+ .content-row {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 2mm;
+ }
+ .left-section { 
+ flex: 0 0 28mm;
+ max-width: 28mm;
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ }
+ .right-section {
+ flex: 0 0 24mm;
+ }
+ .name { 
+ font-size: 15pt; 
+ font-weight: bold; 
+ margin-bottom: 1.5mm; 
+ line-height: 1.1;
+ color: #000;
+ word-wrap: break-word;
+ overflow-wrap: break-word;
+ }
+ .code { 
+ font-size: 13pt; 
+ color: #333;
+ font-weight: 600;
+ }
+ .qr-container { 
+ width: 24mm; 
+ height: 24mm; 
+ flex-shrink: 0;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ }
+ .qr-container img { 
+ width: 100%; 
+ height: 100%;
+ display: block;
+ }
+ </style>
+</head>
+<body>
+${allLabelsHtml}
+<script>
+ window.onload = function() {
+ var imgs = document.querySelectorAll('img');
+ var loaded = 0;
+ imgs.forEach(function(img) {
+ if (img.complete) {
+ loaded++;
+ if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+ } else {
+ img.onload = function() {
+ loaded++;
+ if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+ };
+ img.onerror = function() {
+ loaded++;
+ if (loaded === imgs.length) setTimeout(function() { window.print(); }, 100);
+ };
+ }
+ });
+ window.onafterprint = function() { window.close(); };
+ };
+</script>
+</body>
+</html>`;
+
+ printWindow.document.write(printHtml);
+ printWindow.document.close();
+ setShowBulkPrintModal(false);
+ setSelectionMode(false);
+ setSelectedProducts([]);
+ };
+
  const downloadQR = () => {
  if (!selectedProduct) return;
  const svg = document.getElementById('qr-code-svg');
@@ -951,13 +1233,27 @@ export default function Products() {
  const searchFiltered = searchProducts(products, debouncedSearchQuery);
  
  // Применяем фильтр по остаткам
- return searchFiltered.filter(p => {
+ const filtered = searchFiltered.filter(p => {
  const matchesStock = stockFilter === 'all' || 
  (stockFilter === 'low' && p.quantity <= (p.minStock || 5) && p.quantity > 0) ||
  (stockFilter === 'out' && p.quantity === 0);
  return matchesStock;
  });
+ 
+ // Reset to page 1 when filter changes
+ setCurrentPage(1);
+ 
+ return filtered;
  }, [products, debouncedSearchQuery, stockFilter]);
+ 
+ // Paginated products for rendering
+ const paginatedProducts = useMemo(() => {
+ const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+ const endIndex = startIndex + ITEMS_PER_PAGE;
+ return filteredProducts.slice(startIndex, endIndex);
+ }, [filteredProducts, currentPage]);
+ 
+ const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
 
  const statItems = [
  { label: tKey('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
@@ -981,10 +1277,48 @@ export default function Products() {
  showSearch 
  onSearch={setSearchQuery}
  actions={
+ <div className="flex gap-2">
+ {selectionMode && (
+ <>
+ <button 
+ onClick={selectAllProducts} 
+ className="btn-secondary text-sm"
+ >
+ {selectedProducts.length === filteredProducts.length ? 'Bekor qilish' : 'Hammasini tanlash'}
+ </button>
+ <button 
+ onClick={handleBulkPrint} 
+ className="btn-primary text-sm"
+ disabled={selectedProducts.length === 0}
+ >
+ <Printer className="w-4 h-4" />
+ Chop etish ({selectedProducts.length})
+ </button>
+ <button 
+ onClick={toggleSelectionMode} 
+ className="btn-secondary text-sm"
+ >
+ <X className="w-4 h-4" />
+ Yopish
+ </button>
+ </>
+ )}
+ {!selectionMode && (
+ <>
+ <button 
+ onClick={toggleSelectionMode} 
+ className="btn-secondary"
+ >
+ <Package className="w-4 h-4" />
+ <span className="hidden sm:inline">Tanlash</span>
+ </button>
  <button onClick={openAddModal} className="btn-primary">
  <Plus className="w-4 h-4" />
  <span className="hidden sm:inline">{tKey("Yangi tovar")}</span>
  </button>
+ </>
+ )}
+ </div>
  }
  />
 
@@ -1028,13 +1362,14 @@ export default function Products() {
  </div>
  ) : (
  <>
+ {/* DESKTOP TABLE */}
  <div className="hidden lg:block">
  <div className="table-header">
- <div className="grid gap-4 px-6 py-4" style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
+ <div className="grid gap-4 px-6 py-4" style={{gridTemplateColumns: isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
  <span className="table-header-cell">Rasm</span>
  <span className="table-header-cell">Kod</span>
  <span className="table-header-cell">Nomi</span>
- <span className="table-header-cell">Ombor</span>
+ {!isCashier && <span className="table-header-cell">Ombor</span>}
  <span className="table-header-cell text-right">Tan narxi</span>
  <span className="table-header-cell text-right">Optom narxi</span>
  <span className="table-header-cell text-right">Dona narxi</span>
@@ -1043,7 +1378,7 @@ export default function Products() {
  </div>
  </div>
  <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
- {filteredProducts.map(product => (
+ {paginatedProducts.map(product => (
  <ProductRow
  key={product._id}
  product={product}
@@ -1055,12 +1390,70 @@ export default function Products() {
  getProductImage={getProductImage}
  uz={uz}
  formatNumber={formatNumber}
+ isCashier={isCashier}
+ selectionMode={selectionMode}
+ isSelected={selectedProducts.includes(product._id)}
+ onToggleSelect={toggleProductSelection}
  />
  ))}
  </div>
+ 
+ {/* Pagination */}
+ {totalPages > 1 && (
+ <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
+ <div className="text-sm text-neutral-600 dark:text-neutral-400">
+ {filteredProducts.length} ta mahsulotdan {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} ko'rsatilmoqda
  </div>
+ <div className="flex gap-2">
+ <button
+ onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+ disabled={currentPage === 1}
+ className="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+ >
+ Oldingi
+ </button>
+ <div className="flex items-center gap-2">
+ {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+ let pageNum;
+ if (totalPages <= 5) {
+ pageNum = i + 1;
+ } else if (currentPage <= 3) {
+ pageNum = i + 1;
+ } else if (currentPage >= totalPages - 2) {
+ pageNum = totalPages - 4 + i;
+ } else {
+ pageNum = currentPage - 2 + i;
+ }
+ return (
+ <button
+ key={pageNum}
+ onClick={() => setCurrentPage(pageNum)}
+ className={`w-10 h-10 rounded-lg font-semibold transition-all ${
+ currentPage === pageNum
+ ? 'bg-brand-500 text-white'
+ : 'bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+ }`}
+ >
+ {pageNum}
+ </button>
+ );
+ })}
+ </div>
+ <button
+ onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+ disabled={currentPage === totalPages}
+ className="px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+ >
+ Keyingi
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+ 
+ {/* MOBILE CARDS */}
  <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
- {filteredProducts.map(product => (
+ {paginatedProducts.map(product => (
  <ProductCard
  key={product._id}
  product={product}
@@ -1072,8 +1465,37 @@ export default function Products() {
  getProductImage={getProductImage}
  uz={uz}
  formatNumber={formatNumber}
+ isCashier={isCashier}
  />
  ))}
+ 
+ {/* Mobile Pagination */}
+ {totalPages > 1 && (
+ <div className="p-4 border-t border-neutral-100 dark:border-neutral-700">
+ <div className="text-sm text-neutral-600 dark:text-neutral-400 text-center mb-3">
+ {filteredProducts.length} ta mahsulotdan {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}
+ </div>
+ <div className="flex gap-2">
+ <button
+ onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+ disabled={currentPage === 1}
+ className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+ >
+ Oldingi
+ </button>
+ <div className="px-4 py-2 bg-brand-500 text-white rounded-lg font-semibold">
+ {currentPage} / {totalPages}
+ </div>
+ <button
+ onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+ disabled={currentPage === totalPages}
+ className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+ >
+ Keyingi
+ </button>
+ </div>
+ </div>
+ )}
  </div>
  </>
  )}
@@ -1110,8 +1532,8 @@ export default function Products() {
  Rasmlar (maksimal 8 ta)
  </label>
  <div className="grid grid-cols-4 gap-3 mb-3">
- {images.map((img, idx) => (
- <div key={idx} className="relative aspect-square group">
+ {images.map((img) => (
+ <div key={img} className="relative aspect-square group">
  <img src={`${API_URL}${img}`} alt="" className="w-full h-full object-cover rounded-xl border-2 border-surface-200 shadow-md" />
  <button
  type="button"
@@ -1180,7 +1602,7 @@ export default function Products() {
  className="input text-center font-semibold" 
  placeholder="0" 
  value={formData.quantity} 
- onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value.replace(/[^0-9]/g, '') }))} 
+ onChange={e => handleQuantityChange(e.target.value)} 
  required 
  />
  </div>
@@ -1208,16 +1630,16 @@ export default function Products() {
  <div className="grid grid-cols-2 gap-4">
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Tan narxi (so'm)</label>
- <input type="text" className="input" placeholder="0" value={formData.costPrice} onChange={e => setFormData(prev => ({ ...prev, costPrice: e.target.value.replace(/[^0-9]/g, '') }))} required />
+ <input type="text" className="input" placeholder="0" value={formData.costPrice} onChange={e => handleCostPriceChange(e.target.value)} required />
  </div>
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Optom narxi (so'm)</label>
- <input type="text" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => setFormData(prev => ({ ...prev, wholesalePrice: e.target.value.replace(/[^0-9]/g, '') }))} required />
+ <input type="text" className="input" placeholder="0" value={formData.wholesalePrice} onChange={e => handleWholesalePriceChange(e.target.value)} required />
  </div>
  </div>
  <div>
  <label className="text-sm font-medium text-surface-700 mb-2 block">Dona narxi (ixtiyoriy)</label>
- <input type="text" className="input" placeholder="0" value={formData.donaNarx} onChange={e => setFormData(prev => ({ ...prev, donaNarx: e.target.value.replace(/[^0-9]/g, '') }))} />
+ <input type="text" className="input" placeholder="0" value={formData.donaNarx} onChange={e => handleDonaNarxChange(e.target.value)} />
  </div>
  
  <div className="flex gap-3 pt-4">
@@ -1456,6 +1878,68 @@ export default function Products() {
  Чоп этиш
  </>
  )}
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* Bulk Print Modal */}
+ {showBulkPrintModal && (
+ <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn">
+ <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkPrintModal(false)} />
+ <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-scaleIn p-6 border-2 border-surface-100 dark:border-surface-700">
+ <div className="flex items-center justify-between mb-6">
+ <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+ QR kodlarni chop etish
+ </h3>
+ <button 
+ onClick={() => setShowBulkPrintModal(false)} 
+ className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 text-surface-700 dark:text-surface-300 transition-all hover:scale-110 hover:rotate-90 duration-200"
+ >
+ <X className="w-6 h-6" strokeWidth={3} />
+ </button>
+ </div>
+ 
+ <div className="space-y-4">
+ <div className="bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-900/20 dark:to-brand-800/20 rounded-2xl p-4 border-2 border-brand-200 dark:border-brand-700">
+ <p className="text-center font-bold text-brand-900 dark:text-brand-100">
+ {selectedProducts.length} ta mahsulot tanlandi
+ </p>
+ </div>
+ 
+ <div>
+ <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">
+ Har bir mahsulotdan nechta chop etilsin?
+ </label>
+ <input 
+ type="number" 
+ className="input text-center font-bold text-lg" 
+ min="1"
+ max="100"
+ value={bulkPrintQuantity}
+ onChange={e => setBulkPrintQuantity(e.target.value)}
+ placeholder="Miqdor"
+ />
+ <p className="text-xs text-surface-500 dark:text-surface-400 mt-1 text-center">
+ Jami: {selectedProducts.length} × {bulkPrintQuantity} = {selectedProducts.length * (Number(bulkPrintQuantity) || 0)} ta QR kod
+ </p>
+ </div>
+ 
+ <div className="flex gap-3 pt-2">
+ <button 
+ onClick={() => setShowBulkPrintModal(false)} 
+ className="btn-secondary flex-1 font-bold"
+ >
+ Bekor qilish
+ </button>
+ <button 
+ onClick={executeBulkPrint} 
+ className="btn-primary flex-1 font-bold shadow-lg hover:shadow-xl"
+ >
+ <Printer className="w-4 h-4" />
+ Chop etish
  </button>
  </div>
  </div>

@@ -10,13 +10,19 @@ export const parseNumber = (str: string): string => {
  return str.replace(/\s/g, '');
 };
 
-// Format input value while typing (for controlled inputs)
+// Format input value while typing (for controlled inputs) - OPTIMIZED
 export const formatInputNumber = (value: string): string => {
+ // Remove all spaces first
  const cleaned = value.replace(/\s/g, '');
+ 
+ // Handle empty or just minus
  if (cleaned === '' || cleaned === '-') return cleaned;
- const num = parseFloat(cleaned);
- if (isNaN(num)) return '';
- return formatNumber(num);
+ 
+ // Check if valid number (fast check without parseFloat)
+ if (!/^\d+$/.test(cleaned)) return '';
+ 
+ // Format with spaces (fast regex)
+ return cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 };
 
 // Format phone number as +998 (XX) XXX-XX-XX

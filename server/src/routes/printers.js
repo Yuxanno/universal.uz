@@ -199,10 +199,11 @@ function generateReceiptText(receipt, settings = {}) {
   text += centerText(shopName, width) + '\n';
   text += centerText(shopSubtitle, width) + '\n';
   text += '\n';
-  // Contact information
+  // Contact information - 4 phone numbers
   text += centerText('+99893 140-00-04 ASADBEK', width) + '\n';
   text += centerText('+99893 657-66-87 RAMAZON', width) + '\n';
   text += centerText('+99888 866-66-59 UYG\'UNJON', width) + '\n';
+  text += centerText('+99890 000-00-00 OPERATOR', width) + '\n';
   text += '\n';
   text += line + '\n';
   
@@ -230,23 +231,21 @@ function generateReceiptText(receipt, settings = {}) {
     const name = item.name.length > width 
       ? item.name.substring(0, width) 
       : item.name;
-    text += `${i + 1}. ${name}\n`;
+    text += centerText(`${i + 1}. ${name}`, width) + '\n';
     
     // Количество x цена = сумма (полная ширина, выровнено)
     const qty = `${item.quantity} x ${formatNumber(item.price)}`;
     const sum = formatNumber(item.price * item.quantity);
     const spaces = Math.max(1, width - qty.length - sum.length);
-    text += `${qty}${' '.repeat(spaces)}${sum}\n`;
+    text += centerText(`${qty}${' '.repeat(spaces)}${sum}`, width) + '\n';
   });
   
   text += line + '\n';
   
-  // ИТОГО (полная ширина, крупный шрифт)
+  // ИТОГО (полная ширина, крупный шрифт) - one line
   text += '\n';
-  const totalLabel = 'JAMI:';
-  const totalValue = formatNumber(receipt.total) + " so'm";
-  const totalSpaces = Math.max(1, width - totalLabel.length - totalValue.length);
-  text += `${totalLabel}${' '.repeat(totalSpaces)}${totalValue}\n`;
+  const totalLine = `JAMI: ${formatNumber(receipt.total)} so'm`;
+  text += centerText(totalLine, width) + '\n';
   text += '\n';
   text += line + '\n';
   

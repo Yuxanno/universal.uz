@@ -193,35 +193,52 @@ export default function HelperScanner() {
  try {
  const html5QrCode = new Html5Qrcode('qr-reader');
  scannerRef.current = html5QrCode;
+ 
+ console.log('🎥 Starting QR scanner...');
+ 
  await html5QrCode.start(
  { facingMode: 'environment' },
- { fps: 10, qrbox: { width: 200, height: 200 } },
+ { 
+ fps: 10, 
+ qrbox: { width: 250, height: 250 },
+ aspectRatio: 1.0
+ },
  (decodedText) => {
+ console.log('✅ QR Code scanned:', decodedText);
  let product = null;
 
  try {
  const parsed = JSON.parse(decodedText);
+ console.log('📦 Parsed QR data:', parsed);
  if (parsed.code) {
  product = products.find(p => p.code === parsed.code);
  } else if (parsed._id || parsed.id) {
  product = products.find(p => p._id === (parsed._id || parsed.id));
  }
- } catch {
+ } catch (parseErr) {
+ console.log('📝 QR is plain text, searching by code:', decodedText);
  product = products.find(p => p.code === decodedText);
  }
 
  if (product) {
+ console.log('✅ Product found:', product.name);
  setScannedProduct(product);
+ toast.success('Tovar topildi!', product.name);
  } else {
+ console.log('❌ Product not found for:', decodedText);
  showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
  }
  stopScanner();
  },
- () => {}
+ (errorMessage) => {
+ // Scan error - ignore (happens frequently)
+ }
  );
- } catch (err) {
- console.error('Scanner error:', err);
- showAlert('Kamerani ishga tushirishda xatolik', 'Xatolik', 'danger');
+ 
+ console.log('✅ QR scanner started successfully');
+ } catch (err: any) {
+ console.error('❌ Scanner error:', err);
+ showAlert('Kamerani ishga tushirishda xatolik: ' + err.message, 'Xatolik', 'danger');
  setScanning(false);
  }
  }, 100);
@@ -488,26 +505,47 @@ export default function HelperScanner() {
  <p className="text-surface-500">Savat bo'sh</p>
  </div>
  ) : (
- <div className="space-y-2">
+ <div className="space-y-3 divide-y divide-surface-200">
  {cart.map(item => (
- <div key={item._id} className="p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors overflow-x-auto">
- <div className="flex items-center gap-3 min-w-max">
- <div className="min-w-[100px] max-w-[120px]">
- <p className="font-medium text-surface-900 truncate text-sm">{item.name}</p>
- <p className="text-xs text-surface-500">Kod: {item.code?.length > 10 ? item.code.slice(-6) : item.code}</p>
+ <div key={item._id} className="pt-3 first:pt-0">
+ <div className="p-3 bg-surface-50 rounded-xl hover:bg-surface-100 transition-colors">
+ <div className="flex flex-col gap-2">
+ {/* Product name - full width */}
+ <div className="flex items-start justify-between gap-2">
+ <div className="flex-1 min-w-0">
+ <p className="font-medium text-surface-900 text-sm break-words">{item.name}</p>
+ <p className="text-xs text-surface-500">Kod: {item.code}</p>
  </div>
- <div className="flex items-center gap-2">
+ <button 
+ onClick={(e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ removeFromCart(item._id);
+ }} 
+ disabled={receiptStatus === 'pending'}
+ className="p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+ >
+ <Trash2 className="w-4 h-4" />
+ </button>
+ </div>
+ 
+ {/* Controls row */}
+ <div className="flex items-center gap-1 xxs:gap-1.5 md:gap-3">
  <button
  onClick={(e) => {
  e.preventDefault();
  e.stopPropagation();
+ if (receiptStatus === 'pending') {
+ showAlert('Chek yuborilgan, o\'zgartirish mumkin emas', 'Ogohlantirish', 'warning');
+ return;
+ }
  fillOriginalPrice(item._id);
  }}
  disabled={receiptStatus === 'pending'}
- className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
- title="Dona narxni qo'yish"
+ className="p-1.5 xxs:p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 -mr-1 xxs:-mr-0.5"
+ title={`Dona narx: ${item.originalPrice ? formatNumber(item.originalPrice) + ' so\'m' : 'Kiritilmagan'}`}
  >
- <Tag className="w-4 h-4" />
+ <Tag className="w-4 h-4 xxs:w-5 xxs:h-5" />
  </button>
  <input
  type="text"
@@ -530,15 +568,12 @@ export default function HelperScanner() {
  }
  }}
  onBlur={() => {
- // Проверка на optom_narx только при выходе из инпута
  const currentPrice = item.price;
  if (currentPrice > 0 && item.optom_narx && currentPrice < item.optom_narx) {
- // Автоматически поднимаем цену до optom_narx
  const optomPrice = item.optom_narx;
  setCart(prev => prev.map(p => 
  p._id === item._id ? { ...p, price: optomPrice } : p
  ));
- // Показываем toast уведомление
  toast.warning(
  'Narx avtomatik ko\'tarildi',
  `Narx optom narxdan past bo'lgani uchun ${formatNumber(optomPrice)} so'mga ko'tarildi`,
@@ -547,12 +582,12 @@ export default function HelperScanner() {
  }
  }}
  disabled={receiptStatus === 'pending'}
- className="w-20 h-8 text-right text-sm font-medium border border-surface-200 rounded-lg px-2 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300"
+ className="w-20 xxs:w-24 md:w-28 h-8 xxs:h-9 md:h-10 text-right text-sm xxs:text-base font-medium border border-surface-200 rounded-lg px-2 xxs:px-3 focus:outline-none focus:border-brand-500 disabled:opacity-50 placeholder:text-surface-300 flex-shrink-0"
  />
- <span className="text-surface-400">×</span>
+ <span className="text-surface-400 flex-shrink-0 text-sm xxs:text-base">×</span>
  
  {/* Quantity with +/- buttons */}
- <div className="flex items-center gap-1 bg-white border border-surface-200 rounded-lg">
+ <div className="flex items-center gap-1 xxs:gap-1.5 bg-white border border-surface-200 rounded-lg flex-shrink-0">
  <button
  onClick={(e) => {
  e.preventDefault();
@@ -565,10 +600,10 @@ export default function HelperScanner() {
  ));
  }}
  disabled={receiptStatus === 'pending' || item.cartQuantity <= 1}
- className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+ className="p-1 xxs:p-1.5 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
  title="Kamaytirish"
  >
- <Minus className="w-4 h-4" />
+ <Minus className="w-3.5 h-3.5 xxs:w-4 xxs:h-4" />
  </button>
  
  <input
@@ -598,7 +633,7 @@ export default function HelperScanner() {
  }
  }}
  disabled={receiptStatus === 'pending'}
- className="w-16 h-8 text-center text-sm font-bold border-0 focus:outline-none focus:ring-0 disabled:opacity-50 bg-transparent"
+ className="w-14 xxs:w-16 md:w-20 h-8 xxs:h-9 md:h-10 text-center text-sm xxs:text-base font-bold border-0 focus:outline-none focus:ring-0 disabled:opacity-50 bg-transparent"
  />
  
  <button
@@ -613,27 +648,17 @@ export default function HelperScanner() {
  ));
  }}
  disabled={receiptStatus === 'pending'}
- className="p-1 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-r-lg transition-colors disabled:opacity-50"
+ className="p-1 xxs:p-1.5 text-surface-600 hover:text-surface-900 hover:bg-surface-100 rounded-r-lg transition-colors disabled:opacity-50"
  title="Oshirish"
  >
- <Plus className="w-4 h-4" />
+ <Plus className="w-3.5 h-3.5 xxs:w-4 xxs:h-4" />
  </button>
  </div>
  
- <span className="w-20 text-right font-semibold text-surface-900 text-sm whitespace-nowrap">
+ <span className="ml-auto font-semibold text-surface-900 text-sm xxs:text-base md:text-lg whitespace-nowrap flex-shrink-0">
  {formatNumber((item.price || 0) * item.cartQuantity)}
  </span>
- <button 
- onClick={(e) => {
- e.preventDefault();
- e.stopPropagation();
- removeFromCart(item._id);
- }} 
- disabled={receiptStatus === 'pending'}
- className="p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
- >
- <Trash2 className="w-4 h-4" />
- </button>
+ </div>
  </div>
  </div>
  </div>
@@ -648,7 +673,12 @@ export default function HelperScanner() {
  <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
  </div>
  {receiptStatus === 'draft' ? (
- <button onClick={sendToCashier} disabled={sending || syncing} className="btn-primary w-full py-4 text-lg">
+ <div className="flex justify-start">
+ <button 
+ onClick={sendToCashier} 
+ disabled={sending || syncing} 
+ className="btn-primary w-full md:w-auto md:min-w-[280px] py-4 text-lg"
+ >
  {sending ? (
  <div className="spinner" />
  ) : (
@@ -658,6 +688,7 @@ export default function HelperScanner() {
  </>
  )}
  </button>
+ </div>
  ) : (
  <div className="text-center text-surface-500 py-2">
  <CheckCircle className="w-6 h-6 text-warning-500 mx-auto mb-2" />

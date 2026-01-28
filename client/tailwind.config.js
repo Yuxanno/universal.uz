@@ -262,6 +262,7 @@ export default {
         '300': '300ms'
       },
       screens: {
+        'xxs': '375px',  // 375px+ uchun
         'xs': '475px',
         '3xl': '1600px',
         '4xl': '1920px'

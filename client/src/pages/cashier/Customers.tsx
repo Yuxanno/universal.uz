@@ -1,24 +1,28 @@
 import { useState } from 'react';
 import Header from '../../components/Header';
-import { Users, MapPin, ChevronDown, Package, X } from 'lucide-react';
+import { Users, MapPin, ChevronDown, Package, X, Plus, Edit } from 'lucide-react';
 import { Customer } from '../../types';
 import { formatNumber, displayPhone } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useLanguage } from '../../context/LanguageContext';
+import PhoneInput from '../../components/PhoneInput';
 import api from '../../utils/api';
 
 export default function Customers() {
   const { t } = useLanguage();
   const { AlertComponent } = useAlert();
-  const { customers, loading } = useCustomers();
+  const { customers, loading, addCustomer, updateCustomer } = useCustomers();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRegion, setFilterRegion] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
   const [showRegionFilter, setShowRegionFilter] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [formData, setFormData] = useState({ name: '', phone: '+998', region: '', district: '' });
 
   const openDetailsModal = async (customer: Customer) => {
     try {
@@ -31,6 +35,42 @@ export default function Customers() {
       setSelectedCustomer(customer);
       setShowDetailsModal(true);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = {
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.region && formData.district ? `${formData.region}, ${formData.district}` : ''
+      };
+      if (editingCustomer) {
+        await updateCustomer(editingCustomer._id, data);
+      } else {
+        await addCustomer(data);
+      }
+      closeModal();
+    } catch (err) { console.error(err); }
+  };
+
+  const openEditModal = (customer: Customer) => {
+    setEditingCustomer(customer);
+    // Parse address back to region and district
+    const addressParts = (customer.address || '').split(', ');
+    setFormData({
+      name: customer.name,
+      phone: customer.phone,
+      region: addressParts[0] || '',
+      district: addressParts[1] || ''
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingCustomer(null);
+    setFormData({ name: '', phone: '+998', region: '', district: '' });
   };
 
   const filteredCustomers = customers.filter(c => {
@@ -75,6 +115,15 @@ export default function Customers() {
         onSearch={setSearchQuery}
         actions={
           <div className="flex items-center gap-2">
+            {/* Add Customer Button */}
+            <button 
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all hover:scale-105 shadow-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">{t("Yangi mijoz")}</span>
+            </button>
+            
             {/* Region Filter Button */}
             <div className="relative">
               <button 
@@ -171,38 +220,66 @@ export default function Customers() {
                 <div className="grid grid-cols-12 gap-4 px-6 py-4">
                   <span className="table-header-cell col-span-3">{t("Ism")}</span>
                   <span className="table-header-cell col-span-2">{t("Telefon")}</span>
-                  <span className="table-header-cell col-span-3">{t("Manzil")}</span>
+                  <span className="table-header-cell col-span-2">{t("Manzil")}</span>
                   <span className="table-header-cell col-span-2">{t("Xaridlar")}</span>
                   <span className="table-header-cell col-span-2">{t("Qarz")}</span>
+                  <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
                 </div>
               </div>
               <div className="divide-y divide-surface-100">
                 {filteredCustomers.map(customer => (
                   <div 
                     key={customer._id} 
-                    onClick={() => openDetailsModal(customer)}
-                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-50 transition-colors cursor-pointer"
+                    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-50 transition-colors"
                   >
-                    <div className="col-span-3 flex items-center gap-3">
+                    <div 
+                      className="col-span-3 flex items-center gap-3 cursor-pointer"
+                      onClick={() => openDetailsModal(customer)}
+                    >
                       <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
                         <span className="font-semibold text-brand-600">{customer.name.charAt(0)}</span>
                       </div>
                       <span className="font-medium text-surface-900 truncate">{customer.name}</span>
                     </div>
-                    <div className="col-span-2 text-surface-600 text-sm">{displayPhone(customer.phone)}</div>
-                    <div className="col-span-3 text-surface-500 text-sm truncate">
+                    <div 
+                      className="col-span-2 text-surface-600 text-sm cursor-pointer"
+                      onClick={() => openDetailsModal(customer)}
+                    >
+                      {displayPhone(customer.phone)}
+                    </div>
+                    <div 
+                      className="col-span-2 text-surface-500 text-sm truncate cursor-pointer"
+                      onClick={() => openDetailsModal(customer)}
+                    >
                       {customer.address || '-'}
                     </div>
-                    <div className="col-span-2">
+                    <div 
+                      className="col-span-2 cursor-pointer"
+                      onClick={() => openDetailsModal(customer)}
+                    >
                       <span className="text-brand-600 font-medium">
                         {formatNumber(customer.totalPurchases || 0)} {t("so'm")}
                       </span>
                       <p className="text-xs text-surface-400">{customer.purchaseCount || 0} {t("ta xarid")}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div 
+                      className="col-span-2 cursor-pointer"
+                      onClick={() => openDetailsModal(customer)}
+                    >
                       <span className={customer.debt > 0 ? 'text-danger-600 font-medium' : 'text-success-600'}>
                         {formatNumber(customer.debt)} {t("so'm")}
                       </span>
+                    </div>
+                    <div className="col-span-1 flex items-center justify-center">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(customer);
+                        }} 
+                        className="btn-icon-sm hover:bg-brand-100 hover:text-brand-600"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -212,24 +289,34 @@ export default function Customers() {
             {/* Mobile Cards */}
             <div className="lg:hidden divide-y divide-surface-100">
               {filteredCustomers.map(customer => (
-                <div 
-                  key={customer._id} 
-                  onClick={() => openDetailsModal(customer)}
-                  className="p-4 cursor-pointer hover:bg-surface-50 transition-colors"
-                >
+                <div key={customer._id} className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
                       <span className="font-semibold text-brand-600 text-lg">{customer.name.charAt(0)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="mb-2">
-                        <h4 className="font-medium text-surface-900">{customer.name}</h4>
-                        <p className="text-sm text-surface-500">{displayPhone(customer.phone)}</p>
-                        {customer.address && (
-                          <p className="text-xs text-surface-400 mt-1">{customer.address}</p>
-                        )}
+                      <div className="flex items-start justify-between mb-2">
+                        <div 
+                          onClick={() => openDetailsModal(customer)}
+                          className="cursor-pointer flex-1"
+                        >
+                          <h4 className="font-medium text-surface-900">{customer.name}</h4>
+                          <p className="text-sm text-surface-500">{displayPhone(customer.phone)}</p>
+                          {customer.address && (
+                            <p className="text-xs text-surface-400 mt-1">{customer.address}</p>
+                          )}
+                        </div>
+                        <button 
+                          onClick={() => openEditModal(customer)} 
+                          className="btn-icon-sm ml-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div 
+                        onClick={() => openDetailsModal(customer)}
+                        className="flex gap-2 flex-wrap cursor-pointer"
+                      >
                         {customer.totalPurchases > 0 && (
                           <div className="bg-brand-50 rounded-xl p-2 inline-block">
                             <span className="text-sm font-semibold text-brand-600">
@@ -253,6 +340,88 @@ export default function Customers() {
           </div>
         )}
       </div>
+
+      {/* Add/Edit Customer Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
+          <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-scaleIn overflow-hidden border-2 border-surface-100 dark:border-surface-700">
+            {/* Gradient Header */}
+            <div className="bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-black text-white">
+                    {editingCustomer ? t('Mijozni tahrirlash') : t('Yangi mijoz')}
+                  </h3>
+                </div>
+                <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all hover:scale-110">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              <div>
+                <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Ism")}</label>
+                <input className="input" placeholder={t("Mijoz ismi")} value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Telefon")}</label>
+                <PhoneInput
+                  value={formData.phone}
+                  onChange={(phone) => setFormData({ ...formData, phone })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Viloyat")}</label>
+                <select 
+                  className="select" 
+                  value={formData.region}
+                  onChange={e => setFormData({ ...formData, region: e.target.value, district: '' })}
+                >
+                  <option value="">{t("Viloyatni tanlang")}</option>
+                  {regionNames.map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
+                </select>
+              </div>
+              {formData.region && (
+                <div className="animate-slideDown">
+                  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Tuman")}</label>
+                  <select 
+                    className="select" 
+                    value={formData.district}
+                    onChange={e => setFormData({ ...formData, district: e.target.value })}
+                  >
+                    <option value="">{t("Tumanni tanlang")}</option>
+                    {regions[formData.region]?.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={closeModal} className="btn-secondary flex-1 font-bold">{t("Bekor qilish")}</button>
+                <button type="submit" className="btn-primary flex-1 font-bold shadow-lg hover:shadow-xl">{t("Saqlash")}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-all z-30"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Customer Details Modal */}
       {showDetailsModal && selectedCustomer && (
@@ -280,101 +449,43 @@ export default function Customers() {
             {/* Content */}
             <div className="p-6 overflow-y-auto flex-1">
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-brand-50 dark:bg-brand-900/20 rounded-2xl p-4">
-                  <p className="text-sm text-brand-600 dark:text-brand-400 mb-1">{t("Jami xaridlar")}</p>
-                  <p className="text-2xl font-bold text-brand-700 dark:text-brand-300">
-                    {formatNumber(selectedCustomer.totalPurchases || 0)} {t("so'm")}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-brand-50 dark:bg-brand-900/20 rounded-2xl p-3">
+                  <p className="text-xs text-brand-600 dark:text-brand-400 mb-1">{t("Jami xaridlar")}</p>
+                  <p className="text-lg font-bold text-brand-700 dark:text-brand-300">
+                    {formatNumber(selectedCustomer.totalPurchases || 0)}
                   </p>
                   <p className="text-xs text-surface-500 mt-1">{selectedCustomer.purchaseCount || 0} {t("ta xarid")}</p>
                 </div>
-                <div className={`rounded-2xl p-4 ${selectedCustomer.debt > 0 ? 'bg-danger-50 dark:bg-danger-900/20' : 'bg-success-50 dark:bg-success-900/20'}`}>
-                  <p className={`text-sm mb-1 ${selectedCustomer.debt > 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}`}>{t("Qarz")}</p>
-                  <p className={`text-2xl font-bold ${selectedCustomer.debt > 0 ? 'text-danger-700 dark:text-danger-300' : 'text-success-700 dark:text-success-300'}`}>
-                    {formatNumber(selectedCustomer.debt)} {t("so'm")}
+                <div className="bg-success-50 dark:bg-success-900/20 rounded-2xl p-3">
+                  <p className="text-xs text-success-600 dark:text-success-400 mb-1">{t("To'langan")}</p>
+                  <p className="text-lg font-bold text-success-700 dark:text-success-300">
+                    {formatNumber((selectedCustomer.totalPurchases || 0) - (selectedCustomer.debt || 0))}
+                  </p>
+                </div>
+                <div className={`rounded-2xl p-3 ${selectedCustomer.debt > 0 ? 'bg-danger-50 dark:bg-danger-900/20' : 'bg-success-50 dark:bg-success-900/20'}`}>
+                  <p className={`text-xs mb-1 ${selectedCustomer.debt > 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}`}>{t("Qarz")}</p>
+                  <p className={`text-lg font-bold ${selectedCustomer.debt > 0 ? 'text-danger-700 dark:text-danger-300' : 'text-success-700 dark:text-success-300'}`}>
+                    {formatNumber(selectedCustomer.debt)}
                   </p>
                 </div>
               </div>
 
-              {/* Purchase History */}
-              {selectedCustomer.purchaseHistory && selectedCustomer.purchaseHistory.length > 0 && (
-                <div>
-                  <h4 className="text-lg font-bold text-surface-900 dark:text-surface-100 mb-4">{t("Xaridlar tarixi")}</h4>
-                  <div className="space-y-3">
-                    {selectedCustomer.purchaseHistory
-                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((purchase, index) => (
-                        <div key={index} className="bg-surface-50 dark:bg-surface-700 rounded-xl p-4 hover:bg-surface-100 dark:hover:bg-surface-600 transition-colors">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="font-medium text-surface-900 dark:text-surface-100">
-                                {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')}
-                              </p>
-                              <p className="text-xs text-surface-500 dark:text-surface-400">
-                                {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-brand-600 dark:text-brand-400">
-                                {formatNumber(purchase.amount)} {t("so'm")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-              
               {/* Detailed Purchase History with items */}
               {(selectedCustomer as any).detailedPurchaseHistory && (selectedCustomer as any).detailedPurchaseHistory.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="text-lg font-bold text-surface-900 dark:text-surface-100 mb-4">{t("Batafsil xaridlar")}</h4>
-                  <div className="space-y-3">
-                    {(selectedCustomer as any).detailedPurchaseHistory.map((purchase: any, index: number) => (
-                      <div key={index} className={`rounded-xl p-4 border-2 ${
-                        purchase.type === 'debt_payment' 
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
-                          : 'bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600'
-                      }`}>
-                        {purchase.type === 'debt_payment' ? (
-                          // Debt Payment
-                          <div>
+                <>
+                  {/* Purchases */}
+                  {(selectedCustomer as any).detailedPurchaseHistory.filter((p: any) => p.type !== 'debt_payment').length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-lg font-bold text-surface-900 dark:text-surface-100 mb-4">{t("Xaridlar")}</h4>
+                      <div className="space-y-3">
+                        {(selectedCustomer as any).detailedPurchaseHistory
+                          .filter((purchase: any) => purchase.type !== 'debt_payment')
+                          .map((purchase: any, index: number) => (
+                          <div key={index} className="rounded-xl p-3 border bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600">
                             <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                                  <span className="text-white text-lg">💰</span>
-                                </div>
-                                <div>
-                                  <p className="font-bold text-emerald-900 dark:text-emerald-100">
-                                    {t("Qarz to'lovi")}
-                                  </p>
-                                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                                    {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                                  {formatNumber(purchase.amount)} {t("so'm")}
-                                </p>
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                                  {purchase.paymentMethod === 'cash' ? '💵 Naqd' : '💳 Karta'}
-                                </p>
-                              </div>
-                            </div>
-                            {purchase.receiptId && (
-                              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-2">
-                                Chek #{purchase.receiptId.toString().slice(-8)} uchun to'lov
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          // Regular Purchase
-                          <>
-                            <div className="flex items-center justify-between mb-3">
                               <div>
-                                <p className="font-bold text-surface-900 dark:text-surface-100">
+                                <p className="text-sm font-bold text-surface-900 dark:text-surface-100">
                                   {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                                 <p className="text-xs text-surface-500 dark:text-surface-400">
@@ -382,62 +493,97 @@ export default function Customers() {
                                 </p>
                               </div>
                               <div className="text-right">
-                                <p className="text-xl font-black text-brand-600 dark:text-brand-400">
+                                <p className="text-lg font-black text-brand-600 dark:text-brand-400">
                                   {formatNumber(purchase.total)} {t("so'm")}
                                 </p>
                               </div>
                             </div>
                             
-                            {/* Items */}
-                            <div className="space-y-2 mb-3">
+                            {/* Items - with max height and scroll */}
+                            <div className="max-h-40 overflow-y-auto space-y-1 mb-2 pr-1">
                               {purchase.items.map((item: any, idx: number) => (
-                                <div key={idx} className="flex justify-between text-sm bg-white dark:bg-surface-800 rounded-lg p-2">
-                                  <span className="text-surface-700 dark:text-surface-300">
-                                    {item.name} x{item.quantity}
+                                <div key={idx} className="flex justify-between text-xs bg-white dark:bg-surface-800 rounded-lg p-2">
+                                  <span className="text-surface-700 dark:text-surface-300 flex-1 truncate">
+                                    {item.name} <span className="text-surface-500">×{item.quantity}</span>
                                   </span>
-                                  <span className="font-semibold text-surface-900 dark:text-surface-100">
-                                    {formatNumber(item.price * item.quantity)} {t("so'm")}
+                                  <span className="font-semibold text-surface-900 dark:text-surface-100 ml-2">
+                                    {formatNumber(item.price * item.quantity)}
                                   </span>
                                 </div>
                               ))}
                             </div>
                             
-                            {/* Payment breakdown */}
-                            <div className="border-t border-surface-200 dark:border-surface-600 pt-3 space-y-1">
+                            {/* Payment breakdown - compact */}
+                            <div className="border-t border-surface-200 dark:border-surface-600 pt-2 space-y-1">
                               {purchase.cashAmount > 0 && (
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs">
                                   <span className="text-surface-600 dark:text-surface-400">💵 Naqd:</span>
                                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                    {formatNumber(purchase.cashAmount)} {t("so'm")}
+                                    {formatNumber(purchase.cashAmount)}
                                   </span>
                                 </div>
                               )}
                               {purchase.cardAmount > 0 && (
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs">
                                   <span className="text-surface-600 dark:text-surface-400">💳 Karta:</span>
                                   <span className="font-semibold text-blue-600 dark:text-blue-400">
-                                    {formatNumber(purchase.cardAmount)} {t("so'm")}
+                                    {formatNumber(purchase.cardAmount)}
                                   </span>
                                 </div>
                               )}
                               {purchase.debtAmount > 0 && (
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs">
                                   <span className="text-surface-600 dark:text-surface-400">⚠️ Qarz:</span>
                                   <span className="font-semibold text-danger-600 dark:text-danger-400">
-                                    {formatNumber(purchase.debtAmount)} {t("so'm")}
+                                    {formatNumber(purchase.debtAmount)}
                                   </span>
                                 </div>
                               )}
                             </div>
-                          </>
-                        )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                  
+                  {/* Debt Payments */}
+                  {(selectedCustomer as any).detailedPurchaseHistory.filter((p: any) => p.type === 'debt_payment').length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-base font-bold text-emerald-700 dark:text-emerald-300 mb-3">{t("Qarz to'lovlari")}</h4>
+                      <div className="space-y-2">
+                        {(selectedCustomer as any).detailedPurchaseHistory
+                          .filter((purchase: any) => purchase.type === 'debt_payment')
+                          .map((purchase: any, index: number) => (
+                          <div key={index} className="rounded-lg p-3 border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white text-sm">💰</span>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                    {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                    {purchase.paymentMethod === 'cash' ? '💵 Naqd' : '💳 Karta'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                  +{formatNumber(purchase.amount)} {t("so'm")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
-              {(!selectedCustomer.purchaseHistory || selectedCustomer.purchaseHistory.length === 0) && (
+              {(!(selectedCustomer as any).detailedPurchaseHistory || (selectedCustomer as any).detailedPurchaseHistory.length === 0) && (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-surface-100 dark:bg-surface-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <Package className="w-8 h-8 text-surface-400" />

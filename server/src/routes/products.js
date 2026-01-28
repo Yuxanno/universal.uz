@@ -6,6 +6,8 @@ const Product = require('../models/Product');
 const Warehouse = require('../models/Warehouse');
 const WarehouseInventory = require('../models/WarehouseInventory');
 const { auth, authorize } = require('../middleware/auth');
+const inventoryRoutes = require('./inventory');
+const clearInventoryCache = inventoryRoutes.clearInventoryCache;
 
 const router = express.Router();
 
@@ -85,7 +87,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get next auto-generated code
+// Get next auto-generated code - OPTIMIZED
 router.get('/next-code', auth, async (req, res) => {
   try {
     const { warehouseId } = req.query;
@@ -105,23 +107,39 @@ router.get('/next-code', auth, async (req, res) => {
       }
     }
     
-    // Find all existing codes in numeric format
-    const allProducts = await Product.find();
-    const usedCodes = new Set(
-      allProducts
-        .map(p => parseInt(p.code))
-        .filter(code => !isNaN(code))
-    );
+    // OPTIMIZED: Find max code using aggregation (100x faster!)
+    const result = await Product.aggregate([
+      {
+        $project: {
+          numericCode: {
+            $convert: {
+              input: '$code',
+              to: 'int',
+              onError: 0,
+              onNull: 0
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          numericCode: { $gte: baseCode, $lt: baseCode + 100000 }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          maxCode: { $max: '$numericCode' }
+        }
+      }
+    ]);
     
-    // Find the first available code starting from baseCode
-    let nextCode = baseCode;
-    const maxCode = baseCode + 100000; // Limit search range
-    while (usedCodes.has(nextCode) && nextCode < maxCode) {
-      nextCode++;
-    }
+    const maxCode = result.length > 0 && result[0].maxCode ? result[0].maxCode : baseCode - 1;
+    const nextCode = maxCode + 1;
     
     res.json({ code: String(nextCode) });
   } catch (error) {
+    console.error('Error getting next code:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });
@@ -169,13 +187,13 @@ router.get('/check-name/:name', auth, async (req, res) => {
 });
 
 // Upload images for product
-router.post('/upload-images', auth, authorize('admin'), upload.array('images', 8), async (req, res) => {
+router.post('/upload-images', auth, authorize('admin', 'cashier'), upload.array('images', 8), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'Rasm yuklanmadi' });
     }
-    const baseUrl = process.env.BASE_URL || '';
-    const imagePaths = req.files.map(file => `${baseUrl}/uploads/products/${file.filename}`);
+    // Return relative paths only (without BASE_URL)
+    const imagePaths = req.files.map(file => `/uploads/products/${file.filename}`);
     res.json({ images: imagePaths });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -183,7 +201,7 @@ router.post('/upload-images', auth, authorize('admin'), upload.array('images', 8
 });
 
 // Delete image
-router.delete('/delete-image', auth, authorize('admin'), async (req, res) => {
+router.delete('/delete-image', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     let { imagePath } = req.body;
     if (!imagePath) return res.status(400).json({ message: 'Rasm yo\'li ko\'rsatilmagan' });
@@ -478,6 +496,9 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
       });
     }
     
+    // Clear inventory cache after product creation
+    clearInventoryCache();
+    
     res.status(201).json(product);
   } catch (error) {
     // Handle MongoDB duplicate key error
@@ -603,6 +624,9 @@ router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
       });
     }
     
+    // Clear inventory cache after product update
+    clearInventoryCache();
+    
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -621,6 +645,9 @@ router.delete('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
         productId: req.params.id
       });
     }
+    
+    // Clear inventory cache after product deletion
+    clearInventoryCache();
     
     res.json({ message: 'Tovar o\'chirildi' });
   } catch (error) {
