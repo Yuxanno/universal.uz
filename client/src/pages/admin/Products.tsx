@@ -209,6 +209,8 @@ export default function Products() {
  const [products, setProducts] = useState<Product[]>([]);
  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
  const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
+ const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
+ void selectedWarehouse; // Used in fetchMainWarehouse
  const [showModal, setShowModal] = useState(false);
  const [showQRModal, setShowQRModal] = useState(false);
  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -247,6 +249,8 @@ export default function Products() {
  const [transferToWarehouse, setTransferToWarehouse] = useState('');
  const [transferQuantity, setTransferQuantity] = useState('');
  const [transferring, setTransferring] = useState(false);
+ const [loadingCode, setLoadingCode] = useState(false);
+ void loadingCode; // Used in openAddModal
  const fileInputRef = useRef<HTMLInputElement>(null);
  
  // Bulk selection state
