@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import { 
  DollarSign, TrendingUp, ShoppingCart, Receipt, Package, 
- Clock, RefreshCw, ArrowUpRight, ArrowDownRight
+ Clock, RefreshCw, ArrowUpRight, ArrowDownRight, X, User
 } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import api from '../../utils/api';
@@ -12,6 +12,9 @@ import { useLanguage } from '../../context/LanguageContext';
 export default function Dashboard() {
  const { t } = useLanguage();
  const [period, setPeriod] = useState<'today' | 'week'>('today');
+ const [showTodaySalesModal, setShowTodaySalesModal] = useState(false);
+ const [todayReceipts, setTodayReceipts] = useState<any[]>([]);
+ const [loadingReceipts, setLoadingReceipts] = useState(false);
  const [stats, setStats] = useState({
  totalRevenue: 0,
  todaySales: 0,
@@ -52,6 +55,34 @@ export default function Dashboard() {
  } catch (err) {
  console.error('Error fetching chart data:', err);
  }
+ };
+
+ const fetchTodayReceipts = async () => {
+ setLoadingReceipts(true);
+ try {
+ const today = new Date();
+ today.setHours(0, 0, 0, 0);
+ const tomorrow = new Date(today);
+ tomorrow.setDate(tomorrow.getDate() + 1);
+ 
+ const res = await api.get('/receipts', {
+ params: {
+ startDate: today.toISOString(),
+ endDate: tomorrow.toISOString(),
+ status: 'completed'
+ }
+ });
+ setTodayReceipts(res.data);
+ } catch (err) {
+ console.error('Error fetching today receipts:', err);
+ } finally {
+ setLoadingReceipts(false);
+ }
+ };
+
+ const openTodaySalesModal = () => {
+ setShowTodaySalesModal(true);
+ fetchTodayReceipts();
  };
 
  const mainStats = [
@@ -164,7 +195,17 @@ export default function Dashboard() {
  {/* Main Stats - Mobile Optimized */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
  {mainStats.map((stat, i) => (
- <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm transition-all duration-200 hover:shadow-md hover:border-red-500 hover:-translate-y-1 dark:hover:border-red-500">
+ <div 
+ key={i} 
+ onClick={() => {
+ if (stat.label.includes('Bugungi sotuv') || stat.label.includes('Haftalik sotuv')) {
+ if (period === 'today') openTodaySalesModal();
+ }
+ }}
+ className={`bg-white dark:bg-neutral-900 rounded-xl p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm transition-all duration-200 hover:shadow-md hover:border-red-500 hover:-translate-y-1 dark:hover:border-red-500 ${
+ (stat.label.includes('Bugungi sotuv') && period === 'today') ? 'cursor-pointer' : ''
+ }`}
+ >
  <div className="flex items-start justify-between mb-4">
  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.bgColor} dark:${stat.bgColor}/20 shadow-sm`}>
  <stat.icon className={`w-6 h-6 ${stat.textColor} dark:${stat.textColor.replace('600', '400')}`} />
@@ -311,6 +352,122 @@ export default function Dashboard() {
  </div>
  </div>
  </div>
+
+ {/* Today's Sales Modal */}
+ {showTodaySalesModal && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+ <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTodaySalesModal(false)} />
+ <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-4xl relative z-10 animate-scaleIn overflow-hidden border-2 border-surface-100 dark:border-surface-700 max-h-[90vh] flex flex-col">
+ {/* Header */}
+ <div className="bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-5">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+ <TrendingUp className="w-6 h-6 text-white" />
+ </div>
+ <div>
+ <h3 className="text-xl font-black text-white">{t("Bugungi sotuvlar")}</h3>
+ <p className="text-white/80 text-sm">{new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+ </div>
+ </div>
+ <button onClick={() => setShowTodaySalesModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all hover:scale-110">
+ <X className="w-5 h-5" />
+ </button>
+ </div>
+ </div>
+
+ {/* Content */}
+ <div className="p-6 overflow-y-auto flex-1">
+ {loadingReceipts ? (
+ <div className="flex justify-center py-20">
+ <div className="spinner text-brand-600 w-8 h-8" />
+ </div>
+ ) : todayReceipts.length === 0 ? (
+ <div className="text-center py-16">
+ <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+ <ShoppingCart className="w-8 h-8 text-surface-400" />
+ </div>
+ <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Bugun sotuvlar yo'q")}</h3>
+ <p className="text-surface-500">{t("Hali hech qanday sotuv amalga oshirilmagan")}</p>
+ </div>
+ ) : (
+ <div className="space-y-3">
+ {todayReceipts.map((receipt: any, index: number) => (
+ <div key={receipt._id} className="rounded-xl p-3 border bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600">
+ <div className="flex items-center justify-between mb-2">
+ <div className="flex items-center gap-3">
+ <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+ {receipt.customer && receipt.customer.name ? (
+ <span className="font-bold text-brand-600 text-lg">{receipt.customer.name.charAt(0).toUpperCase()}</span>
+ ) : (
+ <User className="w-5 h-5 text-brand-600" />
+ )}
+ </div>
+ <div>
+ <p className="text-sm font-bold text-surface-900 dark:text-surface-100">
+ {receipt.customer && receipt.customer.name ? receipt.customer.name : t("Oddiy mijoz")}
+ </p>
+ <p className="text-xs text-surface-500 dark:text-surface-400">
+ {new Date(receipt.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} • Chek #{receipt._id.toString().slice(-8)}
+ </p>
+ </div>
+ </div>
+ <div className="text-right">
+ <p className="text-lg font-black text-brand-600 dark:text-brand-400">
+ {formatNumber(receipt.total)} {t("so'm")}
+ </p>
+ </div>
+ </div>
+ 
+ {/* Items - with max height and scroll */}
+ <div className="max-h-32 overflow-y-auto space-y-1 mb-2 pr-1">
+ {receipt.items.map((item: any, idx: number) => (
+ <div key={idx} className="flex justify-between text-xs bg-white dark:bg-surface-800 rounded-lg p-2">
+ <span className="text-surface-700 dark:text-surface-300 flex-1 truncate">
+ {item.name} <span className="text-surface-500">×{item.quantity}</span>
+ </span>
+ <span className="font-semibold text-surface-900 dark:text-surface-100 ml-2">
+ {formatNumber(item.price * item.quantity)}
+ </span>
+ </div>
+ ))}
+ </div>
+ 
+ {/* Payment breakdown - compact */}
+ <div className="border-t border-surface-200 dark:border-surface-600 pt-2 space-y-1">
+ {receipt.cashAmount > 0 && (
+ <div className="flex justify-between text-xs">
+ <span className="text-surface-600 dark:text-surface-400">💵 Naqd:</span>
+ <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+ {formatNumber(receipt.cashAmount)}
+ </span>
+ </div>
+ )}
+ {receipt.cardAmount > 0 && (
+ <div className="flex justify-between text-xs">
+ <span className="text-surface-600 dark:text-surface-400">💳 Karta:</span>
+ <span className="font-semibold text-blue-600 dark:text-blue-400">
+ {formatNumber(receipt.cardAmount)}
+ </span>
+ </div>
+ )}
+ {receipt.debtAmount > 0 && receipt.customer && receipt.customer.name && (
+ <div className="flex justify-between text-xs">
+ <span className="text-surface-600 dark:text-surface-400">⚠️ Qarz:</span>
+ <span className="font-semibold text-danger-600 dark:text-danger-400">
+ {formatNumber(receipt.debtAmount)}
+ </span>
+ </div>
+ )}
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+ </div>
+ </div>
+ )}
  </div>
  );
 }

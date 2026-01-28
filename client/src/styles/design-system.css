@@ -266,23 +266,23 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn var(--duration-base) var(--ease-out);
+  animation: fadeIn var(--duration-fast) var(--ease-out);
 }
 
 .animate-fadeOut {
-  animation: fadeOut var(--duration-base) var(--ease-in);
+  animation: fadeOut var(--duration-fast) var(--ease-in);
 }
 
 .animate-slideInUp {
-  animation: slideInUp var(--duration-slow) var(--ease-out);
+  animation: slideInUp var(--duration-base) var(--ease-out);
 }
 
 .animate-slideInDown {
-  animation: slideInDown var(--duration-slow) var(--ease-out);
+  animation: slideInDown var(--duration-base) var(--ease-out);
 }
 
 .animate-scaleIn {
-  animation: scaleIn var(--duration-base) var(--ease-spring);
+  animation: scaleIn var(--duration-fast) var(--ease-spring);
 }
 
 .animate-spin {

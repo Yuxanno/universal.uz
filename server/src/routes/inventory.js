@@ -7,51 +7,213 @@ const Warehouse = require('../models/Warehouse');
 const Product = require('../models/Product');
 const { auth, authorize } = require('../middleware/auth');
 
-// Get inventory for a specific warehouse
+// ============================================
+// IN-MEMORY CACHE with Socket.IO Integration
+// ============================================
+const inventoryCache = new Map();
+const CACHE_TTL = 5000; // 5 seconds (ultra real-time uchun)
+
+function getCacheKey(warehouseId, search, lowStock) {
+  return `${warehouseId}_${search || ''}_${lowStock || ''}`;
+}
+
+function getFromCache(key) {
+  const cached = inventoryCache.get(key);
+  if (!cached) return null;
+  
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_TTL) {
+    inventoryCache.delete(key);
+    return null;
+  }
+  
+  console.log(`⚡ Cache HIT (age: ${Math.round((now - cached.timestamp) / 1000)}s)`);
+  return cached.data;
+}
+
+function setCache(key, data) {
+  inventoryCache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
+}
+
+function clearCache() {
+  const size = inventoryCache.size;
+  inventoryCache.clear();
+  console.log(`🗑️  Cache cleared (${size} entries)`);
+  
+  // Emit socket event to notify all clients
+  if (global.io) {
+    global.io.emit('inventory:cache-cleared');
+    console.log('📡 Socket event sent: inventory:cache-cleared');
+  }
+}
+
+// Selective cache clearing - only clear affected warehouse
+function clearCacheForWarehouse(warehouseId) {
+  let cleared = 0;
+  for (const [key, value] of inventoryCache.entries()) {
+    if (key.startsWith(warehouseId)) {
+      inventoryCache.delete(key);
+      cleared++;
+    }
+  }
+  console.log(`🗑️  Cache cleared for warehouse ${warehouseId} (${cleared} entries)`);
+  
+  // Emit socket event to notify all clients
+  if (global.io) {
+    global.io.emit('inventory:cache-cleared', { warehouseId });
+    console.log('📡 Socket event sent: inventory:cache-cleared for warehouse', warehouseId);
+  }
+}
+
+// Export cache functions for use in other routes
+router.clearInventoryCache = clearCache;
+router.clearInventoryCacheForWarehouse = clearCacheForWarehouse;
+
+// Get inventory for a specific warehouse - ULTRA OPTIMIZED with cache
 router.get('/warehouse/:warehouseId', auth, async (req, res) => {
   try {
     const { warehouseId } = req.params;
-    const { search, lowStock } = req.query;
+    const { search, lowStock, page = 1, limit = 5000 } = req.query;
 
-    let query = { warehouse: warehouseId };
-
-    // ОПТИМИЗАЦИЯ: Используем lean() и минимальные поля
-    const inventory = await WarehouseInventory.find(query)
-      .populate('product', 'name code price costPrice dona_narx image images') // Added dona_narx and images
-      .populate('warehouse', 'name')
-      .lean()
-      .exec();
-
-    // Filter out items where product was deleted
-    let filtered = inventory.filter(item => item.product !== null);
-
-    // Filter by search
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.product.name.toLowerCase().includes(searchLower) ||
-        item.product.code.toLowerCase().includes(searchLower)
-      );
+    // Check cache first
+    const cacheKey = getCacheKey(warehouseId, search, lowStock);
+    const cached = getFromCache(cacheKey);
+    
+    if (cached) {
+      console.log(`⚡ Cache HIT for ${cacheKey} - instant response!`);
+      return res.json(cached);
     }
 
-    // Filter by low stock
+    console.log(`🔍 Cache MISS - fetching from DB for warehouse: ${warehouseId}`);
+    const totalStart = Date.now();
+
+    // Build query
+    const query = { warehouse: warehouseId };
+    
+    // Low stock filter
     if (lowStock === 'true') {
-      filtered = filtered.filter(item => 
-        item.quantity > 0 && item.quantity <= item.minStock
-      );
+      query.$expr = {
+        $and: [
+          { $gt: ['$quantity', 0] },
+          { $lte: ['$quantity', '$minStock'] }
+        ]
+      };
     }
 
-    // ИСПРАВЛЕНО: Сортировка по коду по возрастанию (1 -> 1094)
-    filtered.sort((a, b) => {
-      const codeA = parseInt(a.product.code) || 0;
-      const codeB = parseInt(b.product.code) || 0;
-      return codeA - codeB; // По возрастанию
+    // STEP 1: PARALLEL queries (2x faster!)
+    const startTime = Date.now();
+    const [inventory, allProducts] = await Promise.all([
+      // Query 1: Get inventory
+      WarehouseInventory.find(query)
+        .select('product quantity minStock warehouse') // Only needed fields
+        .lean()
+        .maxTimeMS(30000)
+        .exec(),
+      
+      // Query 2: Get ALL products at once (parallel!)
+      Product.find(
+        {},
+        'name code price costPrice dona_narx images' // Only needed fields
+      )
+      .lean()
+      .maxTimeMS(30000)
+      .exec()
+    ]);
+    
+    const queryEnd = Date.now();
+    console.log(`✅ Parallel queries took: ${queryEnd - startTime}ms (${inventory.length} inventory, ${allProducts.length} products)`);
+
+    // STEP 2: Create product map for O(1) lookup
+    const productMap = new Map();
+    allProducts.forEach(p => {
+      productMap.set(p._id.toString(), p);
     });
 
-    res.json(filtered);
+    // STEP 3: Join inventory with products (in JavaScript - FAST)
+    let joinedInventory = inventory
+      .map(inv => {
+        const product = productMap.get(inv.product.toString());
+        if (!product) return null; // Skip deleted products
+        return {
+          _id: inv._id,
+          quantity: inv.quantity,
+          minStock: inv.minStock,
+          warehouse: inv.warehouse,
+          product: product
+        };
+      })
+      .filter(Boolean); // Remove nulls
+
+    // STEP 4: Filter by search (if needed)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      joinedInventory = joinedInventory.filter(inv => {
+        const name = (inv.product.name || '').toLowerCase();
+        const code = (inv.product.code || '').toLowerCase();
+        return name.includes(searchLower) || code.includes(searchLower);
+      });
+    }
+
+    // STEP 5: Sort by code (optimized)
+    joinedInventory.sort((a, b) => {
+      const codeA = parseInt(a.product.code) || 0;
+      const codeB = parseInt(b.product.code) || 0;
+      return codeB - codeA; // Descending
+    });
+
+    // STEP 6: Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginatedInventory = joinedInventory.slice(startIndex, startIndex + limitNum);
+
+    // STEP 7: Format response (minimal data)
+    const formattedInventory = paginatedInventory.map(inv => ({
+      _id: inv._id,
+      quantity: inv.quantity,
+      minStock: inv.minStock,
+      warehouse: {
+        _id: inv.warehouse,
+        name: 'Asosiy ombor'
+      },
+      product: {
+        _id: inv.product._id,
+        name: inv.product.name,
+        code: inv.product.code,
+        price: inv.product.price,
+        costPrice: inv.product.costPrice,
+        dona_narx: inv.product.dona_narx,
+        images: inv.product.images?.[0] ? [inv.product.images[0]] : []
+      }
+    }));
+
+    const totalEnd = Date.now();
+    console.log(`✅ Total processing time: ${totalEnd - startTime}ms`);
+    console.log(`🎯 Total request time: ${totalEnd - totalStart}ms`);
+
+    // Store in cache
+    setCache(cacheKey, formattedInventory);
+    console.log(`💾 Cached result for ${cacheKey}`);
+
+    res.json(formattedInventory);
   } catch (err) {
-    console.error('Error fetching inventory:', err);
-    res.status(500).json({ message: 'Server xatosi' });
+    console.error('❌ Error fetching inventory:', err.message);
+    
+    // Return cached data if available (stale cache is better than error)
+    const cacheKey = getCacheKey(req.params.warehouseId, req.query.search, req.query.lowStock);
+    const staleCache = inventoryCache.get(cacheKey);
+    if (staleCache) {
+      console.log('⚠️  Returning stale cache due to error');
+      return res.json(staleCache.data);
+    }
+    
+    res.status(500).json({ 
+      message: 'Ma\'lumotlarni yuklashda xatolik. Iltimos, qayta urinib ko\'ring.',
+      error: err.message 
+    });
   }
 });
 
@@ -214,6 +376,9 @@ router.post('/transfer', auth, async (req, res) => {
 
     console.log(`📝 Transfer logged: ${transfer._id}`);
     console.log(`✅ TRANSFER COMPLETED SUCCESSFULLY\n`);
+
+    // Clear cache after transfer
+    clearCache();
 
     // Populate for response
     await transfer.populate(['product', 'fromWarehouse', 'toWarehouse', 'transferredBy']);

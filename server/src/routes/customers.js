@@ -65,8 +65,27 @@ router.get('/:id', auth, async (req, res) => {
     // Get detailed purchase history with receipts
     const receipts = await Receipt.find({
       customer: req.params.id,
-      status: { $in: ['completed', 'approved'] }
+      status: { $in: ['completed', 'approved'] },
+      isReturn: { $ne: true }
     }).sort({ createdAt: -1 }).limit(50);
+    
+    // Calculate total purchases and count
+    const purchaseStats = await Receipt.aggregate([
+      { 
+        $match: { 
+          customer: customer._id,
+          status: { $in: ['completed', 'approved'] },
+          isReturn: { $ne: true }
+        } 
+      },
+      { 
+        $group: { 
+          _id: null,
+          totalPurchases: { $sum: '$total' },
+          purchaseCount: { $sum: 1 }
+        } 
+      }
+    ]);
     
     // Get debt payments from purchase history
     const debtPayments = customer.purchaseHistory
@@ -80,9 +99,9 @@ router.get('/:id', auth, async (req, res) => {
         type: 'debt_payment'
       }));
     
-    const customerData = customer.toObject();
-    customerData.detailedPurchaseHistory = [
-      ...receipts.map(r => ({
+    // Combine receipts with purchases (without debt payments inside)
+    const purchasesWithPayments = receipts.map(r => {
+      return {
         date: r.createdAt,
         items: r.items,
         total: r.total,
@@ -93,7 +112,14 @@ router.get('/:id', auth, async (req, res) => {
         receiptId: r._id,
         isReturn: r.isReturn,
         type: 'purchase'
-      })),
+      };
+    });
+    
+    const customerData = customer.toObject();
+    customerData.totalPurchases = purchaseStats[0]?.totalPurchases || 0;
+    customerData.purchaseCount = purchaseStats[0]?.purchaseCount || 0;
+    customerData.detailedPurchaseHistory = [
+      ...purchasesWithPayments,
       ...debtPayments
     ].sort((a, b) => new Date(b.date) - new Date(a.date));
     
@@ -103,7 +129,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, authorize('admin'), async (req, res) => {
+router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const customer = new Customer({ ...req.body, createdBy: req.user._id });
     await customer.save();
@@ -113,7 +139,7 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
   }
 });
 
-router.put('/:id', auth, authorize('admin'), async (req, res) => {
+router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!customer) return res.status(404).json({ message: 'Mijoz topilmadi' });

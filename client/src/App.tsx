@@ -21,7 +21,7 @@ const Orders = lazy(() => import('./pages/admin/Orders'));
 const Helpers = lazy(() => import('./pages/admin/Helpers'));
 const StaffReceipts = lazy(() => import('./pages/admin/StaffReceipts'));
 const CashierLayout = lazy(() => import('./layouts/CashierLayout'));
-const CashierProducts = lazy(() => import('./pages/cashier/Products'));
+const CashierProducts = lazy(() => import('./pages/admin/Products'));
 const CashierCustomers = lazy(() => import('./pages/cashier/Customers'));
 const HelperLayout = lazy(() => import('./layouts/HelperLayout'));
 const HelperScanner = lazy(() => import('./pages/helper/Scanner'));

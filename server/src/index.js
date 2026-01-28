@@ -70,8 +70,19 @@ app.use('/api/print', printRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api', printerRoutes); // Also mount at /api for /api/print-label
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal_uz')
+// Connect to MongoDB with optimized settings
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 10000, // 10 seconds timeout for server selection
+  socketTimeoutMS: 45000, // 45 seconds socket timeout
+  maxPoolSize: 10, // Maximum 10 connections in pool
+  minPoolSize: 2, // Minimum 2 connections always ready
+  maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
+  retryWrites: true, // Retry failed writes
+  retryReads: true, // Retry failed reads
+  connectTimeoutMS: 10000, // 10 seconds connection timeout
+};
+
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal_uz', mongooseOptions)
   .then(async () => {
     console.log('MongoDB connected');
     // Drop old indexes to fix unique constraint issues
@@ -91,3 +102,16 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/universal
     initCustomerBot();
   })
   .catch(err => console.error('MongoDB connection error:', err));
+
+// Handle MongoDB connection errors
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️  MongoDB disconnected. Attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});

@@ -2,18 +2,29 @@ const express = require('express');
 const Receipt = require('../models/Receipt');
 const Product = require('../models/Product');
 const { auth, authorize } = require('../middleware/auth');
+const inventoryRoutes = require('./inventory');
+const clearInventoryCache = inventoryRoutes.clearInventoryCache;
 
 const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, startDate, endDate } = req.query;
     const query = {};
     if (status && status !== 'all') query.status = status;
+    
+    // Date filter for today's sales
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lt: new Date(endDate)
+      };
+    }
     
     const receipts = await Receipt.find(query)
       .populate('createdBy', 'name role')
       .populate('processedBy', 'name')
+      .populate('customer', 'name phone')
       .sort({ createdAt: -1 });
     res.json(receipts);
   } catch (error) {
@@ -383,7 +394,7 @@ router.post('/', auth, async (req, res) => {
     
     await receipt.save();
     
-    // Create debt if there's unpaid amount
+    // Create or update debt if there's unpaid amount
     if (customer && debtAmount && debtAmount > 0 && !isReturn) {
       const Debt = require('../models/Debt');
       const Customer = require('../models/Customer');
@@ -412,20 +423,47 @@ router.post('/', auth, async (req, res) => {
       if (cardAmount > 0) paymentInfo.push(`karta ${cardAmount.toLocaleString('uz-UZ')} so'm`);
       const paymentStr = paymentInfo.length > 0 ? paymentInfo.join(' va ') : 'to\'lanmagan';
       
-      // Create description
-      const description = `${dateStr} sanada ${customerName} quyidagi mahsulotlarni sotib oldi: ${itemsDesc}. Jami summa: ${total.toLocaleString('uz-UZ')} so'm. To'langan: ${paymentStr}. Qarzga qolgan: ${debtAmount.toLocaleString('uz-UZ')} so'm.`;
+      // Create new transaction description
+      const transactionDesc = `${dateStr} sanada ${customerName} quyidagi mahsulotlarni sotib oldi: ${itemsDesc}. Jami summa: ${total.toLocaleString('uz-UZ')} so'm. To'langan: ${paymentStr}. Qarzga qolgan: ${debtAmount.toLocaleString('uz-UZ')} so'm.`;
       
-      const debt = new Debt({
+      // Find existing debt for this customer
+      let debt = await Debt.findOne({ 
+        customer: customer, 
         type: 'receivable',
-        customer: customer,
-        amount: debtAmount,
-        paidAmount: 0,
-        status: 'pending',
-        description: description,
-        receipt: receipt._id,
-        dueDate: null // No due date for sales debts
+        status: { $in: ['pending', 'overdue'] }
       });
-      await debt.save();
+      
+      if (debt) {
+        // Update existing debt
+        debt.amount += debtAmount;
+        
+        // Add new transaction to description
+        if (debt.description) {
+          debt.description += `\n\n${transactionDesc}`;
+        } else {
+          debt.description = transactionDesc;
+        }
+        
+        // Update status if overdue
+        if (debt.dueDate && new Date(debt.dueDate) < new Date()) {
+          debt.status = 'overdue';
+        }
+        
+        await debt.save();
+      } else {
+        // Create new debt
+        debt = new Debt({
+          type: 'receivable',
+          customer: customer,
+          amount: debtAmount,
+          paidAmount: 0,
+          status: 'pending',
+          description: transactionDesc,
+          receipt: receipt._id,
+          dueDate: null
+        });
+        await debt.save();
+      }
       
       // Update customer debt
       await Customer.findByIdAndUpdate(customer, {
@@ -501,8 +539,14 @@ router.post('/', auth, async (req, res) => {
       console.error('❌ [Socket] global.io is undefined! Socket not initialized.');
     }
     
+    // Clear inventory cache after sale
+    clearInventoryCache();
+    
     res.status(201).json(receipt);
   } catch (error) {
+    console.error('❌ [Receipts POST] Error creating receipt:', error);
+    console.error('❌ [Receipts POST] Error stack:', error.stack);
+    console.error('❌ [Receipts POST] Request body:', JSON.stringify(req.body, null, 2));
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });

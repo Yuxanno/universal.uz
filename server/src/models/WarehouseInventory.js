@@ -31,9 +31,11 @@ const warehouseInventorySchema = new mongoose.Schema({
 // Compound unique index: bir mahsulot bir omborga faqat bir marta qo'shilishi mumkin
 warehouseInventorySchema.index({ product: 1, warehouse: 1 }, { unique: true });
 
-// Index for faster queries
+// Indexes for faster queries
 warehouseInventorySchema.index({ warehouse: 1 });
 warehouseInventorySchema.index({ product: 1 });
+warehouseInventorySchema.index({ warehouse: 1, quantity: -1 }); // For sorting by quantity
+warehouseInventorySchema.index({ warehouse: 1, lastUpdated: -1 }); // For recent updates
 
 // Update lastUpdated on save
 warehouseInventorySchema.pre('save', function(next) {
