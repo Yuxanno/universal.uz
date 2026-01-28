@@ -230,7 +230,7 @@ export default function HelperScanner() {
  }
  stopScanner();
  },
- (errorMessage) => {
+ (_errorMessage) => {
  // Scan error - ignore (happens frequently)
  }
  );

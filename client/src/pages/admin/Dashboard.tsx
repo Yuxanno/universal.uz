@@ -392,7 +392,7 @@ export default function Dashboard() {
  </div>
  ) : (
  <div className="space-y-3">
- {todayReceipts.map((receipt: any, index: number) => (
+ {todayReceipts.map((receipt: any) => (
  <div key={receipt._id} className="rounded-xl p-3 border bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600">
  <div className="flex items-center justify-between mb-2">
  <div className="flex items-center gap-3">
