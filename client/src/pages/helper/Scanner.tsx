@@ -25,6 +25,15 @@ export default function HelperScanner() {
  const [syncing, setSyncing] = useState(false);
  const [receiptStatus, setReceiptStatus] = useState<'draft' | 'pending'>('draft');
  const [lastSyncedCart, setLastSyncedCart] = useState<string>('');
+ const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+ const [showArchive, setShowArchive] = useState(false);
+ const [archivedReceipts, setArchivedReceipts] = useState<any[]>([]);
+ const [expandedArchiveId, setExpandedArchiveId] = useState<string | null>(null);
+ const [showCustomerModal, setShowCustomerModal] = useState(false);
+ const [sendToArchive, setSendToArchive] = useState(false);
+ const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+ const [customers, setCustomers] = useState<any[]>([]);
+ const [customerSearchQuery, setCustomerSearchQuery] = useState('');
  const scannerRef = useRef<Html5Qrcode | null>(null);
  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
  const hasLocalChanges = useRef(false);
@@ -35,37 +44,18 @@ export default function HelperScanner() {
  useEffect(() => {
  const init = async () => {
  try {
- const res = await api.get('/products');
- setProducts(res.data);
- loadDraft(res.data);
+ const [productsRes, customersRes] = await Promise.all([
+ api.get('/products'),
+ api.get('/customers')
+ ]);
+ setProducts(productsRes.data);
+ setCustomers(customersRes.data);
+ // Don't load draft on initial load
  } catch (err) {
- console.error('Error fetching products:', err);
- loadDraft([]);
+ console.error('Error fetching data:', err);
  }
  };
  init();
- 
- // Har 3 sekundda serverda o'zgarish bor yoki yo'qligini tekshirish
- checkIntervalRef.current = setInterval(async () => {
- if (hasLocalChanges.current) return; // Lokal o'zgarishlar bo'lsa, tekshirmaymiz
- 
- try {
- const res = await api.get('/receipts/draft/check');
- if (res.data.exists) {
- const serverUpdatedAt = res.data.updatedAt;
- 
- // Agar server ma'lumotlari yangilangan bo'lsa
- if (lastServerUpdate.current && serverUpdatedAt !== lastServerUpdate.current) {
- console.log('Server ma\'lumotlari yangilandi, yuklanmoqda...');
- loadDraft(products);
- }
- 
- lastServerUpdate.current = serverUpdatedAt;
- }
- } catch (err) {
- console.error('Error checking draft updates:', err);
- }
- }, 3000);
  
  return () => {
  if (checkIntervalRef.current) {
@@ -82,60 +72,6 @@ export default function HelperScanner() {
  };
  }, []);
 
- // Загрузка draft с сервера
- const loadDraft = async (productsList: Product[]) => {
- try {
- const res = await api.get('/receipts/draft');
- if (res.data) {
- // Oxirgi yangilanish vaqtini saqlaymiz
- lastServerUpdate.current = res.data.updatedAt;
- 
- // Если чек был completed (обработан кассиром), очищаем корзину и создаем новый draft
- if (res.data.status === 'completed') {
- setCart([]);
- setReceiptStatus('draft');
- setLastSyncedCart('');
- hasLocalChanges.current = false;
- return;
- }
- 
- setReceiptStatus(res.data.status || 'draft');
- 
- if (res.data.items) {
- const serverCartJson = JSON.stringify(res.data.items);
- 
- // Если статус pending - всегда показываем данные с сервера (кассир мог изменить)
- // Если статус draft - обновляем только если нет локальных изменений
- const shouldUpdate = res.data.status === 'pending' || 
- (serverCartJson !== lastSyncedCart && !hasLocalChanges.current);
- 
- if (shouldUpdate) {
- const cartItems: CartItemWithOriginalPrice[] = res.data.items.map((item: any) => {
- // Находим оригинальную цену из списка продуктов
- const product = productsList.find(p => p._id === item.product);
- const originalPrice = product?.dona_narx || product?.price || item.price;
- return {
- _id: item.product,
- name: item.name,
- code: item.code,
- price: item.price,
- originalPrice: originalPrice,
- optom_narx: product?.price || product?.optom_narx, // Для валидации
- cartQuantity: item.quantity,
- quantity: 0
- };
- });
- setCart(cartItems);
- setLastSyncedCart(serverCartJson);
- }
- }
- isFirstLoad.current = false;
- }
- } catch (err) {
- console.error('Error loading draft:', err);
- }
- };
-
  // Синхронизация корзины на сервер
  const syncToServer = useCallback(async (items: CartItemWithOriginalPrice[]) => {
  if (receiptStatus === 'pending') return;
@@ -150,7 +86,15 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  }));
  
- await api.put('/receipts/draft', { items: serverItems });
+ const res = await api.put('/receipts/draft', { 
+ items: serverItems,
+ draftId: currentDraftId 
+ });
+ 
+ // Update draft ID if it changed
+ if (res.data._id) {
+ setCurrentDraftId(res.data._id);
+ }
  
  // Сохраняем что синхронизировали
  setLastSyncedCart(JSON.stringify(serverItems));
@@ -160,7 +104,7 @@ export default function HelperScanner() {
  } finally {
  setSyncing(false);
  }
- }, [receiptStatus]);
+ }, [receiptStatus, currentDraftId]);
 
  // Отложенная синхронизация при изменении корзины
  useEffect(() => {
@@ -306,20 +250,195 @@ export default function HelperScanner() {
  setCart(prev => prev.filter(item => item._id !== id));
  }, [receiptStatus, showAlert]);
 
+ const loadArchive = async () => {
+ try {
+ const res = await api.get('/receipts/my-archived');
+ setArchivedReceipts(res.data);
+ } catch (err) {
+ console.error('Error loading archive:', err);
+ }
+ };
+
+ useEffect(() => {
+ if (showArchive) {
+ loadArchive();
+ }
+ }, [showArchive]);
+
  const sendToCashier = async () => {
  if (cart.length === 0) return;
+ 
+ // If customer already selected, send directly without modal
+ if (selectedCustomer) {
  setSending(true);
  try {
- // Submit the draft (changes status from draft to pending)
- await api.put('/receipts/draft/submit');
- showAlert("Chek kassirga yuborildi!", 'Muvaffaqiyat', 'success');
- setReceiptStatus('pending');
- // Don't clear cart - let it show with pending status
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: selectedCustomer,
+ draftId: currentDraftId
+ });
+ 
+ await api.put('/receipts/draft/submit', { 
+ sendToArchive: false,
+ draftId: currentDraftId 
+ });
+ 
+ showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ setCart([]);
+ setReceiptStatus('draft');
+ setSelectedCustomer('');
+ setLastSyncedCart('');
+ setCurrentDraftId(null);
+ hasLocalChanges.current = false;
  } catch (err: any) {
  console.error('Error sending receipt:', err);
  showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
  } finally {
  setSending(false);
+ }
+ } else {
+ // Open customer modal
+ setSendToArchive(false);
+ setShowCustomerModal(true);
+ }
+ };
+
+ const sendToArchiveFunc = async () => {
+ if (cart.length === 0) return;
+ 
+ // If customer already selected, save directly without modal
+ if (selectedCustomer) {
+ setSending(true);
+ try {
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: selectedCustomer,
+ draftId: currentDraftId
+ });
+ 
+ await api.put('/receipts/draft/submit', { 
+ sendToArchive: true,
+ draftId: currentDraftId 
+ });
+ 
+ showAlert("Chek arxivga saqlandi!", 'Muvaffaqiyat', 'success');
+ setCart([]);
+ setReceiptStatus('draft');
+ setSelectedCustomer('');
+ setLastSyncedCart('');
+ setCurrentDraftId(null);
+ hasLocalChanges.current = false;
+ loadArchive();
+ } catch (err: any) {
+ console.error('Error sending receipt:', err);
+ showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
+ } finally {
+ setSending(false);
+ }
+ } else {
+ // Open customer modal
+ setSendToArchive(true);
+ setShowCustomerModal(true);
+ }
+ };
+
+ const handleConfirmSend = async () => {
+ setSending(true);
+ setShowCustomerModal(false);
+ 
+ try {
+ // Update draft with customer info
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: selectedCustomer || null,
+ draftId: currentDraftId
+ });
+ 
+ // Submit the draft with sendToArchive flag
+ await api.put('/receipts/draft/submit', {
+ sendToArchive: sendToArchive,
+ draftId: currentDraftId
+ });
+ 
+ showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ setCart([]);
+ setReceiptStatus('draft');
+ setSelectedCustomer('');
+ setLastSyncedCart('');
+ setCurrentDraftId(null);
+ hasLocalChanges.current = false;
+ if (sendToArchive) {
+ loadArchive(); // Reload archive only if saved to archive
+ }
+ } catch (err: any) {
+ console.error('Error sending receipt:', err);
+ showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
+ } finally {
+ setSending(false);
+ }
+ };
+
+ const handleLoadFromArchive = async (receipt: any) => {
+ try {
+ // Save current cart to archive if not empty
+ if (cart.length > 0) {
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: selectedCustomer || null
+ });
+ await api.put('/receipts/draft/submit', { sendToArchive: true });
+ }
+ 
+ // Load archived receipt items to cart
+ const items = receipt.items.map((item: any) => ({
+ _id: item.product,
+ name: item.name,
+ code: item.code,
+ price: item.price,
+ cartQuantity: item.quantity,
+ quantity: 0,
+ originalPrice: item.price
+ }));
+ 
+ setCart(items);
+ // Set customer from archived receipt
+ setSelectedCustomer(receipt.customer?._id || '');
+ 
+ // Delete the archived receipt
+ await api.delete(`/receipts/${receipt._id}`);
+ 
+ // Reload archive and close modal
+ loadArchive();
+ setShowArchive(false);
+ 
+ toast.success('Xarid davom ettirilmoqda');
+ } catch (err) {
+ console.error('Error loading from archive:', err);
+ showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
  }
  };
 
@@ -375,6 +494,13 @@ export default function HelperScanner() {
  className="input pl-12"
  />
  </div>
+ <button
+ onClick={() => setShowArchive(true)}
+ className="btn-lg bg-neutral-500 hover:bg-neutral-600 text-white px-4"
+ >
+ <Package className="w-5 h-5" />
+ Arxiv
+ </button>
  <button
  onClick={scanning ? stopScanner : startScanner}
  className={`btn-lg ${scanning ? 'btn-secondary' : 'btn-primary'}`}
@@ -672,14 +798,13 @@ export default function HelperScanner() {
  <span className="text-surface-500">Jami:</span>
  <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
  </div>
- {receiptStatus === 'draft' ? (
- <div className="flex justify-start">
+ <div className="flex gap-3">
  <button 
  onClick={sendToCashier} 
  disabled={sending || syncing} 
- className="btn-primary w-full md:w-auto md:min-w-[280px] py-4 text-lg"
+ className="btn-primary flex-1 py-4 text-lg"
  >
- {sending ? (
+ {sending && !sendToArchive ? (
  <div className="spinner" />
  ) : (
  <>
@@ -688,16 +813,300 @@ export default function HelperScanner() {
  </>
  )}
  </button>
+ <button 
+ onClick={sendToArchiveFunc} 
+ disabled={sending || syncing} 
+ className="bg-blue-500 hover:bg-blue-600 text-white flex-1 py-4 text-lg rounded-xl font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+ >
+ {sending && sendToArchive ? (
+ <div className="spinner" />
+ ) : (
+ <>
+ <Package className="w-5 h-5" />
+ Arxivga saqlash
+ </>
+ )}
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+ 
+ {/* Customer Modal */}
+ {showCustomerModal && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCustomerModal(false)} />
+ <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative z-10 overflow-hidden">
+ {/* Header */}
+ <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+ <h3 className="text-xl font-bold text-neutral-900">Mijozni tanlang</h3>
+ <p className="text-sm text-neutral-600 mt-1">
+ {sendToArchive ? 'Arxivga saqlash' : 'Kassaga yuborish'}
+ </p>
+ </div>
+ 
+ {/* Search */}
+ <div className="p-4 border-b border-neutral-200">
+ <div className="relative">
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+ <input
+ type="text"
+ value={customerSearchQuery}
+ onChange={(e) => setCustomerSearchQuery(e.target.value)}
+ placeholder="Mijoz qidirish..."
+ className="w-full pl-10 pr-3 py-3 text-sm font-semibold bg-neutral-50 border-2 border-neutral-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+ />
+ </div>
+ </div>
+ 
+ {/* Customer List */}
+ <div className="max-h-96 overflow-auto p-4">
+ {/* Default: Oddiy mijoz */}
+ <button
+ onClick={() => setSelectedCustomer('')}
+ className={`w-full flex items-center gap-3 p-3 mb-2 rounded-xl transition-all border-2 ${
+ selectedCustomer === ''
+ ? 'bg-blue-500 border-blue-600 text-white'
+ : 'bg-white border-neutral-200 hover:border-blue-400'
+ }`}
+ >
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+ selectedCustomer === '' ? 'bg-white/20' : 'bg-blue-100'
+ }`}>
+ <ShoppingCart className={`w-5 h-5 ${selectedCustomer === '' ? 'text-white' : 'text-blue-600'}`} />
+ </div>
+ <div className="flex-1 text-left">
+ <p className={`text-sm font-bold ${selectedCustomer === '' ? 'text-white' : 'text-neutral-900'}`}>
+ Oddiy mijoz
+ </p>
+ <p className={`text-xs ${selectedCustomer === '' ? 'text-white/80' : 'text-neutral-500'}`}>
+ Doimiy mijoz emas
+ </p>
+ </div>
+ {selectedCustomer === '' && (
+ <CheckCircle className="w-5 h-5 text-white" />
+ )}
+ </button>
+ 
+ {/* Customer list */}
+ {customers
+ .filter(c => 
+ c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+ c.phone.toLowerCase().includes(customerSearchQuery.toLowerCase())
+ )
+ .map(customer => (
+ <button
+ key={customer._id}
+ onClick={() => setSelectedCustomer(customer._id)}
+ className={`w-full flex items-center gap-3 p-3 mb-2 rounded-xl transition-all border-2 ${
+ selectedCustomer === customer._id
+ ? 'bg-blue-500 border-blue-600 text-white'
+ : 'bg-white border-neutral-200 hover:border-blue-400'
+ }`}
+ >
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+ selectedCustomer === customer._id ? 'bg-white/20' : 'bg-blue-100'
+ }`}>
+ <ShoppingCart className={`w-5 h-5 ${selectedCustomer === customer._id ? 'text-white' : 'text-blue-600'}`} />
+ </div>
+ <div className="flex-1 text-left min-w-0">
+ <p className={`text-sm font-bold truncate ${selectedCustomer === customer._id ? 'text-white' : 'text-neutral-900'}`}>
+ {customer.name}
+ </p>
+ <p className={`text-xs truncate ${selectedCustomer === customer._id ? 'text-white/80' : 'text-neutral-500'}`}>
+ {customer.phone}
+ </p>
+ </div>
+ {selectedCustomer === customer._id && (
+ <CheckCircle className="w-5 h-5 text-white" />
+ )}
+ </button>
+ ))}
+ </div>
+ 
+ {/* Actions */}
+ <div className="p-4 border-t border-neutral-200 flex gap-3">
+ <button
+ onClick={() => setShowCustomerModal(false)}
+ className="flex-1 py-3 bg-neutral-200 text-neutral-700 rounded-xl font-semibold hover:bg-neutral-300 transition-all"
+ >
+ Bekor qilish
+ </button>
+ <button
+ onClick={handleConfirmSend}
+ disabled={sending}
+ className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+ >
+ {sending ? (
+ <div className="spinner" />
+ ) : (
+ <>
+ <CheckCircle className="w-5 h-5" />
+ OK
+ </>
+ )}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+ 
+ {/* Archive Modal */}
+ {showArchive && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowArchive(false)} />
+ <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+ {/* Header */}
+ <div className="p-6 bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="w-12 h-12 bg-neutral-500 rounded-xl flex items-center justify-center shadow-lg">
+ <Package className="w-6 h-6 text-white" />
+ </div>
+ <div>
+ <h3 className="text-xl font-bold text-neutral-900">Arxiv</h3>
+ <p className="text-sm text-neutral-600">{archivedReceipts.length} ta saqlangan xarid</p>
+ </div>
+ </div>
+ <button
+ onClick={() => setShowArchive(false)}
+ className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 transition-colors"
+ >
+ <X className="w-6 h-6 text-neutral-500" />
+ </button>
+ </div>
+ </div>
+ 
+ {/* Content */}
+ <div className="flex-1 overflow-auto p-4">
+ {archivedReceipts.length === 0 ? (
+ <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
+ <div className="w-20 h-20 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4">
+ <Package className="w-10 h-10 opacity-50" />
+ </div>
+ <p className="text-lg font-medium">Arxiv bo'sh</p>
+ <p className="text-sm mt-1 text-center">Chala qolgan xaridlarni bu yerda saqlang</p>
  </div>
  ) : (
- <div className="text-center text-surface-500 py-2">
- <CheckCircle className="w-6 h-6 text-warning-500 mx-auto mb-2" />
- <p>Kassir javobini kutmoqda...</p>
+ <div className="space-y-3">
+ {archivedReceipts.map((receipt: any) => {
+ const isExpanded = expandedArchiveId === receipt._id;
+ const customerName = receipt.customer?.name || 'Oddiy mijoz';
+ const isPending = receipt.status === 'pending';
+ 
+ return (
+ <div 
+ key={receipt._id} 
+ className={`bg-white border-2 rounded-2xl overflow-hidden transition-all hover:shadow-md ${
+ isPending 
+ ? 'border-red-300 hover:border-red-400' 
+ : 'border-neutral-200 hover:border-blue-400'
+ }`}
+ >
+ {/* Main Card - Clickable */}
+ <div
+ onClick={() => handleLoadFromArchive(receipt)}
+ className={`p-4 cursor-pointer transition-all ${
+ isPending ? 'hover:bg-red-50' : 'hover:bg-blue-50'
+ }`}
+ >
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3 flex-1 min-w-0">
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+ isPending ? 'bg-red-100' : 'bg-blue-100'
+ }`}>
+ <ShoppingCart className={`w-5 h-5 ${isPending ? 'text-red-600' : 'text-blue-600'}`} />
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center gap-2">
+ <p className="font-bold text-neutral-900 truncate">{customerName}</p>
+ {isPending && (
+ <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full whitespace-nowrap">
+ Kassada
+ </span>
+ )}
+ </div>
+ <p className="text-xs text-neutral-500">
+ {receipt.items.length} ta mahsulot • {formatNumber(receipt.total)} so'm
+ </p>
+ </div>
+ </div>
+ 
+ {/* Chevron Button */}
+ <button
+ onClick={(e) => {
+ e.stopPropagation();
+ setExpandedArchiveId(isExpanded ? null : receipt._id);
+ }}
+ className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ml-2 ${
+ isPending ? 'hover:bg-red-100' : 'hover:bg-blue-100'
+ }`}
+ >
+ <svg 
+ className={`w-5 h-5 text-neutral-600 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+ fill="none" 
+ stroke="currentColor" 
+ viewBox="0 0 24 24"
+ >
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+ </svg>
+ </button>
+ </div>
+ </div>
+ 
+ {/* Expanded Details */}
+ {isExpanded && (
+ <div className={`px-4 pb-4 pt-2 border-t ${
+ isPending ? 'bg-red-50 border-red-200' : 'bg-neutral-50 border-neutral-200'
+ }`}>
+ <div className="space-y-2">
+ <div className="flex items-center justify-between text-xs text-neutral-500 mb-3">
+ <span>Sana: {new Date(receipt.createdAt).toLocaleString('uz-UZ', {
+ day: '2-digit',
+ month: '2-digit',
+ year: 'numeric',
+ hour: '2-digit',
+ minute: '2-digit'
+ })}</span>
+ {receipt.customer?.phone && (
+ <span>{receipt.customer.phone}</span>
+ )}
+ </div>
+ 
+ {receipt.items.map((item: any, idx: number) => (
+ <div key={idx} className="flex items-center justify-between text-sm bg-white p-2 rounded-lg">
+ <span className="font-medium text-neutral-900 flex-1">{item.name}</span>
+ <span className="text-neutral-600 ml-2">{item.quantity} × {formatNumber(item.price)}</span>
+ <span className="font-bold text-neutral-900 ml-3 min-w-[80px] text-right">
+ {formatNumber(item.price * item.quantity)}
+ </span>
+ </div>
+ ))}
+ 
+ <div className="flex items-center justify-between pt-2 mt-2 border-t border-neutral-200">
+ <span className="font-bold text-neutral-900">Jami:</span>
+ <span className="text-xl font-black text-neutral-900">
+ {formatNumber(receipt.total)} <span className="text-sm font-normal">so'm</span>
+ </span>
+ </div>
+ </div>
  </div>
  )}
  </div>
+ );
+ })}
+ </div>
  )}
  </div>
+ 
+ <div className="p-4 border-t border-neutral-200 bg-neutral-50">
+ <p className="text-xs text-neutral-500 text-center">
+ 💡 Xaridni davom ettirish uchun card'ni bosing
+ </p>
+ </div>
+ </div>
+ </div>
+ )}
  </div>
  );
 }

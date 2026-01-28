@@ -18,10 +18,15 @@ interface WorkerReceipt {
  _id: string;
  items: WorkerItem[];
  total: number;
- status: 'draft' | 'pending' | 'approved' | 'completed';
+ status: 'draft' | 'pending' | 'approved' | 'completed' | 'archived';
  createdBy: {
  _id: string;
  name: string;
+ };
+ customer?: {
+ _id: string;
+ name: string;
+ phone: string;
  };
  createdAt: string;
 }
@@ -58,6 +63,7 @@ export default function StaffReceipts() {
  setWorkers(uniqueHelpers);
  
  // Remove duplicate receipts by _id (defensive filtering)
+ // Include archived receipts as well
  const uniqueReceipts = receiptsRes.data.filter((r: WorkerReceipt, index: number, self: WorkerReceipt[]) => 
  index === self.findIndex((t) => t._id === r._id)
  );
@@ -81,7 +87,11 @@ export default function StaffReceipts() {
  }, [fetchData]);
 
  const getWorkerReceipts = (workerId: string) => {
- const filtered = receipts.filter(r => r.createdBy?._id === workerId && (r.status === 'pending' || r.status === 'draft'));
+ // Return all receipts for this worker (each receipt is a separate purchase)
+ const filtered = receipts.filter(r => 
+ r.createdBy?._id === workerId && 
+ (r.status === 'pending' || r.status === 'draft' || r.status === 'archived')
+ );
  // Remove duplicates by _id (defensive)
  const unique = filtered.filter((r, index, self) => 
  index === self.findIndex(t => t._id === r._id)
@@ -206,91 +216,71 @@ export default function StaffReceipts() {
  </div>
  ) : (
  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
- {displayWorkers.map((worker, index) => {
- const pendingReceipts = getWorkerReceipts(worker._id);
+ {displayWorkers.flatMap((worker, workerIndex) => {
+ const workerReceipts = getWorkerReceipts(worker._id);
  const readyReceipts = getReadyReceipts(worker._id);
- const isReady = readyReceipts.length > 0;
- const hasDraft = pendingReceipts.some(r => r.status === 'draft');
- const hasPending = pendingReceipts.some(r => r.status === 'pending');
  
- // Собираем все товары и группируем по коду
- // ВАЖНО: Используем только pending и ready, без дубликатов
- const allReceipts = [...pendingReceipts, ...readyReceipts];
- // Убираем дубликаты чеков по _id
- const uniqueReceipts = allReceipts.filter((receipt, index, self) =>
- index === self.findIndex(r => r._id === receipt._id)
- );
- 
- console.log(`👤 Worker ${worker.name}:`, {
- pendingCount: pendingReceipts.length,
- readyCount: readyReceipts.length,
- allCount: allReceipts.length,
- uniqueCount: uniqueReceipts.length,
- receiptIds: uniqueReceipts.map(r => r._id)
- });
- 
- const rawItems = uniqueReceipts.flatMap(r => 
- r.items.map((item, idx) => ({ ...item, receiptId: r._id, status: r.status, itemIndex: idx }))
- );
- 
- // Группируем товары по коду, суммируя количество (для отображения общего количества)
- const groupedItemsMap = new Map<string, typeof rawItems[0]>();
- rawItems.forEach(item => {
- const existing = groupedItemsMap.get(item.code);
- if (existing) {
- existing.quantity += item.quantity;
- } else {
- groupedItemsMap.set(item.code, { ...item });
+ // If worker has no receipts, skip
+ if (workerReceipts.length === 0 && readyReceipts.length === 0) {
+ return [];
  }
- });
- // allItems не используется, но оставляем для будущего использования
- // const allItems = Array.from(groupedItemsMap.values());
  
- // Для редактирования используем rawItems (не группированные)
- const displayItems = rawItems;
+ // Combine all receipts
+ const allReceipts = [...workerReceipts, ...readyReceipts];
  
- // Считаем total
+ // Show each receipt as a separate card
+ return allReceipts.map((receipt) => {
+ const isReady = receipt.status === 'approved';
+ const isDraft = receipt.status === 'draft';
+ const isPending = receipt.status === 'pending';
+ const isArchived = receipt.status === 'archived';
+ const customerName = receipt.customer?.name || 'Oddiy mijoz';
+ 
+ const displayItems = receipt.items.map((item, idx) => ({
+ ...item,
+ receiptId: receipt._id,
+ itemIndex: idx
+ }));
+ 
  const total = displayItems.reduce((sum, item) => {
  return sum + item.price * item.quantity;
  }, 0);
 
- if (displayItems.length === 0 && !isReady) {
- // Показываем пустую карточку
- }
-
  return (
  <div
- key={worker._id}
+ key={receipt._id}
  className={`rounded-2xl border-2 overflow-hidden transition-all bg-white shadow-sm ${
  isReady 
  ? 'border-success-500 shadow-lg shadow-success-500/10' 
- : hasPending
+ : isArchived
+ ? 'border-blue-500 shadow-lg shadow-blue-500/10'
+ : isPending
  ? 'border-warning-500 shadow-lg shadow-warning-500/10'
  : 'border-surface-200'
  }`}
  >
  {/* Header */}
  <div className={`px-5 py-4 ${
- isReady ? 'bg-success-500' : hasPending ? 'bg-warning-500' : 'bg-surface-100'
+ isReady ? 'bg-success-500' : isArchived ? 'bg-blue-500' : isPending ? 'bg-warning-500' : 'bg-surface-100'
  }`}>
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
- isReady ? 'bg-success-400' : hasPending ? 'bg-warning-400' : 'bg-white'
+ isReady ? 'bg-success-400' : isArchived ? 'bg-blue-400' : isPending ? 'bg-warning-400' : 'bg-white'
  }`}>
- <User className={`w-6 h-6 ${isReady || hasPending ? 'text-white' : 'text-surface-600'}`} />
+ <User className={`w-6 h-6 ${isReady || isPending || isArchived ? 'text-white' : 'text-surface-600'}`} />
  </div>
  <div>
- <h3 className={`font-semibold text-lg ${isReady || hasPending ? 'text-white' : 'text-surface-900'}`}>
- {worker.name || `Xodim ${index + 1}`}
+ <h3 className={`font-semibold text-lg ${isReady || isPending || isArchived ? 'text-white' : 'text-surface-900'}`}>
+ {worker.name || `Xodim ${workerIndex + 1}`}
  </h3>
- <p className={`text-sm ${isReady || hasPending ? 'text-white/80' : 'text-surface-500'}`}>
- {isReady ? t('Tayyor') : hasPending ? t('Yuborilgan') : hasDraft ? t('Yig\'moqda...') : worker.role}
+ <p className={`text-sm ${isReady || isPending || isArchived ? 'text-white/80' : 'text-surface-500'}`}>
+ {customerName}
  </p>
  </div>
  </div>
  {isReady && <CheckCircle className="w-7 h-7 text-white" />}
- {hasDraft && !hasPending && !isReady && (
+ {isDraft && !isPending && !isReady && !isArchived && (
  <div className="w-3 h-3 bg-brand-500 rounded-full animate-pulse" />
  )}
  </div>
@@ -304,7 +294,14 @@ export default function StaffReceipts() {
  </p>
  </div>
  )}
- {hasPending && !isReady && (
+ {isArchived && !isReady && (
+ <div className="bg-blue-50 border-b border-blue-200 px-5 py-3">
+ <p className="text-blue-700 text-sm font-medium text-center">
+ 📦 {t("Arxivda - kassaga yuklash mumkin")}
+ </p>
+ </div>
+ )}
+ {isPending && !isReady && !isArchived && (
  <div className="bg-warning-50 border-b border-warning-200 px-5 py-3">
  <p className="text-warning-700 text-sm font-medium text-center">
  ⏳ {t("Tasdiqlash kutilmoqda")}
@@ -313,7 +310,7 @@ export default function StaffReceipts() {
  )}
 
  {/* Items list */}
- <div className="p-4 min-h-[350px] max-h-[400px] overflow-auto">
+ <div className="p-4 min-h-[200px] max-h-[400px] overflow-auto">
  {displayItems.length === 0 ? (
  <div className="text-center py-12 text-surface-400">
  <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -442,7 +439,8 @@ export default function StaffReceipts() {
  {/* Footer */}
  <div className={`px-5 py-4 border-t ${
  isReady ? 'border-success-200 bg-success-50' : 
- hasPending ? 'border-warning-200 bg-warning-50' : 
+ isPending ? 'border-warning-200 bg-warning-50' : 
+ isArchived ? 'border-blue-200 bg-blue-50' :
  'border-surface-200 bg-surface-50'
  }`}>
  {showPrices && (
@@ -454,63 +452,28 @@ export default function StaffReceipts() {
  </div>
  )}
  
- {(isReady || hasPending) && (
+ {(isReady || isPending || isArchived) && (
  <button
- onClick={() => {
- // Собираем все чеки работника (pending и approved)
- const allReceipts = [...pendingReceipts, ...readyReceipts];
- 
- // Убираем дубликаты чеков по _id
- const uniqueReceipts = allReceipts.filter((receipt, index, self) =>
- index === self.findIndex(r => r._id === receipt._id)
- );
- 
- console.log('🔍 DEBUG - Unique receipts:', {
- count: uniqueReceipts.length,
- ids: uniqueReceipts.map(r => r._id),
- receipts: uniqueReceipts
- });
- 
- // Собираем все товары из уникальных чеков
- const rawItems = uniqueReceipts.flatMap(receipt => 
- receipt.items.map(item => ({
+ onClick={async () => {
+ // Load only this receipt to kassa
+ const kassaItems = receipt.items.map(item => ({
  _id: item.product,
  name: item.name,
  code: item.code,
  price: item.price,
  cartQuantity: item.quantity,
  quantity: 0
- }))
- );
+ }));
  
- console.log('🔍 DEBUG - Raw items before grouping:', {
- count: rawItems.length,
- items: rawItems
+ console.log('📦 Loading single receipt to kassa:', {
+ receiptId: receipt._id,
+ itemsCount: kassaItems.length,
+ items: kassaItems
  });
  
- // Группируем по product ID, суммируя количество
- const groupedMap = new Map<string, typeof rawItems[0]>();
- rawItems.forEach(item => {
- const existing = groupedMap.get(item._id);
- if (existing) {
- console.log(`🔄 Merging duplicate: ${item.name} (${existing.cartQuantity} + ${item.cartQuantity})`);
- existing.cartQuantity += item.cartQuantity;
- } else {
- groupedMap.set(item._id, { ...item });
- }
- });
- const allKassaItems = Array.from(groupedMap.values());
- 
- console.log('📦 Loading to kassa:', {
- receiptsCount: uniqueReceipts.length,
- rawItemsCount: rawItems.length,
- groupedItemsCount: allKassaItems.length,
- items: allKassaItems
- });
- 
- if (allKassaItems.length > 0) {
- localStorage.setItem('kassaItems', JSON.stringify(allKassaItems));
- localStorage.setItem('kassaReceiptId', uniqueReceipts.map(r => r._id).join(','));
+ if (kassaItems.length > 0) {
+ localStorage.setItem('kassaItems', JSON.stringify(kassaItems));
+ localStorage.setItem('kassaReceiptId', receipt._id);
  
  // Dispatch custom event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));
@@ -519,7 +482,7 @@ export default function StaffReceipts() {
  }
  }}
  className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors ${
- isReady ? 'bg-success-500 hover:bg-success-600' : 'bg-warning-500 hover:bg-warning-600'
+ isReady ? 'bg-success-500 hover:bg-success-600' : isArchived ? 'bg-blue-500 hover:bg-blue-600' : 'bg-warning-500 hover:bg-warning-600'
  }`}
  >
  <Download className="w-5 h-5" />
@@ -529,6 +492,7 @@ export default function StaffReceipts() {
  </div>
  </div>
  );
+ });
  })}
 
  {workers.length === 0 && !loading && (

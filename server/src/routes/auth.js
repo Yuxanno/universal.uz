@@ -18,7 +18,9 @@ router.post('/login', async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(400).json({ message: 'Telefon raqam yoki parol noto\'g\'ri' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+    // Helper users get 5 year token, others get 7 days
+    const expiresIn = user.role === 'helper' ? '5y' : '7d';
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn });
     res.json({ token, user: { _id: user._id, name: user.name, phone: user.phone || user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });

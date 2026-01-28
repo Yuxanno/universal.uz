@@ -35,32 +35,24 @@ router.get('/', auth, async (req, res) => {
 // Get or create draft receipt for helper
 router.get('/draft', auth, authorize('helper'), async (req, res) => {
   try {
-    // First check for pending receipt (already submitted, may be edited by cashier)
-    let receipt = await Receipt.findOne({ 
-      createdBy: req.user._id, 
-      status: 'pending' 
-    });
+    const { draftId } = req.query;
     
-    // If no pending, check for draft
-    if (!receipt) {
-      receipt = await Receipt.findOne({ 
+    // If draftId provided, try to find that specific draft
+    if (draftId) {
+      const receipt = await Receipt.findOne({ 
+        _id: draftId,
         createdBy: req.user._id, 
         status: 'draft' 
       });
+      
+      if (receipt) {
+        return res.json(receipt);
+      }
     }
     
-    // If no draft either, create new one
-    if (!receipt) {
-      receipt = new Receipt({
-        items: [],
-        total: 0,
-        status: 'draft',
-        createdBy: req.user._id
-      });
-      await receipt.save();
-    }
-    
-    res.json(receipt);
+    // Don't create new draft automatically - let frontend create it when needed
+    // Return null to indicate no draft exists
+    res.json(null);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -91,13 +83,20 @@ router.get('/draft/check', auth, authorize('helper'), async (req, res) => {
 // Update draft receipt (add/remove items) - only for draft status
 router.put('/draft', auth, authorize('helper'), async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, customer, draftId } = req.body;
     
-    let draft = await Receipt.findOne({ 
-      createdBy: req.user._id, 
-      status: 'draft' 
-    });
+    let draft;
     
+    // If draftId provided, find that specific draft
+    if (draftId) {
+      draft = await Receipt.findOne({ 
+        _id: draftId,
+        createdBy: req.user._id, 
+        status: 'draft' 
+      });
+    }
+    
+    // If no draft found, create new one
     if (!draft) {
       draft = new Receipt({
         items: [],
@@ -109,6 +108,9 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
     
     draft.items = items;
     draft.total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (customer !== undefined) {
+      draft.customer = customer;
+    }
     await draft.save();
     
     res.json(draft);
@@ -118,12 +120,21 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
 });
 
 // Submit draft (change status to pending)
+// Submit draft (send to cashier or save to archive)
 router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
   try {
-    const draft = await Receipt.findOne({ 
-      createdBy: req.user._id, 
-      status: 'draft' 
-    });
+    const { sendToArchive, draftId } = req.body;
+    
+    let draft;
+    
+    // If draftId provided, find that specific draft
+    if (draftId) {
+      draft = await Receipt.findOne({ 
+        _id: draftId,
+        createdBy: req.user._id, 
+        status: 'draft' 
+      });
+    }
     
     if (!draft) {
       return res.status(404).json({ message: 'Draft topilmadi' });
@@ -133,7 +144,14 @@ router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
       return res.status(400).json({ message: 'Savat bo\'sh' });
     }
     
-    draft.status = 'pending';
+    // If sendToArchive is true, save to archive only (helper's private archive)
+    // If false, send to cashier (pending)
+    if (sendToArchive) {
+      draft.status = 'archived';
+    } else {
+      draft.status = 'pending'; // Send to cashier
+    }
+    
     await draft.save();
     
     res.json(draft);
@@ -145,11 +163,24 @@ router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
 router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { status } = req.query;
-    // Include draft, pending, approved statuses for real-time view
-    const query = { status: { $in: ['draft', 'pending', 'approved'] } };
+    // Show all helper receipts: draft, pending, approved, and archived
+    const query = { status: { $in: ['draft', 'pending', 'approved', 'archived'] } };
     if (status && status !== 'all') query.status = status;
     
     const receipts = await Receipt.find(query)
+      .populate('createdBy', 'name role')
+      .populate('customer', 'name phone')
+      .sort({ createdAt: -1 });
+    res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Get archived receipts
+router.get('/archived', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipts = await Receipt.find({ status: 'archived' })
       .populate('createdBy', 'name role')
       .sort({ createdAt: -1 });
     res.json(receipts);
@@ -158,12 +189,27 @@ router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   }
 });
 
-// Load worker receipt to kassa (complete it)
+// Get helper's own archived receipts (both archived and pending)
+router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
+  try {
+    const receipts = await Receipt.find({ 
+      status: { $in: ['archived', 'pending'] },
+      createdBy: req.user._id 
+    })
+    .populate('customer', 'name phone')
+    .sort({ createdAt: -1 });
+    res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Load worker receipt to kassa (complete it and remove from archive)
 router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
     if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
-    if (receipt.status !== 'pending' && receipt.status !== 'approved' && receipt.status !== 'draft') {
+    if (receipt.status !== 'pending' && receipt.status !== 'approved') {
       return res.status(400).json({ message: 'Bu chek allaqachon yuklangan' });
     }
 
@@ -181,12 +227,21 @@ router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req
     }
 
     // Update stock and soldCount
+    const WarehouseInventory = require('../models/WarehouseInventory');
     for (const item of receipt.items) {
       await Product.findByIdAndUpdate(item.product, { 
         $inc: { quantity: -item.quantity, soldCount: item.quantity } 
       });
+      
+      // Update warehouse inventory
+      const inventory = await WarehouseInventory.findOne({ product: item.product });
+      if (inventory) {
+        inventory.quantity -= item.quantity;
+        await inventory.save();
+      }
     }
 
+    // Mark as completed - this will remove it from archive automatically
     receipt.status = 'completed';
     receipt.processedBy = req.user._id;
     await receipt.save();
@@ -600,15 +655,89 @@ router.put('/:id/reject', auth, authorize('admin', 'cashier'), async (req, res) 
   }
 });
 
-// Delete receipt (for worker receipts after loading to kassa)
-router.delete('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
+// Approve archived receipt (move from archive to completed)
+router.put('/:id/approve-archived', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    if (receipt.status !== 'archived') {
+      return res.status(400).json({ message: 'Faqat arxivlangan cheklar tasdiqlanadi' });
+    }
+
+    // Check stock availability
+    for (const item of receipt.items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return res.status(400).json({ message: `Tovar topilmadi: ${item.name}` });
+      }
+      if (product.quantity < item.quantity) {
+        return res.status(400).json({ 
+          message: `Yetarli tovar yo'q: ${item.name}. Mavjud: ${product.quantity}, So'ralgan: ${item.quantity}` 
+        });
+      }
+    }
+
+    // Update stock
+    const WarehouseInventory = require('../models/WarehouseInventory');
+    for (const item of receipt.items) {
+      await Product.findByIdAndUpdate(item.product, { $inc: { quantity: -item.quantity } });
+      
+      const inventory = await WarehouseInventory.findOne({ product: item.product });
+      if (inventory) {
+        inventory.quantity -= item.quantity;
+        await inventory.save();
+      }
+    }
+
+    receipt.status = 'completed';
+    receipt.processedBy = req.user._id;
+    await receipt.save();
+    
+    res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Archive receipt (move to archive, worker can continue working)
+router.put('/:id/archive', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id);
     if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
     
-    // Only allow deleting draft, pending, or approved receipts (not completed)
-    if (receipt.status === 'completed') {
-      return res.status(400).json({ message: 'Yakunlangan chekni o\'chirish mumkin emas' });
+    // Only allow archiving pending or approved receipts
+    if (receipt.status !== 'pending' && receipt.status !== 'approved') {
+      return res.status(400).json({ message: 'Faqat kutilayotgan yoki tasdiqlangan cheklar arxivlanadi' });
+    }
+
+    receipt.status = 'archived';
+    await receipt.save();
+    
+    res.json({ message: 'Chek arxivlandi', receipt });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Delete receipt (for worker receipts after loading to kassa)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Chek topilmadi' });
+    
+    // Helpers can only delete their own archived receipts
+    if (req.user.role === 'helper') {
+      if (receipt.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Ruxsat yo\'q' });
+      }
+      if (receipt.status !== 'archived') {
+        return res.status(400).json({ message: 'Faqat arxivlangan cheklar o\'chiriladi' });
+      }
+    } else {
+      // Admin/cashier can delete draft, pending, approved, or archived (not completed)
+      if (receipt.status === 'completed') {
+        return res.status(400).json({ message: 'Yakunlangan chekni o\'chirish mumkin emas' });
+      }
     }
 
     await Receipt.findByIdAndDelete(req.params.id);
