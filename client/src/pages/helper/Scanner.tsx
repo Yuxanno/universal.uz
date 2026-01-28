@@ -171,14 +171,7 @@ export default function HelperScanner() {
  };
  },
  aspectRatio: 1.0,
- disableFlip: false, // Allow flipping for better detection
- videoConstraints: {
- facingMode: 'environment',
- advanced: [
- { focusMode: 'continuous' }, // Continuous autofocus
- { zoom: 1.0 }
- ]
- }
+ disableFlip: false // Allow flipping for better detection
  },
  (decodedText) => {
  console.log('✅ QR Code scanned:', decodedText);
@@ -471,7 +464,7 @@ export default function HelperScanner() {
  
  // Update status to draft so it shows as "real-time" in kassa
  await api.put('/receipts/draft', {
- items: items.map(item => ({
+ items: items.map((item: any) => ({
  product: item._id,
  name: item.name,
  code: item.code,
