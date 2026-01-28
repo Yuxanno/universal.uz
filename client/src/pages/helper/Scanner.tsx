@@ -565,7 +565,7 @@ export default function HelperScanner() {
 
  {/* QR Scanner - Fullscreen Modal */}
  {scanning && (
- <div className="fixed inset-0 z-50 bg-black flex flex-col">
+ <div className="fixed inset-0 z-50 bg-black flex flex-col m-0 p-0" style={{ marginTop: 0, paddingTop: 0 }}>
  {/* Header */}
  <div className="relative z-20 bg-gradient-to-b from-black via-black/80 to-transparent">
  <div className="safe-top px-4 py-4 flex items-center justify-between">
@@ -587,18 +587,19 @@ export default function HelperScanner() {
  </div>
  </div>
 
- {/* Scanner Container */}
- <div className="flex-1 relative flex items-center justify-center overflow-hidden">
- {/* Video Background */}
- <div id="qr-reader" className="absolute inset-0 w-full h-full object-cover" />
+ {/* Scanner Container - Full Screen */}
+ <div className="flex-1 relative">
+ {/* Video container */}
+ <div id="qr-reader" />
  
- {/* Scanning Frame Overlay */}
- <div className="relative z-10 w-72 h-72 sm:w-80 sm:h-80">
+ {/* Scanning Frame Overlay - Centered */}
+ <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+ <div className="relative w-64 h-64 sm:w-72 sm:h-72">
  {/* Corner Borders */}
- <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-white rounded-tl-2xl" />
- <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-white rounded-tr-2xl" />
- <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-white rounded-bl-2xl" />
- <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-white rounded-br-2xl" />
+ <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white rounded-tl-xl" />
+ <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white rounded-tr-xl" />
+ <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white rounded-bl-xl" />
+ <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-xl" />
  
  {/* Scanning Line Animation */}
  <div className="absolute inset-0 overflow-hidden">
@@ -608,9 +609,7 @@ export default function HelperScanner() {
  {/* Center Dot */}
  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-pulse" />
  </div>
- 
- {/* Dark Overlay (outside scanning area) */}
- <div className="absolute inset-0 bg-black/40" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, calc(50% - 10rem) calc(50% - 10rem), calc(50% - 10rem) calc(50% + 10rem), calc(50% + 10rem) calc(50% + 10rem), calc(50% + 10rem) calc(50% - 10rem), calc(50% - 10rem) calc(50% - 10rem))' }} />
+ </div>
  </div>
 
  {/* Footer Instructions */}
