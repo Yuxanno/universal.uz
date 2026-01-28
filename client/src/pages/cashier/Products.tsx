@@ -23,7 +23,11 @@ const ProductRow = memo(({
   uz,
   formatNumber
 }: any) => (
-  <div className="grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors" style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 90px 140px'}}>
+  <div 
+    id={`product-${product._id}`}
+    className="grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors" 
+    style={{gridTemplateColumns: 'auto 80px 1fr 110px 110px 110px 90px 140px'}}
+  >
     <div>
       {getProductImage(product) ? (
         <img src={getProductImage(product)!} alt={product.name} className="w-10 h-10 rounded-lg object-cover" loading="lazy" />
@@ -87,7 +91,7 @@ const ProductCard = memo(({
   uz,
   formatNumber
 }: any) => (
-  <div className="p-4">
+  <div id={`product-${product._id}`} className="p-4">
     <div className="flex items-start gap-3 mb-3">
       {getProductImage(product) ? (
         <img src={getProductImage(product)!} alt={product.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" />
@@ -158,6 +162,7 @@ export default function Products() {
     return saved ? JSON.parse(saved) : true;
   });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [scrollToProductId, setScrollToProductId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [loading, setLoading] = useState(true);
@@ -347,28 +352,44 @@ export default function Products() {
       return;
     }
     
+    // Helper function to parse formatted numbers (removes spaces)
+    const parseFormattedNumber = (value: string | number): number => {
+      if (typeof value === 'number') return value;
+      const cleaned = String(value).replace(/\s/g, '');
+      return cleaned ? Number(cleaned) : 0;
+    };
+    
     try {
       const data = {
         code: trimmedCode,
         name: trimmedName,
-        costPrice: Number(formData.costPrice),
-        price: Number(formData.wholesalePrice),
-        dona_narx: formData.donaNarx ? Number(formData.donaNarx) : undefined,
-        quantity: Number(formData.quantity),
+        costPrice: parseFormattedNumber(formData.costPrice),
+        price: parseFormattedNumber(formData.wholesalePrice),
+        dona_narx: formData.donaNarx ? parseFormattedNumber(formData.donaNarx) : undefined,
+        quantity: parseFormattedNumber(formData.quantity),
         warehouse: mainWarehouse._id,
         images
       };
+      
+      let productId = editingProduct?._id;
       
       if (editingProduct) {
         await api.put(`/products/${editingProduct._id}`, data);
         showAlert('Mahsulot muvaffaqiyatli yangilandi', 'Muvaffaqiyat', 'success');
       } else {
-        await api.post('/products', data);
+        const res = await api.post('/products', data);
+        productId = res.data._id;
         showAlert('Mahsulot muvaffaqiyatli qo\'shildi', 'Muvaffaqiyat', 'success');
       }
       
-      fetchProducts();
+      // Wait for products to load, then scroll to the edited/added product
+      await fetchProducts();
       closeModal();
+      
+      if (productId) {
+        // Products are now loaded, set scroll target immediately
+        setScrollToProductId(productId);
+      }
     } catch (err: any) {
       console.error('Submit error:', err);
       const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';
@@ -647,6 +668,37 @@ export default function Products() {
   const filteredProducts = useMemo(() => {
     return searchProducts(products, debouncedSearchQuery);
   }, [products, debouncedSearchQuery]);
+
+  // Scroll to product after edit/add
+  useEffect(() => {
+    if (scrollToProductId && filteredProducts.length > 0) {
+      const element = document.getElementById(`product-${scrollToProductId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Highlight the product briefly
+        element.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+        setTimeout(() => {
+          element.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+          setScrollToProductId(null);
+        }, 2000);
+      } else {
+        // If element not found, try again after a short delay
+        setTimeout(() => {
+          const retryElement = document.getElementById(`product-${scrollToProductId}`);
+          if (retryElement) {
+            retryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            retryElement.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+            setTimeout(() => {
+              retryElement.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+              setScrollToProductId(null);
+            }, 2000);
+          } else {
+            setScrollToProductId(null);
+          }
+        }, 500);
+      }
+    }
+  }, [scrollToProductId, filteredProducts]);
 
   const getProductImage = useCallback((product: any) => {
     if (product.images && product.images.length > 0) {

@@ -32,6 +32,7 @@ const ProductRow = memo(({
 }: any) => {
  return (
  <div 
+ id={`product-${product._id}`}
  className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
  style={{gridTemplateColumns: selectionMode ? (isCashier ? 'auto auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto auto 80px 1fr 110px 110px 110px 110px 90px 140px') : (isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px')}}
  onClick={() => selectionMode && onToggleSelect(product._id)}
@@ -130,7 +131,7 @@ const ProductCard = memo(({
  isCashier
 }: any) => {
  return (
- <div className="p-4">
+ <div id={`product-${product._id}`} className="p-4">
  <div className="flex items-start gap-3 mb-3">
  {getProductImage(product) ? (
  <img 
@@ -225,6 +226,7 @@ export default function Products() {
  return saved ? JSON.parse(saved) : true; // Default: показывать цену
  });
  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+ const [scrollToProductId, setScrollToProductId] = useState<string | null>(null);
  const [searchQuery, setSearchQuery] = useState('');
  const debouncedSearchQuery = useDebounce(searchQuery, 300);
  const [stockFilter, setStockFilter] = useState('all');
@@ -533,32 +535,45 @@ export default function Products() {
  };
  }
  
+ // Helper function to parse formatted numbers (removes spaces)
+ const parseFormattedNumber = (value: string | number): number => {
+ if (typeof value === 'number') return value;
+ const cleaned = String(value).replace(/\s/g, '');
+ return cleaned ? Number(cleaned) : 0;
+ };
+ 
  try {
  const data = {
  code: trimmedCode,
  name: trimmedName,
  costPrice: finalCostPrice,
- price: Number(formData.wholesalePrice),
- dona_narx: formData.donaNarx ? Number(formData.donaNarx) : undefined,
+ price: parseFormattedNumber(formData.wholesalePrice),
+ dona_narx: formData.donaNarx ? parseFormattedNumber(formData.donaNarx) : undefined,
  quantity: finalQuantity,
  warehouse: mainWarehouse._id,
  images,
  packageInfo
  };
  
- console.log('📤 Sending data to backend:', data);
- console.log('📤 dona_narx value:', formData.donaNarx, '→', data.dona_narx);
+ let productId = editingProduct?._id;
  
  if (editingProduct) {
  await api.put(`/products/${editingProduct._id}`, data);
  showAlert('Mahsulot muvaffaqiyatli yangilandi', 'Muvaffaqiyat', 'success');
  } else {
- await api.post('/products', data);
+ const res = await api.post('/products', data);
+ productId = res.data._id;
  showAlert('Mahsulot muvaffaqiyatli qo\'shildi', 'Muvaffaqiyat', 'success');
  }
  
- fetchProducts();
+ // Wait for products to load, then scroll to the edited/added product
+ await fetchProducts();
  closeModal();
+ 
+ if (productId) {
+ // Products are now loaded, set scroll target immediately
+ setScrollToProductId(productId);
+ }
  } catch (err: any) {
  console.error('Submit error:', err);
  
@@ -623,9 +638,6 @@ export default function Products() {
  setShowQuantityModal(false);
  setShowTransferModal(false);
  
- console.log('📝 Opening edit modal for product:', product);
- console.log('📝 dona_narx from product:', (product as any).dona_narx);
- 
  // Open edit modal
  setEditingProduct(product);
  setFormData({
@@ -636,8 +648,6 @@ export default function Products() {
  donaNarx: String((product as any).dona_narx || ''),
  quantity: String(product.quantity)
  });
- 
- console.log('📝 formData.donaNarx set to:', String((product as any).dona_narx || ''));
  
  setImages((product as any).images || []);
  setPackageData({ packageCount: '', unitsPerPackage: '', totalCost: '' });
@@ -1247,6 +1257,64 @@ ${allLabelsHtml}
  
  return filtered;
  }, [products, debouncedSearchQuery, stockFilter]);
+
+ // Scroll to product after edit/add
+ useEffect(() => {
+ if (scrollToProductId && filteredProducts.length > 0) {
+ // Find the product index in filtered products
+ const productIndex = filteredProducts.findIndex(p => p._id === scrollToProductId);
+ 
+ if (productIndex !== -1) {
+ // Calculate which page the product is on
+ const productPage = Math.floor(productIndex / ITEMS_PER_PAGE) + 1;
+ 
+ // If product is on a different page, navigate to that page first
+ if (productPage !== currentPage) {
+ setCurrentPage(productPage);
+ // Wait for page change to render
+ setTimeout(() => {
+ const element = document.getElementById(`product-${scrollToProductId}`);
+ if (element) {
+ element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+ element.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+ setTimeout(() => {
+ element.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+ setScrollToProductId(null);
+ }, 2000);
+ }
+ }, 300);
+ } else {
+ // Product is on current page, scroll immediately
+ const element = document.getElementById(`product-${scrollToProductId}`);
+ if (element) {
+ element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+ element.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+ setTimeout(() => {
+ element.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+ setScrollToProductId(null);
+ }, 2000);
+ } else {
+ // Retry after a short delay
+ setTimeout(() => {
+ const retryElement = document.getElementById(`product-${scrollToProductId}`);
+ if (retryElement) {
+ retryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+ retryElement.classList.add('bg-primary-50', 'dark:bg-primary-900/20');
+ setTimeout(() => {
+ retryElement.classList.remove('bg-primary-50', 'dark:bg-primary-900/20');
+ setScrollToProductId(null);
+ }, 2000);
+ } else {
+ setScrollToProductId(null);
+ }
+ }, 500);
+ }
+ }
+ } else {
+ setScrollToProductId(null);
+ }
+ }
+ }, [scrollToProductId, filteredProducts, currentPage]);
  
  // Paginated products for rendering
  const paginatedProducts = useMemo(() => {

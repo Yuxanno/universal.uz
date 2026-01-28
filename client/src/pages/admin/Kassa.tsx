@@ -1174,10 +1174,11 @@ ${itemsHtml}
  <div className="text-center border-b-2 border-dashed border-neutral-300 dark:border-neutral-600 pb-4 mb-4">
  <h2 className="text-2xl font-black tracking-widest text-neutral-900 dark:text-neutral-100 mb-1">UNIVERSAL</h2>
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Savdo markazi</p>
- <div className="text-[10px] leading-relaxed text-neutral-600 dark:text-neutral-400 space-y-0.5">
- <p>+99893 140-00-04 ASADBEK</p>
- <p>+99893 657-66-87 RAMAZON</p>
- <p>+99888 866-66-59 UYG'UNJON</p>
+ <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] leading-relaxed text-neutral-600 dark:text-neutral-400 text-left mx-auto" style={{ maxWidth: '200px' }}>
+ <div><strong className="font-bold">+99893 140-00-04</strong><br />ASADBEK</div>
+ <div><strong className="font-bold">+99893 657-66-87</strong><br />RAMAZON</div>
+ <div><strong className="font-bold">+99888 866-66-59</strong><br />UYG'UNJON</div>
+ <div><strong className="font-bold">+99850 779-22-03</strong><br />OPERATOR</div>
  </div>
  </div>
  
@@ -1201,9 +1202,8 @@ ${itemsHtml}
  </div>
  
  <div className="border-t-2 border-neutral-900 dark:border-neutral-100 pt-3 mb-3">
- <div className="flex justify-between items-center">
- <span className="font-black text-neutral-900 dark:text-neutral-100">JAMI:</span>
- <span className="text-xl font-black text-neutral-900 dark:text-neutral-100">{printReceipt.total.toLocaleString()} so'm</span>
+ <div className="text-center">
+ <span className="text-xl font-black text-neutral-900 dark:text-neutral-100">JAMI: {printReceipt.total.toLocaleString()} so'm</span>
  </div>
  </div>
  
