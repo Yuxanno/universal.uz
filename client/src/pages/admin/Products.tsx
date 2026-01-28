@@ -209,7 +209,6 @@ export default function Products() {
  const [products, setProducts] = useState<Product[]>([]);
  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
  const [mainWarehouse, setMainWarehouse] = useState<Warehouse | null>(null);
- const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
  const [showModal, setShowModal] = useState(false);
  const [showQRModal, setShowQRModal] = useState(false);
  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -248,7 +247,6 @@ export default function Products() {
  const [transferToWarehouse, setTransferToWarehouse] = useState('');
  const [transferQuantity, setTransferQuantity] = useState('');
  const [transferring, setTransferring] = useState(false);
- const [loadingCode, setLoadingCode] = useState(false);
  const fileInputRef = useRef<HTMLInputElement>(null);
  
  // Bulk selection state
@@ -948,16 +946,16 @@ export default function Products() {
  flex: 0 0 24mm;
  }
  .name { 
- font-size: 15pt; 
+ font-size: 11pt; 
  font-weight: bold; 
- margin-bottom: 1.5mm; 
+ margin-bottom: 1mm; 
  line-height: 1.1;
  color: #000;
  word-wrap: break-word;
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 13pt; 
+ font-size: 10pt; 
  color: #333;
  font-weight: 600;
  }
@@ -1133,16 +1131,16 @@ export default function Products() {
  flex: 0 0 24mm;
  }
  .name { 
- font-size: 15pt; 
+ font-size: 11pt; 
  font-weight: bold; 
- margin-bottom: 1.5mm; 
+ margin-bottom: 1mm; 
  line-height: 1.1;
  color: #000;
  word-wrap: break-word;
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 13pt; 
+ font-size: 10pt; 
  color: #333;
  font-weight: 600;
  }
