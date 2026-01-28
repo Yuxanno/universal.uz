@@ -63,9 +63,16 @@ export default function HelperScanner() {
  clearInterval(checkIntervalRef.current);
  }
  if (scannerRef.current) {
- scannerRef.current.stop().catch((err) => {
- console.log('Scanner cleanup error:', err);
+ try {
+ const state = scannerRef.current.getState();
+ if (state === 2) { // 2 = SCANNING state
+ scannerRef.current.stop().catch(() => {
+ // Ignore errors during cleanup
  });
+ }
+ } catch (err) {
+ // Ignore errors - scanner might already be stopped
+ }
  }
  if (syncTimeoutRef.current) {
  clearTimeout(syncTimeoutRef.current);
@@ -217,9 +224,12 @@ export default function HelperScanner() {
  const stopScanner = async () => {
  if (scannerRef.current) {
  try {
+ const state = scannerRef.current.getState();
+ if (state === 2) { // 2 = SCANNING state
  await scannerRef.current.stop();
+ }
  } catch (err) {
- console.log('Scanner already stopped');
+ // Ignore errors - scanner might already be stopped
  }
  scannerRef.current = null;
  }
@@ -887,7 +897,9 @@ export default function HelperScanner() {
  <div className="mt-4 pt-4 border-t border-surface-200">
  <div className="flex items-center justify-between mb-4">
  <span className="text-surface-500">Jami:</span>
- <span className="text-2xl font-bold text-surface-900">{formatNumber(total)} so'm</span>
+ <span className={`font-bold text-surface-900 ${
+ total > 9999999 ? 'text-base' : total > 999999 ? 'text-xl' : 'text-2xl'
+ }`}>{formatNumber(total)} so'm</span>
  </div>
  <div className="flex gap-2">
  <button 
