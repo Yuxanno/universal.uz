@@ -1041,9 +1041,9 @@ export default function Products() {
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 10pt; 
- color: #333;
- font-weight: 600;
+ font-size: 12pt; 
+ color: #000;
+ font-weight: 700;
  }
  .qr-container { 
  width: 24mm; 
@@ -1239,9 +1239,9 @@ export default function Products() {
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 10pt; 
- color: #333;
- font-weight: 600;
+ font-size: 12pt; 
+ color: #000;
+ font-weight: 700;
  }
  .qr-container { 
  width: 24mm; 

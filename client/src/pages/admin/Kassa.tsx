@@ -54,13 +54,11 @@ export default function Kassa() {
  
  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
  const [cart, setCart] = useState<CartItem[]>([]);
- const [inputValue, setInputValue] = useState('');
  const [showPayment, setShowPayment] = useState(false);
  const [showSearch, setShowSearch] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
  const debouncedSearchQuery = useDebounce(searchQuery, 300);
  const [searchResults, setSearchResults] = useState<Product[]>([]);
- const [isSearching, setIsSearching] = useState(false);
  const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
  const [isReturnMode, setIsReturnMode] = useState(false);
  const [showReturnSearch, setShowReturnSearch] = useState(false);
@@ -204,7 +202,6 @@ export default function Kassa() {
 
  // Debounced search with useEffect - limit results
  useEffect(() => {
- setIsSearching(true);
  if (debouncedSearchQuery.length > 0) {
  // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
  const results = searchProducts(displayedProducts, debouncedSearchQuery).slice(0, 50);
@@ -212,23 +209,12 @@ export default function Kassa() {
  } else {
  setSearchResults(displayedProducts.slice(0, 50)); // Show first 50
  }
- setIsSearching(false);
  }, [debouncedSearchQuery, displayedProducts]);
 
  // Memoize callbacks
  const handleCartItemClick = useCallback((itemId: string) => {
  setSelectedCartItemId(itemId);
  }, []);
-
- const addProductByCode = useCallback((code: string) => {
- const product = displayedProducts.find(p => p.code === code);
- if (product) {
- addToCart(product);
- setInputValue('');
- } else if (code) {
- showAlert('Tovar topilmadi', 'Xatolik', 'warning');
- }
- }, [displayedProducts, showAlert]);
 
  const addToCart = useCallback((product: Product) => {
  // Optimistic update - darhol UI'da ko'rsatadi

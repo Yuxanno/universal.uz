@@ -3,9 +3,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import { 
   DollarSign, TrendingUp, ShoppingCart, Calendar, User, 
-  ArrowLeft, Download, Filter, Search, X, CreditCard, Banknote, AlertCircle
+  ArrowLeft, Download, Search, X, CreditCard, Banknote, AlertCircle
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
 import api from '../../utils/api';
 import { formatNumber } from '../../utils/format';
@@ -503,7 +503,7 @@ export default function SalesReport() {
                           dataKey="amount"
                           paddingAngle={2}
                         >
-                          {stats.paymentBreakdown.map((entry, index) => (
+                          {stats.paymentBreakdown.map((item, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
