@@ -8,13 +8,20 @@ const router = express.Router();
 
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Uzbekistan timezone (UTC+5) - calculate today's start in Uzbekistan time
+    const now = new Date();
+    const uzbekistanOffset = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+    const uzbekistanNow = new Date(now.getTime() + uzbekistanOffset);
     
-    const weekAgo = new Date(today);
+    // Get today's start in Uzbekistan time, then convert back to UTC for MongoDB query
+    const today = new Date(uzbekistanNow);
+    today.setUTCHours(0, 0, 0, 0);
+    const todayUTC = new Date(today.getTime() - uzbekistanOffset);
+    
+    const weekAgo = new Date(todayUTC);
     weekAgo.setDate(weekAgo.getDate() - 7);
     
-    const monthAgo = new Date(today);
+    const monthAgo = new Date(todayUTC);
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
     // Real statistika - faqat sotuvlar va cheklar
@@ -27,13 +34,13 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
       peakHourData
     ] = await Promise.all([
       Receipt.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
-      Receipt.aggregate([{ $match: { status: 'completed', createdAt: { $gte: today } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
+      Receipt.aggregate([{ $match: { status: 'completed', createdAt: { $gte: todayUTC } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
       Receipt.aggregate([{ $match: { status: 'completed', createdAt: { $gte: weekAgo } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
       Receipt.aggregate([{ $match: { status: 'completed', createdAt: { $gte: monthAgo } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
       Receipt.countDocuments({ status: 'completed' }),
       Receipt.aggregate([
         { $match: { status: 'completed' } },
-        { $group: { _id: { $hour: '$createdAt' }, count: { $sum: 1 }, total: { $sum: '$total' } } },
+        { $group: { _id: { $hour: { date: '$createdAt', timezone: '+05:00' } }, count: { $sum: 1 }, total: { $sum: '$total' } } },
         { $sort: { total: -1 } },
         { $limit: 1 }
       ])
@@ -173,8 +180,15 @@ router.get('/sales-report', auth, authorize('admin'), async (req, res) => {
   try {
     const { period = 'today' } = req.query;
     
-    let startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
+    // Uzbekistan timezone (UTC+5)
+    const now = new Date();
+    const uzbekistanOffset = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+    const uzbekistanNow = new Date(now.getTime() + uzbekistanOffset);
+    
+    // Get today's start in Uzbekistan time, then convert back to UTC for MongoDB query
+    let startDate = new Date(uzbekistanNow);
+    startDate.setUTCHours(0, 0, 0, 0);
+    startDate = new Date(startDate.getTime() - uzbekistanOffset);
     
     if (period === 'week') {
       startDate.setDate(startDate.getDate() - 7);
