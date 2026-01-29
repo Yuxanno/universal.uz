@@ -60,12 +60,13 @@ function matchesQuery(text: string, query: string): boolean {
 }
 
 /**
- * Фильтрует товары по поисковому запросу
+ * Фильтрует и сортирует товары по поисковому запросу
  * Ищет по коду и названию, поддерживает латиницу и кириллицу в обе стороны
+ * Сортирует: код с начала > короткий код > алфавитный порядок
  * 
  * @param products - массив товаров для поиска
  * @param query - поисковый запрос
- * @returns отфильтрованный массив товаров
+ * @returns отфильтрованный и отсортированный массив товаров
  * 
  * @example
  * // Поиск по коду
@@ -95,9 +96,10 @@ export function searchProducts<T extends SearchableProduct>(
  return products;
  }
  
- const trimmedQuery = query.trim();
+ const trimmedQuery = query.trim().toLowerCase();
  
- return products.filter(product => {
+ // Filter products
+ const filtered = products.filter(product => {
  // Поиск по коду
  if (matchesQuery(product.code, trimmedQuery)) {
  return true;
@@ -110,6 +112,35 @@ export function searchProducts<T extends SearchableProduct>(
  
  return false;
  });
+ 
+ // Sort: код с начала > короткий код > алфавитный порядок
+ const sorted = [...filtered].sort((a, b) => {
+ const aCode = a.code.toLowerCase();
+ const bCode = b.code.toLowerCase();
+ 
+ const aCodeStartsWith = aCode.startsWith(trimmedQuery);
+ const bCodeStartsWith = bCode.startsWith(trimmedQuery);
+ 
+ // Priority 1: Код начинается с запроса
+ if (aCodeStartsWith && !bCodeStartsWith) return -1;
+ if (!aCodeStartsWith && bCodeStartsWith) return 1;
+ 
+ // Priority 2: Если оба начинаются, короткий код первый
+ if (aCodeStartsWith && bCodeStartsWith) {
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ return aCode.localeCompare(bCode);
+ }
+ 
+ // Priority 3: Код содержит запрос, короткий код первый
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ 
+ // Default: алфавитный порядок
+ return aCode.localeCompare(bCode);
+ });
+ 
+ return sorted;
 }
 
 /**

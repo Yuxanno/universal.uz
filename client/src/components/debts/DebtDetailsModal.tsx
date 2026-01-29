@@ -10,6 +10,14 @@ interface DebtDetailsModalProps {
   onClose: () => void;
   onUpdate: () => void;
 }
+// interface Debt detailsmodalprops {
+//   deb :DebtDetailsModal;
+//   onopen {
+//     (vodi s:)
+//   }
+// }
+
+
 
 export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetailsModalProps) {
   const { t } = useLanguage();
@@ -109,24 +117,39 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-4">
+            {/* Description - if no receipt, show description first */}
+            {!(debt as any).receipt && (debt as any).description && (
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">{t("Qarz haqida")}</p>
+                    <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed">
+                      {(debt as any).description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Customer Info */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl p-5 border-2 border-blue-200 dark:border-blue-800">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center flex-shrink-0">
-                  <User className="w-7 h-7 text-white" />
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
                     {(debt as any).type === 'receivable' ? t('Qarzdor') : t('Kreditor')}
                   </p>
-                  <p className="text-xl font-black text-blue-900 dark:text-blue-100 mb-2">
+                  <p className="text-lg font-black text-blue-900 dark:text-blue-100 mb-1">
                     {getDebtorName()}
                   </p>
                   {getDebtorPhone() && (
                     <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                       <Phone className="w-4 h-4" />
-                      <span className="font-semibold">{displayPhone(getDebtorPhone())}</span>
+                      <span className="font-semibold text-sm">{displayPhone(getDebtorPhone())}</span>
                     </div>
                   )}
                 </div>
@@ -134,26 +157,26 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
             </div>
 
             {/* Amount Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 rounded-2xl p-4 border-2 border-neutral-200 dark:border-neutral-600">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 rounded-xl p-3 border-2 border-neutral-200 dark:border-neutral-600">
                 <p className="text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1">{t("Jami qarz")}</p>
-                <p className="text-2xl font-black text-neutral-900 dark:text-neutral-100">
+                <p className="text-xl font-black text-neutral-900 dark:text-neutral-100">
                   {formatNumber(debt.amount)}
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-2xl p-4 border-2 border-emerald-200 dark:border-emerald-800">
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-xl p-3 border-2 border-emerald-200 dark:border-emerald-800">
                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">{t("To'langan")}</p>
-                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
                   {formatNumber(debt.paidAmount)}
                 </p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("so'm")}</p>
               </div>
 
-              <div className={`bg-gradient-to-br from-${statusColor}-50 to-${statusColor}-100 dark:from-${statusColor}-900/20 dark:to-${statusColor}-900/30 rounded-2xl p-4 border-2 border-${statusColor}-200 dark:border-${statusColor}-800`}>
+              <div className={`bg-gradient-to-br from-${statusColor}-50 to-${statusColor}-100 dark:from-${statusColor}-900/20 dark:to-${statusColor}-900/30 rounded-xl p-3 border-2 border-${statusColor}-200 dark:border-${statusColor}-800`}>
                 <p className={`text-xs font-bold text-${statusColor}-600 dark:text-${statusColor}-400 mb-1`}>{t("Qoldiq")}</p>
-                <p className={`text-2xl font-black text-${statusColor}-700 dark:text-${statusColor}-300`}>
+                <p className={`text-xl font-black text-${statusColor}-700 dark:text-${statusColor}-300`}>
                   {formatNumber(remainingAmount)}
                 </p>
                 <p className={`text-xs text-${statusColor}-600 dark:text-${statusColor}-400`}>{t("so'm")}</p>
@@ -162,12 +185,12 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
 
             {/* Progress Bar */}
             {debt.status !== 'paid' && (
-              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-2xl p-4">
+              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">{t("To'lov jarayoni")}</span>
-                  <span className="text-sm font-black text-neutral-900 dark:text-neutral-100">{paymentProgress.toFixed(1)}%</span>
+                  <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{t("To'lov jarayoni")}</span>
+                  <span className="text-xs font-black text-neutral-900 dark:text-neutral-100">{paymentProgress.toFixed(1)}%</span>
                 </div>
-                <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500"
                     style={{ width: `${paymentProgress}%` }}
@@ -187,11 +210,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                   <div>
                     <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">{t("Muddat")}</p>
                     <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                      {new Date(debt.dueDate).toLocaleDateString('uz-UZ', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                      {new Date(debt.dueDate).toLocaleDateString('en-GB').replace(/\//g, '.')}
                     </p>
                   </div>
                 </div>
@@ -213,14 +232,16 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               )}
             </div>
 
-            {/* Description */}
-            {(debt as any).description && (
-              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">{t("Izoh")}</p>
-                    <p className="text-sm text-neutral-900 dark:text-neutral-100">
+            {/* Description - if receipt exists, show description below receipt */}
+            {(debt as any).receipt && (debt as any).description && (
+              <div className="bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 rounded-2xl p-5 border-2 border-neutral-200 dark:border-neutral-600">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-neutral-300 dark:bg-neutral-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-6 h-6 text-neutral-700 dark:text-neutral-300" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-3">{t("Qarz haqida to'liq ma'lumot")}</p>
+                    <p className="text-sm text-neutral-900 dark:text-neutral-100 leading-relaxed whitespace-pre-line">
                       {(debt as any).description}
                     </p>
                   </div>
@@ -252,13 +273,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                               {formatNumber(payment.amount)} {t("so'm")}
                             </p>
                             <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                              {new Date(payment.date).toLocaleDateString('uz-UZ', { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {new Date(payment.date).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(payment.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         </div>

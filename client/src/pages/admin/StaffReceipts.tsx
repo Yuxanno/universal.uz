@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, User, Package, CheckCircle, Eye, EyeOff, Edit2, Check, X, Trash2 } from 'lucide-react';
 import api from '../../utils/api';
+import { socket } from '../../utils/socket';
 import { formatNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useLanguage } from '../../context/LanguageContext';
@@ -82,8 +83,25 @@ export default function StaffReceipts() {
 
  useEffect(() => {
  fetchData();
+ 
+ // Socket listener for real-time updates
+ const handleReceiptUpdate = (data: any) => {
+ console.log('📡 [StaffReceipts] Receipt updated via socket:', data);
+ fetchData(); // Refresh data when receipt is updated
+ };
+ 
+ if (socket) {
+ socket.on('receipt:updated', handleReceiptUpdate);
+ }
+ 
  const interval = setInterval(fetchData, 5000); // Обновляем каждые 5 секунд
- return () => clearInterval(interval);
+ 
+ return () => {
+ if (socket) {
+ socket.off('receipt:updated', handleReceiptUpdate);
+ }
+ clearInterval(interval);
+ };
  }, [fetchData]);
 
  const getWorkerReceipts = (workerId: string) => {
@@ -291,13 +309,7 @@ export default function StaffReceipts() {
  </p>
  </div>
  )}
- {isArchived && !isReady && !isPending && (
- <div className="bg-gray-50 border-b border-gray-200 px-5 py-3">
- <p className="text-gray-700 text-sm font-medium text-center">
- 📋 {t("Yig'ilayotgan xarid (real-time)")}
- </p>
- </div>
- )}
+ {/* Removed: "Yig'ilayotgan xarid (real-time)" banner */}
  {isPending && !isReady && (
  <div className="bg-warning-50 border-b border-warning-200 px-5 py-3">
  <p className="text-warning-700 text-sm font-medium text-center">
@@ -455,21 +467,22 @@ export default function StaffReceipts() {
  
  console.log('✅ Receipt loaded to kassa successfully:', response.data);
  
- // Fetch full product details to get current inventory quantities
+ // Fetch full product details to get current inventory quantities (OPTIMIZED: single call)
  const productIds = receipt.items.map(item => item.product);
  const productsResponse = await api.post('/products/by-ids', { ids: productIds });
  const productsMap = new Map(productsResponse.data.map((p: any) => [p._id, p]));
  
- // Load only this receipt to kassa with full product details
- const kassaItems = receipt.items.map(item => {
+ // Load only this receipt to kassa with full product details (NO MORE INDIVIDUAL API CALLS)
+ const kassaItems = receipt.items.map((item) => {
  const product: any = productsMap.get(item.product);
+ 
  return {
  _id: item.product,
  name: item.name,
  code: item.code,
  price: item.price,
  cartQuantity: item.quantity,
- quantity: product?.quantity || 0, // Current inventory quantity
+ quantity: product?.quantity || 0, // Current warehouse quantity from bulk fetch
  costPrice: product?.costPrice || 0,
  tan_narx: product?.costPrice || 0,
  optom_narx: item.price
@@ -479,12 +492,23 @@ export default function StaffReceipts() {
  console.log('📦 Loading single receipt to kassa:', {
  receiptId: receipt._id,
  itemsCount: kassaItems.length,
- items: kassaItems
+ items: kassaItems,
+ customer: receipt.customer
  });
  
  if (kassaItems.length > 0) {
  localStorage.setItem('kassaItems', JSON.stringify(kassaItems));
  localStorage.setItem('kassaReceiptId', receipt._id);
+ 
+ // Save customer info to localStorage
+ if (receipt.customer) {
+ localStorage.setItem('kassaCustomerId', receipt.customer._id);
+ console.log('👤 Customer saved to localStorage:', receipt.customer._id);
+ } else {
+ // No customer = Oddiy mijoz
+ localStorage.setItem('kassaCustomerId', '');
+ console.log('👤 No customer (Oddiy mijoz)');
+ }
  
  // Dispatch custom event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));

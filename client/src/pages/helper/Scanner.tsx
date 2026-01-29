@@ -32,7 +32,7 @@ export default function HelperScanner() {
  const [expandedArchiveId, setExpandedArchiveId] = useState<string | null>(null);
  const [showCustomerModal, setShowCustomerModal] = useState(false);
  const [sendToArchive, setSendToArchive] = useState(false);
- const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+ const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null); // null = mijoz tanlanmagan
  const [customers, setCustomers] = useState<any[]>([]);
  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
  const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -80,9 +80,11 @@ export default function HelperScanner() {
  };
  }, []);
 
- // Синхронизация корзины на сервер
+ // Синхронизация корзины на сервер (REAL-TIME with 'draft' status)
  const syncToServer = useCallback(async (items: CartItemWithOriginalPrice[]) => {
  if (receiptStatus === 'pending') return;
+ // Don't sync if customer not selected yet
+ if (selectedCustomer === null) return;
  
  setSyncing(true);
  try {
@@ -94,10 +96,14 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  }));
  
+ // Convert 'REGULAR_CUSTOMER' to null for backend
+ const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
+ 
  const res = await api.put('/receipts/draft', { 
  items: serverItems,
+ customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
- status: 'archived' // Always save as archived (no draft status)
+ status: 'draft' // REAL-TIME: Use 'draft' status so kassir can see it
  });
  
  // Update draft ID if it changed
@@ -113,9 +119,9 @@ export default function HelperScanner() {
  } finally {
  setSyncing(false);
  }
- }, [receiptStatus, currentDraftId]);
+ }, [receiptStatus, currentDraftId, selectedCustomer]);
 
- // Отложенная синхронизация при изменении корзины
+ // Отложенная синхронизация при изменении корзины (REAL-TIME)
  useEffect(() => {
  // Пропускаем первую загрузку
  if (isFirstLoad.current) return;
@@ -134,7 +140,7 @@ export default function HelperScanner() {
  clearTimeout(syncTimeoutRef.current);
  }
  
- // Синхронизируем через 300ms (быстрее для real-time)
+ // Синхронизируем через 300ms (real-time для kassir)
  syncTimeoutRef.current = setTimeout(() => {
  syncToServer(cart);
  }, 300);
@@ -240,11 +246,49 @@ export default function HelperScanner() {
  setSearchQuery(query);
  setScannedProduct(null);
  if (query.length > 0) {
- const results = products.filter(p =>
- p.name.toLowerCase().includes(query.toLowerCase()) ||
- p.code.toLowerCase().includes(query.toLowerCase())
+ const q = query.toLowerCase().trim();
+ 
+ console.log('🔍 [HELPER] Search query:', q);
+ 
+ // Filter products
+ const filtered = products.filter(p =>
+ p.name.toLowerCase().includes(q) ||
+ p.code.toLowerCase().includes(q)
  );
- setSearchResults(results);
+ 
+ console.log('📦 [HELPER] Filtered count:', filtered.length);
+ console.log('📋 [HELPER] First 3 filtered:', filtered.slice(0, 3).map(p => ({ code: p.code, name: p.name })));
+ 
+ // Sort: kod boshidan boshlanadigan birinchi, keyin uzunlik bo'yicha
+ const sorted = [...filtered].sort((a, b) => {
+ const aCode = a.code.toLowerCase();
+ const bCode = b.code.toLowerCase();
+ 
+ const aCodeStartsWith = aCode.startsWith(q);
+ const bCodeStartsWith = bCode.startsWith(q);
+ 
+ // Priority 1: Kod boshidan boshlanadigan
+ if (aCodeStartsWith && !bCodeStartsWith) return -1;
+ if (!aCodeStartsWith && bCodeStartsWith) return 1;
+ 
+ // Priority 2: Agar ikkisi ham kod boshidan boshlansa, qisqaroq kod birinchi
+ if (aCodeStartsWith && bCodeStartsWith) {
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ return aCode.localeCompare(bCode);
+ }
+ 
+ // Priority 3: Kod ichida bo'lsa, qisqaroq kod birinchi
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ 
+ // Default: alfabetik
+ return aCode.localeCompare(bCode);
+ });
+ 
+ console.log('🎯 [HELPER] First 10 sorted:', sorted.slice(0, 10).map(p => ({ code: p.code, name: p.name })));
+ 
+ setSearchResults(sorted);
  } else {
  setSearchResults([]);
  }
@@ -265,16 +309,17 @@ export default function HelperScanner() {
  if (existing) {
  return prev.map(p => p._id === product._id ? { ...p, cartQuantity: p.cartQuantity + 1 } : p);
  }
- // Add with empty price input, store dona_narx separately
+ // Add with dona_narx as default price (auto-filled)
+ const defaultPrice = product.dona_narx || product.price || 0;
  return [...prev, { 
  ...product, 
  cartQuantity: 1, 
- price: 0, // Пустой инпут
- originalPrice: product.dona_narx || product.price, // Сохраняем dona_narx
- optom_narx: product.price || product.optom_narx // Для валидации
+ price: defaultPrice, // Avtomatik dona_narx
+ originalPrice: product.dona_narx || product.price, // Saqlab qo'yamiz
+ optom_narx: product.price || product.optom_narx // Validatsiya uchun
  }];
  });
- setSearchQuery(''); // Очищаем поисковый инпут
+ setSearchQuery(''); // Qidiruv inputini tozalaymiz
  setSearchResults([]);
  setScannedProduct(null);
  };
@@ -310,8 +355,11 @@ export default function HelperScanner() {
  receipts: res.data
  });
  setArchivedReceipts(res.data);
- } catch (err) {
+ } catch (err: any) {
  console.error('❌ [Helper] Error loading archive:', err);
+ // Don't show error to user - just set empty array
+ // This can happen if user is not logged in or session expired
+ setArchivedReceipts([]);
  }
  };
 
@@ -324,10 +372,20 @@ export default function HelperScanner() {
  const sendToCashier = async () => {
  if (cart.length === 0) return;
  
- // If customer already selected, send directly without modal
- if (selectedCustomer) {
+ // If customer not selected yet, open modal
+ if (selectedCustomer === null) {
+ console.log('📋 [Kassaga] No customer selected, opening modal');
+ setSendToArchive(false);
+ setShowCustomerModal(true);
+ return;
+ }
+ 
+ // Customer already selected - send directly
  setSending(true);
  try {
+ // Convert 'REGULAR_CUSTOMER' to null for backend
+ const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
+ 
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -336,7 +394,7 @@ export default function HelperScanner() {
  price: item.price || 0,
  quantity: item.cartQuantity
  })),
- customer: selectedCustomer,
+ customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
  status: 'pending' // Change status to pending when sending to cashier
  });
@@ -344,7 +402,8 @@ export default function HelperScanner() {
  showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
- setSelectedCustomer('');
+ // RESET selectedCustomer for next NEW receipt
+ setSelectedCustomer(null); // Reset - keyingi xarid uchun qayta so'raladi
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
@@ -355,20 +414,32 @@ export default function HelperScanner() {
  } finally {
  setSending(false);
  }
- } else {
- // Open customer modal
- setSendToArchive(false);
- setShowCustomerModal(true);
- }
  };
 
  const sendToArchiveFunc = async () => {
  if (cart.length === 0) return;
+ if (sending) return; // Prevent double-click
  
- // If customer already selected, save directly without modal
- if (selectedCustomer) {
+ console.log('📦 [Arxivga] Sending to archive:', {
+ cartLength: cart.length,
+ selectedCustomer,
+ currentDraftId
+ });
+ 
+ // If customer not selected yet, open modal
+ if (selectedCustomer === null) {
+ console.log('📋 [Arxivga] No customer selected, opening modal');
+ setSendToArchive(true);
+ setShowCustomerModal(true);
+ return;
+ }
+ 
+ // Customer already selected - save directly
  setSending(true);
  try {
+ // Convert 'REGULAR_CUSTOMER' to null for backend
+ const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
+ 
  // Just save with archived status directly
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
@@ -378,15 +449,17 @@ export default function HelperScanner() {
  price: item.price || 0,
  quantity: item.cartQuantity
  })),
- customer: selectedCustomer,
+ customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
  status: 'archived' // Set status to archived directly
  });
  
+ console.log('✅ [Arxivga] Saved successfully');
  showAlert("Chek arxivga saqlandi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
- setSelectedCustomer('');
+ // RESET selectedCustomer for next NEW receipt
+ setSelectedCustomer(null); // Reset - keyingi xarid uchun qayta so'raladi
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
@@ -398,18 +471,18 @@ export default function HelperScanner() {
  } finally {
  setSending(false);
  }
- } else {
- // Open customer modal
- setSendToArchive(true);
- setShowCustomerModal(true);
- }
  };
 
  const handleConfirmSend = async () => {
+ if (sending) return; // Prevent double-click
+ 
  setSending(true);
  setShowCustomerModal(false);
  
  try {
+ // Convert 'REGULAR_CUSTOMER' to null for backend
+ const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
+ 
  // Update draft with customer info and set status
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
@@ -419,7 +492,7 @@ export default function HelperScanner() {
  price: item.price || 0,
  quantity: item.cartQuantity
  })),
- customer: selectedCustomer || null,
+ customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
  status: sendToArchive ? 'archived' : 'pending' // Set status based on action
  });
@@ -427,7 +500,8 @@ export default function HelperScanner() {
  showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
- setSelectedCustomer('');
+ // RESET selectedCustomer for next NEW receipt
+ setSelectedCustomer(null); // Reset - keyingi xarid uchun qayta so'raladi
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
@@ -444,14 +518,40 @@ export default function HelperScanner() {
  };
 
  const handleLoadFromArchive = async (receipt: any) => {
+ // Prevent multiple simultaneous loads
+ if (isLoadingFromArchive.current) {
+ console.log('⚠️ Already loading from archive, skipping...');
+ return;
+ }
+ 
  try {
  // Set flag to prevent sync when loading from archive
  isLoadingFromArchive.current = true;
  
- // Save current cart to archive if not empty
- if (cart.length > 0 && currentDraftId) {
- // Current cart already has a draft ID, it will stay in archive
- console.log('💾 Current cart already saved in archive');
+ // Save current cart to archive if not empty (before loading another receipt)
+ if (cart.length > 0) {
+ console.log('💾 Saving current cart before loading from archive...');
+ try {
+ // Convert 'REGULAR_CUSTOMER' to null for backend
+ const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
+ 
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: customerValue,
+ draftId: currentDraftId,
+ status: 'archived'
+ });
+ console.log('✅ Current cart saved to archive');
+ } catch (err: any) {
+ console.error('Error saving current cart:', err);
+ // Continue even if save fails - user might not be logged in
+ }
  }
  
  // Load archived receipt items to cart
@@ -465,38 +565,45 @@ export default function HelperScanner() {
  originalPrice: item.price
  }));
  
- setCart(items);
- // Set customer from archived receipt
- setSelectedCustomer(receipt.customer?._id || '');
+ // Set customer from archived receipt: null -> 'REGULAR_CUSTOMER', ID -> ID
+ const customerId = receipt.customer?._id || 'REGULAR_CUSTOMER';
  
- // Keep the receipt ID and change status to draft (real-time updates)
- setCurrentDraftId(receipt._id);
- 
- // Update status to draft so it shows as "real-time" in kassa
- await api.put('/receipts/draft', {
- items: items.map((item: any) => ({
- product: item._id,
- name: item.name,
- code: item.code,
- price: item.price,
- quantity: item.cartQuantity
- })),
- customer: receipt.customer?._id || null,
- draftId: receipt._id,
- status: 'draft' // Change from archived to draft
+ console.log('📦 [LoadFromArchive] Loading receipt:', {
+ receiptId: receipt._id,
+ itemsCount: items.length,
+ customerId,
+ customerName: receipt.customer?.name || 'Oddiy mijoz'
  });
  
- console.log('📝 Loaded receipt from archive, changed to draft status:', receipt._id);
+ setCart(items);
+ // Set customer from archived receipt
+ setSelectedCustomer(customerId);
+ 
+ // DELETE the archived receipt (remove from archive)
+ try {
+ await api.delete(`/receipts/${receipt._id}`);
+ console.log('🗑️ [LoadFromArchive] Deleted receipt from archive:', receipt._id);
+ } catch (err: any) {
+ console.error('Error deleting receipt:', err);
+ // Continue even if delete fails - receipt might already be deleted
+ }
+ 
+ // Clear current draft ID so a new one will be created on next sync
+ setCurrentDraftId(null);
+ 
+ console.log('✅ [LoadFromArchive] Loaded successfully, customer:', customerId);
  
  // Reload archive and close modal
- loadArchive();
+ await loadArchive();
  setShowArchive(false);
  
  toast.success('Xarid davom ettirilmoqda');
  } catch (err) {
  console.error('Error loading from archive:', err);
- isLoadingFromArchive.current = false; // Reset flag on error
  showAlert('Xatolik yuz berdi', 'Xatolik', 'danger');
+ } finally {
+ // Reset flag after operation completes
+ isLoadingFromArchive.current = false;
  }
  };
 
@@ -966,27 +1073,27 @@ export default function HelperScanner() {
  <div className="max-h-96 overflow-auto p-4">
  {/* Default: Oddiy mijoz */}
  <button
- onClick={() => setSelectedCustomer('')}
+ onClick={() => setSelectedCustomer('REGULAR_CUSTOMER')}
  className={`w-full flex items-center gap-3 p-3 mb-2 rounded-xl transition-all border-2 ${
- selectedCustomer === ''
+ selectedCustomer === 'REGULAR_CUSTOMER'
  ? 'bg-blue-500 border-blue-600 text-white'
  : 'bg-white border-neutral-200 hover:border-blue-400'
  }`}
  >
  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
- selectedCustomer === '' ? 'bg-white/20' : 'bg-blue-100'
+ selectedCustomer === 'REGULAR_CUSTOMER' ? 'bg-white/20' : 'bg-blue-100'
  }`}>
- <ShoppingCart className={`w-5 h-5 ${selectedCustomer === '' ? 'text-white' : 'text-blue-600'}`} />
+ <ShoppingCart className={`w-5 h-5 ${selectedCustomer === 'REGULAR_CUSTOMER' ? 'text-white' : 'text-blue-600'}`} />
  </div>
  <div className="flex-1 text-left">
- <p className={`text-sm font-bold ${selectedCustomer === '' ? 'text-white' : 'text-neutral-900'}`}>
+ <p className={`text-sm font-bold ${selectedCustomer === 'REGULAR_CUSTOMER' ? 'text-white' : 'text-neutral-900'}`}>
  Oddiy mijoz
  </p>
- <p className={`text-xs ${selectedCustomer === '' ? 'text-white/80' : 'text-neutral-500'}`}>
+ <p className={`text-xs ${selectedCustomer === 'REGULAR_CUSTOMER' ? 'text-white/80' : 'text-neutral-500'}`}>
  Doimiy mijoz emas
  </p>
  </div>
- {selectedCustomer === '' && (
+ {selectedCustomer === 'REGULAR_CUSTOMER' && (
  <CheckCircle className="w-5 h-5 text-white" />
  )}
  </button>

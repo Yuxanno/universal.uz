@@ -49,3 +49,6 @@ export const disconnectSocket = () => {
     socket = null;
   }
 };
+
+// Export socket directly for convenience (will be null until initSocket is called)
+export { socket };

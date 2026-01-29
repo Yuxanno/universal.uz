@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, X, Package } from 'lucide-react';
 import { Product } from '../../types';
 import { formatNumber } from '../../utils/format';
@@ -22,14 +22,58 @@ export default function ProductSearchModal({
 }: ProductSearchModalProps) {
  const [searchQuery, setSearchQuery] = useState('');
 
+ // Debug: log when modal opens
+ useEffect(() => {
+ if (isOpen) {
+ console.log('🔍 [MODAL] Opened with', products.length, 'products');
+ }
+ }, [isOpen, products.length]);
+
  const filteredProducts = useMemo(() => {
- if (!searchQuery.trim()) return products.slice(0, 50);
+ const query = searchQuery.toLowerCase().trim();
  
- const query = searchQuery.toLowerCase();
- return products.filter(p => 
+ console.log('🔍 [SEARCH] Query:', query, 'Products:', products.length);
+ 
+ if (!query) return products.slice(0, 50);
+ 
+ // Filter products
+ const filtered = products.filter(p => 
  p.name.toLowerCase().includes(query) || 
  p.code.toLowerCase().includes(query)
- ).slice(0, 50);
+ );
+ 
+ console.log('✅ [SEARCH] Filtered count:', filtered.length);
+ 
+ // Sort with detailed logging
+ const sorted = [...filtered].sort((a, b) => {
+ const aCode = a.code.toLowerCase();
+ const bCode = b.code.toLowerCase();
+ 
+ const aCodeStartsWith = aCode.startsWith(query);
+ const bCodeStartsWith = bCode.startsWith(query);
+ 
+ // Priority 1: Kod boshidan boshlanadigan
+ if (aCodeStartsWith && !bCodeStartsWith) return -1;
+ if (!aCodeStartsWith && bCodeStartsWith) return 1;
+ 
+ // Priority 2: Agar ikkisi ham kod boshidan boshlansa, qisqaroq kod birinchi
+ if (aCodeStartsWith && bCodeStartsWith) {
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ return aCode.localeCompare(bCode);
+ }
+ 
+ // Priority 3: Kod ichida bo'lsa, qisqaroq kod birinchi
+ const lengthDiff = aCode.length - bCode.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ 
+ // Default: alfabetik
+ return aCode.localeCompare(bCode);
+ });
+ 
+ console.log('🎯 [SEARCH] First 10 sorted:', sorted.slice(0, 10).map(p => ({ code: p.code, name: p.name })));
+ 
+ return sorted.slice(0, 50);
  }, [products, searchQuery]);
 
  if (!isOpen) return null;
@@ -66,15 +110,15 @@ export default function ProductSearchModal({
  </div>
  </div>
 
- {/* Products List */}
- <div className="flex-1 overflow-auto">
+ {/* Products List - Grid Layout */}
+ <div className="flex-1 overflow-auto p-3">
  {filteredProducts.length === 0 ? (
  <div className="py-12 text-center text-surface-400">
  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
  <p>Tovar topilmadi</p>
  </div>
  ) : (
- <div className="divide-y divide-surface-100">
+ <div className="grid grid-cols-2 gap-2">
  {filteredProducts.map(product => (
  <button
  key={product._id}
@@ -82,19 +126,22 @@ export default function ProductSearchModal({
  onSelect(product);
  setSearchQuery('');
  }}
- className="w-full p-4 text-left hover:bg-surface-50 transition-colors"
+ className="p-3 text-left bg-white border-2 border-surface-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all"
  >
- <div className="flex items-center justify-between">
- <div className="flex-1 min-w-0">
- <p className="font-medium text-surface-900 truncate">{product.name}</p>
- <p className="text-sm text-surface-500">{product.code}</p>
+ <div className="flex items-start gap-2 mb-2">
+ <div className="w-10 h-10 bg-surface-100 rounded-lg flex items-center justify-center flex-shrink-0">
+ <Package className="w-5 h-5 text-surface-400" />
  </div>
- <div className="text-right ml-4">
- <p className="font-semibold text-brand-600">{formatNumber(product.price)} so'm</p>
- <p className={`text-xs ${product.quantity > 0 ? 'text-success-600' : 'text-danger-600'}`}>
+ <div className="flex-1 min-w-0">
+ <p className="font-semibold text-sm text-surface-900 line-clamp-2 leading-tight">{product.name}</p>
+ <p className="text-xs text-surface-500 mt-0.5">Kod: {product.code}</p>
+ </div>
+ </div>
+ <div className="space-y-1">
+ <p className="font-bold text-sm text-red-600">{formatNumber(product.price)}</p>
+ <p className={`text-xs font-medium ${product.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
  {product.quantity > 0 ? `${product.quantity} ta` : 'Tugagan'}
  </p>
- </div>
  </div>
  </button>
  ))}

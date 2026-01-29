@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
+// import { socket } from '../../utils/socket';
 import { useAlert } from '../../hooks/useAlert';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui/ToastContainer';
@@ -74,6 +75,7 @@ export default function Kassa() {
  const loadWorkerItems = useCallback(() => {
  const kassaItems = localStorage.getItem('kassaItems');
  const receiptId = localStorage.getItem('kassaReceiptId');
+ const customerId = localStorage.getItem('kassaCustomerId');
  
  if (kassaItems) {
  try {
@@ -116,6 +118,12 @@ export default function Kassa() {
  console.log('💰 Narxlar:', prices);
  setLocalPrices(prices);
  
+ // Load customer from localStorage
+ if (customerId !== null) {
+ setSelectedCustomer(customerId); // '' for Oddiy mijoz, ID for specific customer
+ console.log('👤 Mijoz yuklandi:', customerId || 'Oddiy mijoz');
+ }
+ 
  // Save receipt IDs to delete after payment
  if (receiptId) {
  setWorkerReceiptIds(receiptId.split(','));
@@ -123,6 +131,7 @@ export default function Kassa() {
  // Clear localStorage after loading
  localStorage.removeItem('kassaItems');
  localStorage.removeItem('kassaReceiptId');
+ localStorage.removeItem('kassaCustomerId');
  } catch (err) {
  console.error('Error loading worker items:', err);
  }

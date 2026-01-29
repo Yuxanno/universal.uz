@@ -37,9 +37,11 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  }));
 
  const openEditModal = () => {
+ // Store raw phone without formatting
+ const rawPhone = user?.phone?.replace(/\D/g, '') || '';
  setFormData({
  name: user?.name || '',
- phone: user?.phone || '',
+ phone: rawPhone, // Store only digits
  password: ''
  });
  setShowEditModal(true);
@@ -48,14 +50,28 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
  try {
- const data: any = { name: formData.name, phone: formData.phone };
+ // Send phone with + prefix
+ const phoneToSend = formData.phone.startsWith('+') 
+ ? formData.phone 
+ : '+' + formData.phone.replace(/\D/g, '');
+ 
+ const data: any = { 
+ name: formData.name, 
+ phone: phoneToSend 
+ };
  if (formData.password) data.password = formData.password;
+ 
+ console.log('📤 Sending profile update:', data);
  
  const res = await api.put('/auth/profile', data);
  updateUser(res.data);
  setShowEditModal(false);
+ 
+ // Show success message
+ alert(tKey('Ma\'lumotlar muvaffaqiyatli yangilandi!'));
  } catch (err: any) {
- alert(err.response?.data?.message || 'Xatolik yuz berdi');
+ console.error('Profile update error:', err);
+ alert(err.response?.data?.message || tKey('Xatolik yuz berdi'));
  }
  };
 
@@ -218,12 +234,21 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
  <input 
  type="tel" 
  className="w-full pl-10 pr-3 py-2.5 text-sm text-neutral-900 bg-neutral-50 border border-neutral-200 rounded-lg placeholder:text-neutral-400 transition-all duration-200 focus:outline-none focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:bg-neutral-700 dark:text-neutral-100 dark:border-neutral-600 dark:focus:bg-neutral-900" 
- placeholder="+998 (XX) XXX-XX-XX" 
+ placeholder="998901234567" 
  value={formData.phone}
- onChange={e => setFormData({...formData, phone: formatPhone(e.target.value)})} 
+ onChange={e => {
+ // Only allow digits
+ const digits = e.target.value.replace(/\D/g, '');
+ setFormData({...formData, phone: digits});
+ }} 
  required 
  />
  </div>
+ <p className="text-xs text-neutral-500 mt-1">
+ {formData.phone && formData.phone.length >= 12 
+ ? `Format: ${formatPhone(formData.phone)}` 
+ : 'Faqat raqamlar: 998901234567'}
+ </p>
  </div>
  <div>
  <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5 block">{tKey("Yangi parol (ixtiyoriy)")}</label>
