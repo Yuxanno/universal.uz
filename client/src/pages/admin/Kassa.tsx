@@ -506,8 +506,8 @@ body {
 .contact-item { white-space: nowrap; text-align: center; }
 .contact-item span { font-weight: bold; }
 .line { border-top: 1px dashed #000; margin: 1mm auto; width: 100%; padding: 0; }
-.meta-row { display: flex; justify-content: space-between; font-size: 11px; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; padding: 0; }
-.meta { font-size: 11px; font-weight: bold; }
+.meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; padding: 0; }
+.meta { font-size: 9px; font-weight: bold; white-space: nowrap; }
 .items { text-align: center; margin: 0 auto; width: 100%; padding: 0; }
 .item { margin-bottom: 1mm; }
 .item-name { font-weight: bold; font-size: 10px; text-align: center; word-wrap: break-word; line-height: 1.2; }
