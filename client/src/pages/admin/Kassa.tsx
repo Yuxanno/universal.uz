@@ -31,7 +31,10 @@ interface SavedReceipt {
 interface PrintReceipt {
  items: { name: string; code: string; price: number; quantity: number }[];
  total: number;
- paymentMethod: 'cash' | 'card';
+ paymentMethod: 'cash' | 'card' | 'mixed' | 'debt';
+ cashAmount?: number;
+ cardAmount?: number;
+ debtAmount?: number;
  date: string;
  receiptNumber: string;
 }
@@ -43,6 +46,12 @@ export default function Kassa() {
  const toast = useToast();
  const { displayedProducts, loading, refreshProducts } = useProducts();
  const { customers, addCustomer } = useCustomers();
+ 
+ // Debug: Log customers
+ useEffect(() => {
+ console.log('👥 Customers loaded:', customers.length, customers);
+ }, [customers]);
+ 
  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
  const [cart, setCart] = useState<CartItem[]>([]);
  const [inputValue, setInputValue] = useState('');
@@ -319,7 +328,7 @@ export default function Kassa() {
  if (cart.length === 0) return;
  
  // Check if debt exists but no customer selected
- if (debtAmount > 0 && !selectedCustomer) {
+ if (debtAmount > 0 && (!selectedCustomer || selectedCustomer === '')) {
  showAlert('Qarz yaratish uchun mijoz tanlang!', 'Xatolik', 'danger');
  return;
  }
@@ -339,8 +348,10 @@ export default function Kassa() {
  const finalTotal = saleItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
  
  // Determine payment method
- let paymentMethod: 'cash' | 'card' | 'mixed' = 'cash';
- if (cashAmount > 0 && cardAmount > 0) {
+ let paymentMethod: 'cash' | 'card' | 'mixed' | 'debt' = 'cash';
+ if (debtAmount > 0 && cashAmount === 0 && cardAmount === 0) {
+ paymentMethod = 'debt';
+ } else if (cashAmount > 0 && cardAmount > 0) {
  paymentMethod = 'mixed';
  } else if (cardAmount > 0) {
  paymentMethod = 'card';
@@ -349,7 +360,10 @@ export default function Kassa() {
  const receiptData: PrintReceipt = {
  items: saleItems,
  total: finalTotal,
- paymentMethod: paymentMethod as 'cash' | 'card',
+ paymentMethod: paymentMethod,
+ cashAmount: cashAmount,
+ cardAmount: cardAmount,
+ debtAmount: debtAmount,
  date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.') + ' ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
  receiptNumber: Date.now().toString().slice(-8)
  };
@@ -363,7 +377,7 @@ export default function Kassa() {
  cardAmount: cardAmount,
  debtAmount: debtAmount,
  isReturn: isReturnMode,
- customer: selectedCustomer || null
+ customer: selectedCustomer && selectedCustomer !== '' ? selectedCustomer : null
  });
  
  // Refresh products to update quantities in real-time
@@ -495,9 +509,11 @@ body {
 .item-name { font-weight: bold; font-size: 11px; text-align: center; word-wrap: break-word; }
 .item-calc { display: flex; justify-content: space-between; font-size: 12px; text-align: center; }
 .price { font-weight: bold; }
-.total-box { padding: 1.5mm; margin: 1.5mm auto; text-align: center; width: 100%; }
+.total-box { padding: 1.5mm; margin: 1.5mm auto 0.5mm auto; text-align: center; width: 100%; }
 .total-sum { font-size: 13px; font-weight: bold; text-align: center; }
-.payment { font-size: 12px; margin: 1.5mm auto; text-align: center; width: 100%; }
+.payment { font-size: 12px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; font-weight: normal; }
+.payment-details { font-size: 10px; margin: 0 auto 1mm auto; text-align: center; width: 100%; color: #333; }
+.footer { font-size: 10px; margin: 1mm auto 0 auto; text-align: center; width: 100%; color: #000; line-height: 1.4; font-weight: bold; }
 @media print {
  .logo { filter: none; }
 }
@@ -537,7 +553,22 @@ ${itemsHtml}
  <div class="total-sum">JAMI: ${formatNum(printReceipt.total)} so'm</div>
 </div>
 
-<div class="payment">To'lov: ${printReceipt.paymentMethod === 'cash' ? 'Naqd pul' : 'Plastik karta'}</div>
+${printReceipt.paymentMethod === 'mixed' || (printReceipt.cashAmount && printReceipt.cardAmount) || (printReceipt.cashAmount && printReceipt.debtAmount) || (printReceipt.cardAmount && printReceipt.debtAmount) ? `
+<div class="payment">To'lov:</div>
+<div class="payment-details">
+${printReceipt.cashAmount && printReceipt.cashAmount > 0 ? `Naqd: ${formatNum(printReceipt.cashAmount)}` : ''}${printReceipt.cashAmount && printReceipt.cashAmount > 0 && (printReceipt.cardAmount || printReceipt.debtAmount) ? ' | ' : ''}${printReceipt.cardAmount && printReceipt.cardAmount > 0 ? `Karta: ${formatNum(printReceipt.cardAmount)}` : ''}${printReceipt.cardAmount && printReceipt.cardAmount > 0 && printReceipt.debtAmount ? ' | ' : ''}${printReceipt.debtAmount && printReceipt.debtAmount > 0 ? `Qarz: ${formatNum(printReceipt.debtAmount)}` : ''}
+</div>
+` : `
+<div class="payment">To'lov: ${
+ printReceipt.paymentMethod === 'cash' ? 'Naqd pul' :
+ printReceipt.paymentMethod === 'card' ? 'Karta orqali' :
+ 'Qarz qilindi'
+}</div>
+`}
+
+<div class="footer">
+Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
+</div>
 
 <script>window.onload=function(){window.print();}</script>
 </body>

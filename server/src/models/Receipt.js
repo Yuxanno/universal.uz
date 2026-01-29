@@ -11,7 +11,7 @@ const cartItemSchema = new mongoose.Schema({
 const receiptSchema = new mongoose.Schema({
   items: [cartItemSchema],
   total: { type: Number, required: true },
-  paymentMethod: { type: String, enum: ['cash', 'card', 'mixed'], default: 'cash' },
+  paymentMethod: { type: String, enum: ['cash', 'card', 'mixed', 'debt'], default: 'cash' },
   cashAmount: { type: Number, default: 0 },
   cardAmount: { type: Number, default: 0 },
   debtAmount: { type: Number, default: 0 },
