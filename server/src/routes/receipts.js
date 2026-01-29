@@ -117,6 +117,24 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
     }
     await draft.save();
     
+    // Emit socket event for real-time updates
+    if (global.io) {
+      console.log('📡 [Socket] Emitting receipt:updated event:', {
+        receiptId: draft._id,
+        status: draft.status,
+        itemsCount: draft.items.length,
+        total: draft.total
+      });
+      global.io.emit('receipt:updated', {
+        receiptId: draft._id,
+        status: draft.status,
+        items: draft.items,
+        total: draft.total,
+        customer: draft.customer,
+        createdBy: draft.createdBy
+      });
+    }
+    
     res.json(draft);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -199,7 +217,7 @@ router.get('/archived', auth, authorize('admin', 'cashier'), async (req, res) =>
   }
 });
 
-// Get helper's own archived receipts (archived, pending, and draft)
+// Get helper's own archived receipts (ONLY archived status, NOT draft)
 router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
   try {
     console.log('📦 [my-archived] Request from user:', {
@@ -209,7 +227,7 @@ router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
     });
     
     const receipts = await Receipt.find({ 
-      status: { $in: ['archived', 'pending', 'draft'] }, // Include draft status
+      status: 'archived', // ONLY archived status (not draft, not pending)
       createdBy: req.user._id,
       // Only show receipts with items (not empty)
       'items.0': { $exists: true }
