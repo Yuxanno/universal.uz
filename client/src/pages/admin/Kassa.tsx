@@ -452,7 +452,7 @@ body {
  font-family: 'Courier New', monospace;
  font-size: 13px;
  width: 58mm;
- padding: 3mm;
+ padding: 0;
  margin: 0 auto;
  text-align: center;
 }
@@ -461,8 +461,9 @@ body {
  align-items: center; 
  justify-content: center; 
  gap: 2mm; 
- margin: 0 auto 2mm auto;
+ margin: 0.5mm auto 1mm auto;
  width: 100%;
+ padding: 0;
 }
 .logo { 
  width: auto; 
@@ -485,7 +486,7 @@ body {
 }
 .subtitle { 
  font-size: 10px; 
- font-weight: normal; 
+ font-weight: bold; 
  line-height: 1.2;
  text-align: left;
  color: #333;
@@ -493,27 +494,30 @@ body {
 .contacts { 
  display: grid; 
  grid-template-columns: 1fr 1fr; 
- gap: 1mm 2mm; 
+ gap: 0.5mm 2mm; 
  font-size: 10px; 
- margin: 0 auto 2mm auto; 
+ margin: 0 auto 1mm auto; 
  text-align: center;
- line-height: 1.3;
+ line-height: 1.2;
  width: 100%;
+ padding: 0;
+ font-weight: bold;
 }
 .contact-item { white-space: nowrap; text-align: center; }
-.contact-item strong { font-weight: bold; }
-.line { border-top: 1px dashed #000; margin: 1.5mm auto; width: 100%; }
-.meta { font-size: 12px; text-align: center; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; }
-.items { text-align: center; margin: 0 auto; width: 100%; }
-.item { margin-bottom: 1.5mm; }
-.item-name { font-weight: bold; font-size: 11px; text-align: center; word-wrap: break-word; }
-.item-calc { display: flex; justify-content: space-between; font-size: 12px; text-align: center; }
+.contact-item span { font-weight: bold; }
+.line { border-top: 1px dashed #000; margin: 1mm auto; width: 100%; padding: 0; }
+.meta-row { display: flex; justify-content: space-between; font-size: 11px; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; padding: 0; }
+.meta { font-size: 11px; font-weight: bold; }
+.items { text-align: center; margin: 0 auto; width: 100%; padding: 0; }
+.item { margin-bottom: 1mm; }
+.item-name { font-weight: bold; font-size: 10px; text-align: center; word-wrap: break-word; line-height: 1.2; }
+.item-calc { display: flex; justify-content: space-between; font-size: 12px; text-align: center; font-weight: bold; }
 .price { font-weight: bold; }
-.total-box { padding: 1.5mm; margin: 1.5mm auto 0.5mm auto; text-align: center; width: 100%; }
-.total-sum { font-size: 13px; font-weight: bold; text-align: center; }
-.payment { font-size: 12px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; font-weight: normal; }
-.payment-details { font-size: 10px; margin: 0 auto 1mm auto; text-align: center; width: 100%; color: #333; }
-.footer { font-size: 10px; margin: 1mm auto 0 auto; text-align: center; width: 100%; color: #000; line-height: 1.4; font-weight: bold; }
+.total-box { padding: 1mm 0; margin: 1mm auto 0.5mm auto; text-align: center; width: 100%; }
+.total-sum { font-size: 14px; font-weight: bold; text-align: center; }
+.payment { font-size: 12px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; font-weight: bold; }
+.payment-details { font-size: 10px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; color: #333; font-weight: bold; }
+.footer { font-size: 10px; margin: 0.5mm auto 0.5mm auto; text-align: center; width: 100%; color: #000; line-height: 1.3; font-weight: bold; }
 @media print {
  .logo { filter: none; }
 }
@@ -530,16 +534,18 @@ body {
 </div>
 
 <div class="contacts">
- <div class="contact-item"><strong>+99893 140-00-04</strong><br>ASADBEK</div>
- <div class="contact-item"><strong>+99893 657-66-87</strong><br>RAMAZON</div>
- <div class="contact-item"><strong>+99888 866-66-59</strong><br>UYG'UNJON</div>
- <div class="contact-item"><strong>+99850 779-22-03</strong><br>OPERATOR</div>
+ <div class="contact-item">+99893 140-00-04<br><span>ASADBEK</span></div>
+ <div class="contact-item">+99893 657-66-87<br><span>RAMAZON</span></div>
+ <div class="contact-item">+99888 866-66-59<br><span>UYG'UNJON</span></div>
+ <div class="contact-item">+99850 779-22-03<br><span>OPERATOR</span></div>
 </div>
 
 <div class="line"></div>
 
-<div class="meta">Sana: ${printReceipt.date}</div>
-<div class="meta">Chek: #${printReceipt.receiptNumber}</div>
+<div class="meta-row">
+ <div class="meta">Sana: ${printReceipt.date}</div>
+ <div class="meta">Chek: #${printReceipt.receiptNumber}</div>
+</div>
 
 <div class="line"></div>
 
