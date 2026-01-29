@@ -1035,10 +1035,10 @@ export default function Products() {
  };
 
  const selectAllProducts = () => {
- if (selectedProducts.length === filteredProducts.length) {
+ if (selectedProducts.length === paginatedProducts.length && paginatedProducts.length > 0) {
  setSelectedProducts([]);
  } else {
- setSelectedProducts(filteredProducts.map(p => p._id));
+ setSelectedProducts(paginatedProducts.map(p => p._id));
  }
  };
 
@@ -1069,12 +1069,25 @@ export default function Products() {
  
  selectedProductsData.forEach(product => {
  const qrData = JSON.stringify({ id: product._id, code: product.code, name: product.name });
- const price = product.price;
- const displayPrice = price.toLocaleString();
+ const optomPrice = product.price;
+ const donaPrice = (product as any).dona_narx || 0;
+ 
+ // Format: dona narxining birinchi 2 xonasi, vergul, optom narxi
+ // Masalan: dona=7000, optom=5000 -> "7,5000"
+ // dona=27000, optom=25000 -> "27,25000"
+ // dona=520000, optom=500000 -> "52,500000"
+ let displayPrice = '';
+ if (donaPrice > 0) {
+ const donaStr = String(donaPrice);
+ const firstTwoDigits = donaStr.substring(0, 2);
+ displayPrice = `${firstTwoDigits},${optomPrice}`;
+ } else {
+ displayPrice = optomPrice.toLocaleString();
+ }
  
  const labelsHtml = Array(qty).fill(`
  <div class="label">
- ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
+ ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice}</div></div>` : ''}
  <div class="content-row">
  <div class="left-section">
  <div class="name">${uz(product.name)}</div>
@@ -1343,7 +1356,7 @@ ${allLabelsHtml}
  <div className="min-h-screen bg-surface-50 pb-20 lg:pb-0">
  {AlertComponent}
  <Header 
- title={tKey("Tovarlar (Asosiy ombor)")}
+ title={tKey("Tovarlar")}
  showSearch 
  onSearch={setSearchQuery}
  pagination={{
@@ -1357,12 +1370,6 @@ ${allLabelsHtml}
  <div className="flex gap-2">
  {selectionMode && (
  <>
- <button 
- onClick={selectAllProducts} 
- className="btn-secondary text-sm"
- >
- {selectedProducts.length === filteredProducts.length ? 'Bekor qilish' : 'Hammasini tanlash'}
- </button>
  <button 
  onClick={handleBulkPrint} 
  className="btn-primary text-sm"
@@ -1442,7 +1449,18 @@ ${allLabelsHtml}
  {/* DESKTOP TABLE */}
  <div className="hidden lg:block">
  <div className="table-header">
- <div className="grid gap-4 px-6 py-4" style={{gridTemplateColumns: isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px'}}>
+ <div className="grid gap-4 px-6 py-4" style={{gridTemplateColumns: selectionMode ? (isCashier ? 'auto auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto auto 80px 1fr 110px 110px 110px 110px 90px 140px') : (isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px')}}>
+ {selectionMode && (
+ <div className="flex items-center justify-center">
+ <input
+ type="checkbox"
+ checked={selectedProducts.length === paginatedProducts.length && paginatedProducts.length > 0}
+ onChange={selectAllProducts}
+ className="w-5 h-5 rounded border-neutral-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+ title="Hammasini tanlash"
+ />
+ </div>
+ )}
  <span className="table-header-cell">Rasm</span>
  <span className="table-header-cell">Kod</span>
  <span className="table-header-cell">Nomi</span>
