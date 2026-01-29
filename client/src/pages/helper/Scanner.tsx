@@ -189,29 +189,55 @@ export default function HelperScanner() {
  (decodedText) => {
  console.log('✅ QR Code scanned:', decodedText);
  let product = null;
+ 
+ // Normalize scanned text: trim whitespace and convert to lowercase for comparison
+ const normalizedText = decodedText.trim();
 
  try {
  const parsed = JSON.parse(decodedText);
  console.log('📦 Parsed QR data:', parsed);
  if (parsed.code) {
- product = products.find(p => p.code === parsed.code);
+ // Try exact match first, then case-insensitive
+ product = products.find(p => p.code === parsed.code) || 
+ products.find(p => p.code.toLowerCase() === parsed.code.toLowerCase());
  } else if (parsed._id || parsed.id) {
  product = products.find(p => p._id === (parsed._id || parsed.id));
  }
  } catch (parseErr) {
- console.log('📝 QR is plain text, searching by code:', decodedText);
- product = products.find(p => p.code === decodedText);
+ console.log('📝 QR is plain text, searching by code:', normalizedText);
+ // Try multiple search strategies:
+ // 1. Exact match
+ product = products.find(p => p.code === normalizedText);
+ 
+ // 2. Case-insensitive match
+ if (!product) {
+ product = products.find(p => p.code.toLowerCase() === normalizedText.toLowerCase());
+ console.log('🔍 Trying case-insensitive search...');
+ }
+ 
+ // 3. Trim both sides and compare
+ if (!product) {
+ product = products.find(p => p.code.trim() === normalizedText);
+ console.log('🔍 Trying trimmed search...');
+ }
+ 
+ // 4. Search in product name (partial match)
+ if (!product) {
+ product = products.find(p => p.name.toLowerCase().includes(normalizedText.toLowerCase()));
+ console.log('🔍 Trying name search...');
+ }
  }
 
  if (product) {
- console.log('✅ Product found:', product.name);
+ console.log('✅ Product found:', product.name, 'Code:', product.code);
  // AVTOMATIK QO'SHISH - savol bo'lmasin
  addToCart(product);
  toast.success("Tovar qo'shildi!", product.name);
  // SKANER YOPILMASIN - davom etsin, ketma-ket skaner qilish mumkin
  } else {
- console.log('❌ Product not found for:', decodedText);
- showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
+ console.log('❌ Product not found for:', normalizedText);
+ console.log('📋 Available product codes (first 10):', products.slice(0, 10).map(p => p.code));
+ showAlert('Tovar topilmadi: ' + normalizedText, 'Xatolik', 'warning');
  }
  // stopScanner() ni olib tashladik - skaner davom etadi
  },
