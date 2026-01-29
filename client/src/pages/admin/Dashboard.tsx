@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import { 
  DollarSign, TrendingUp, ShoppingCart, Receipt, Package, 
@@ -11,26 +12,24 @@ import { useLanguage } from '../../context/LanguageContext';
 
 export default function Dashboard() {
  const { t } = useLanguage();
+ const navigate = useNavigate();
  const [period, setPeriod] = useState<'today' | 'week'>('today');
- const [showTodaySalesModal, setShowTodaySalesModal] = useState(false);
- const [todayReceipts, setTodayReceipts] = useState<any[]>([]);
- const [loadingReceipts, setLoadingReceipts] = useState(false);
  const [stats, setStats] = useState({
  totalRevenue: 0,
  todaySales: 0,
  weekSales: 0,
  monthSales: 0,
  totalReceipts: 0,
- totalProducts: 0,
- lowStock: 0,
- outOfStock: 0,
  peakHour: ''
  });
  const [chartData, setChartData] = useState<{name: string; sales: number}[]>([]);
+ const [topProducts, setTopProducts] = useState<any[]>([]);
+ const [showAllProducts, setShowAllProducts] = useState(false);
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
  fetchStats();
+ fetchTopProducts();
  }, []);
 
  useEffect(() => {
@@ -57,32 +56,16 @@ export default function Dashboard() {
  }
  };
 
- const fetchTodayReceipts = async () => {
- setLoadingReceipts(true);
+ const fetchTopProducts = async () => {
  try {
- const today = new Date();
- today.setHours(0, 0, 0, 0);
- const tomorrow = new Date(today);
- tomorrow.setDate(tomorrow.getDate() + 1);
- 
- const res = await api.get('/receipts', {
- params: {
- startDate: today.toISOString(),
- endDate: tomorrow.toISOString(),
- status: 'completed'
- }
- });
- setTodayReceipts(res.data);
+ const res = await api.get('/stats/top-products?limit=20');
+ console.log('Top products data:', res.data);
+ setTopProducts(res.data);
  } catch (err) {
- console.error('Error fetching today receipts:', err);
- } finally {
- setLoadingReceipts(false);
+ console.error('Error fetching top products:', err);
+ // Set empty array if error
+ setTopProducts([]);
  }
- };
-
- const openTodaySalesModal = () => {
- setShowTodaySalesModal(true);
- fetchTodayReceipts();
  };
 
  const mainStats = [
@@ -95,7 +78,8 @@ export default function Dashboard() {
  bgColor: 'bg-success-50',
  textColor: 'text-success-600',
  trend: '+12%',
- trendUp: true
+ trendUp: true,
+ clickable: false
  },
  { 
  icon: TrendingUp, 
@@ -106,7 +90,9 @@ export default function Dashboard() {
  bgColor: 'bg-primary-50',
  textColor: 'text-primary-600',
  trend: '+8%',
- trendUp: true
+ trendUp: true,
+ clickable: true,
+ onClick: () => navigate(`/admin/sales-report?period=${period}`)
  },
  { 
  icon: ShoppingCart, 
@@ -116,7 +102,8 @@ export default function Dashboard() {
  bgColor: 'bg-accent-50',
  textColor: 'text-accent-600',
  trend: '+5%',
- trendUp: true
+ trendUp: true,
+ clickable: false
  },
  { 
  icon: Receipt, 
@@ -126,15 +113,12 @@ export default function Dashboard() {
  bgColor: 'bg-warning-50',
  textColor: 'text-warning-600',
  trend: '',
- trendUp: true
+ trendUp: true,
+ clickable: false
  },
  ];
 
- const inventory = [
- { label: t('Jami mahsulotlar'), value: stats.totalProducts, color: 'bg-neutral-500', dotColor: 'bg-neutral-400' },
- { label: t('Kam qolgan'), value: stats.lowStock, color: 'bg-warning-500', dotColor: 'bg-warning-500' },
- { label: t('Tugagan'), value: stats.outOfStock, color: 'bg-danger-500', dotColor: 'bg-danger-500' },
- ];
+ // Ombor holati o'chirildi - faqat real statistika
 
  return (
  <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
@@ -181,10 +165,10 @@ export default function Dashboard() {
  </div>
 
  {loading ? (
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
  {[1,2,3,4].map(i => (
- <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm">
- <div className="skeleton w-12 h-12 rounded-xl mb-4" />
+ <div key={i} className="bg-white dark:bg-neutral-900 rounded-xl p-4 lg:p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm">
+ <div className="skeleton w-10 h-10 lg:w-12 lg:h-12 rounded-xl mb-3 lg:mb-4" />
  <div className="skeleton-title mb-2" />
  <div className="skeleton-text w-1/2" />
  </div>
@@ -192,23 +176,19 @@ export default function Dashboard() {
  </div>
  ) : (
  <>
- {/* Main Stats - Mobile Optimized */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ {/* Main Stats - 2x2 on mobile, 1x4 on desktop */}
+ <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
  {mainStats.map((stat, i) => (
  <div 
  key={i} 
- onClick={() => {
- if (stat.label.includes('Bugungi sotuv') || stat.label.includes('Haftalik sotuv')) {
- if (period === 'today') openTodaySalesModal();
- }
- }}
- className={`bg-white dark:bg-neutral-900 rounded-xl p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm transition-all duration-200 hover:shadow-md hover:border-red-500 hover:-translate-y-1 dark:hover:border-red-500 ${
- (stat.label.includes('Bugungi sotuv') && period === 'today') ? 'cursor-pointer' : ''
+ onClick={() => stat.clickable && stat.onClick && stat.onClick()}
+ className={`bg-white dark:bg-neutral-900 rounded-xl p-4 lg:p-5 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm transition-all duration-200 hover:shadow-md hover:border-red-500 hover:-translate-y-1 dark:hover:border-red-500 ${
+ stat.clickable ? 'cursor-pointer' : ''
  }`}
  >
- <div className="flex items-start justify-between mb-4">
- <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.bgColor} dark:${stat.bgColor}/20 shadow-sm`}>
- <stat.icon className={`w-6 h-6 ${stat.textColor} dark:${stat.textColor.replace('600', '400')}`} />
+ <div className="flex items-start justify-between mb-3 lg:mb-4">
+ <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center ${stat.bgColor} dark:${stat.bgColor}/20 shadow-sm`}>
+ <stat.icon className={`w-5 h-5 lg:w-6 lg:h-6 ${stat.textColor} dark:${stat.textColor.replace('600', '400')}`} />
  </div>
  {stat.trend && (
  <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${
@@ -219,38 +199,16 @@ export default function Dashboard() {
  </div>
  )}
  </div>
- <p className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-50 mb-1">
+ <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-neutral-900 dark:text-neutral-50 mb-1 truncate">
  {stat.value} 
- {stat.suffix && <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400 ml-1">{stat.suffix}</span>}
+ {stat.suffix && <span className="text-xs lg:text-sm font-normal text-neutral-500 dark:text-neutral-400 ml-1">{stat.suffix}</span>}
  </p>
- <p className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">{stat.label}</p>
+ <p className="text-xs lg:text-sm text-neutral-600 dark:text-neutral-400 font-medium truncate">{stat.label}</p>
  </div>
  ))}
  </div>
 
- {/* Inventory Stats - Mobile Optimized */}
- <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm">
- <div className="flex items-center gap-3 mb-6">
- <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shadow-sm">
- <Package className="w-6 h-6 text-neutral-600 dark:text-neutral-400" />
- </div>
- <div>
- <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-50">{t("Ombor holati")}</h3>
- <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("Mahsulotlar statistikasi")}</p>
- </div>
- </div>
- <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
- {inventory.map((item, i) => (
- <div key={i} className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border-2 border-neutral-200 dark:border-neutral-700">
- <div className={`w-3 h-3 ${item.dotColor} dark:${item.dotColor.replace('400', '500')} rounded-full flex-shrink-0 shadow-sm`} />
- <div className="min-w-0">
- <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">{item.value}</p>
- <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate">{item.label}</p>
- </div>
- </div>
- ))}
- </div>
- </div>
+ {/* Ombor holati o'chirildi */}
  </>
  )}
 
@@ -333,7 +291,8 @@ export default function Dashboard() {
 
  {/* Top Products */}
  <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 border-2 border-neutral-200 dark:border-neutral-800 shadow-sm">
- <div className="flex items-center gap-3 mb-6">
+ <div className="flex items-center justify-between mb-6">
+ <div className="flex items-center gap-3">
  <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0 shadow-sm">
  <Package className="w-6 h-6 text-red-600 dark:text-red-400" />
  </div>
@@ -342,6 +301,17 @@ export default function Dashboard() {
  <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("Eng ko'p sotilgan")}</p>
  </div>
  </div>
+ {topProducts.length > 3 && (
+ <button
+ onClick={() => setShowAllProducts(true)}
+ className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+ title={t("Barchasini ko'rish")}
+ >
+ <ArrowUpRight className="w-5 h-5" />
+ </button>
+ )}
+ </div>
+ {topProducts.length === 0 ? (
  <div className="flex flex-col items-center justify-center h-48 text-neutral-400 dark:text-neutral-600">
  <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
  <Clock className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
@@ -349,28 +319,53 @@ export default function Dashboard() {
  <p className="text-base font-bold">{t("Ma'lumot topilmadi")}</p>
  <p className="text-sm text-neutral-500 dark:text-neutral-500 mt-1">{t("Sotuvlar boshlanishi kerak")}</p>
  </div>
+ ) : (
+ <div className="space-y-3">
+ {topProducts.slice(0, 3).map((product, index) => (
+ <div key={product._id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 hover:border-red-500 dark:hover:border-red-500 transition-all">
+ <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+ <span className="text-sm font-black text-red-600 dark:text-red-400">#{index + 1}</span>
+ </div>
+ <div className="flex-1 min-w-0">
+ <p className="text-sm font-bold text-neutral-900 dark:text-neutral-50 truncate">
+ {product.name || product.productName || product._id || 'Noma\'lum mahsulot'}
+ </p>
+ <p className="text-xs text-neutral-600 dark:text-neutral-400">
+ {product.totalQuantity || product.quantity || 0} {t("ta sotildi")}
+ </p>
+ </div>
+ <div className="text-right flex-shrink-0">
+ <p className="text-sm font-black text-red-600 dark:text-red-400">
+ {formatNumber(product.totalRevenue)}
+ </p>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
  </div>
  </div>
  </div>
 
- {/* Today's Sales Modal */}
- {showTodaySalesModal && (
+ {/* All Products Modal */}
+ {showAllProducts && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
- <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTodaySalesModal(false)} />
- <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-4xl relative z-10 animate-scaleIn overflow-hidden border-2 border-surface-100 dark:border-surface-700 max-h-[90vh] flex flex-col">
+ <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAllProducts(false)} />
+ <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl w-full max-w-2xl relative z-10 animate-scaleIn overflow-hidden border-2 border-neutral-200 dark:border-neutral-700 max-h-[90vh] flex flex-col">
  {/* Header */}
- <div className="bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-5">
+ <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
- <TrendingUp className="w-6 h-6 text-white" />
+ <Package className="w-6 h-6 text-white" />
  </div>
  <div>
- <h3 className="text-xl font-black text-white">{t("Bugungi sotuvlar")}</h3>
- <p className="text-white/80 text-sm">{new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+ <h3 className="text-xl font-black text-white">{t("Top mahsulotlar")}</h3>
+ <p className="text-white/80 text-sm">{t("Barcha sotilgan mahsulotlar")}</p>
  </div>
  </div>
- <button onClick={() => setShowTodaySalesModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all hover:scale-110">
+ <button onClick={() => setShowAllProducts(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all hover:scale-110">
  <X className="w-5 h-5" />
  </button>
  </div>
@@ -378,87 +373,34 @@ export default function Dashboard() {
 
  {/* Content */}
  <div className="p-6 overflow-y-auto flex-1">
- {loadingReceipts ? (
- <div className="flex justify-center py-20">
- <div className="spinner text-brand-600 w-8 h-8" />
- </div>
- ) : todayReceipts.length === 0 ? (
+ {topProducts.length === 0 ? (
  <div className="text-center py-16">
- <div className="w-16 h-16 bg-surface-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
- <ShoppingCart className="w-8 h-8 text-surface-400" />
+ <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+ <Package className="w-8 h-8 text-neutral-400 dark:text-neutral-600" />
  </div>
- <h3 className="text-lg font-semibold text-surface-900 mb-2">{t("Bugun sotuvlar yo'q")}</h3>
- <p className="text-surface-500">{t("Hali hech qanday sotuv amalga oshirilmagan")}</p>
+ <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t("Mahsulotlar yo'q")}</h3>
+ <p className="text-neutral-500 dark:text-neutral-400">{t("Hali hech qanday mahsulot sotilmagan")}</p>
  </div>
  ) : (
  <div className="space-y-3">
- {todayReceipts.map((receipt: any) => (
- <div key={receipt._id} className="rounded-xl p-3 border bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600">
- <div className="flex items-center justify-between mb-2">
- <div className="flex items-center gap-3">
- <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
- {receipt.customer && receipt.customer.name ? (
- <span className="font-bold text-brand-600 text-lg">{receipt.customer.name.charAt(0).toUpperCase()}</span>
- ) : (
- <User className="w-5 h-5 text-brand-600" />
- )}
+ {topProducts.map((product, index) => (
+ <div key={product._id} className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 hover:border-red-500 dark:hover:border-red-500 transition-all">
+ <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+ <span className="text-base font-black text-red-600 dark:text-red-400">#{index + 1}</span>
  </div>
- <div>
- <p className="text-sm font-bold text-surface-900 dark:text-surface-100">
- {receipt.customer && receipt.customer.name ? receipt.customer.name : t("Oddiy mijoz")}
+ <div className="flex-1 min-w-0">
+ <p className="text-base font-bold text-neutral-900 dark:text-neutral-50 truncate">
+ {product.name || product.productName || product._id || 'Noma\'lum mahsulot'}
  </p>
- <p className="text-xs text-surface-500 dark:text-surface-400">
- {new Date(receipt.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} • Chek #{receipt._id.toString().slice(-8)}
+ <p className="text-sm text-neutral-600 dark:text-neutral-400">
+ {product.totalQuantity || product.quantity || 0} {t("ta sotildi")}
  </p>
  </div>
- </div>
- <div className="text-right">
- <p className="text-lg font-black text-brand-600 dark:text-brand-400">
- {formatNumber(receipt.total)} {t("so'm")}
+ <div className="text-right flex-shrink-0">
+ <p className="text-lg font-black text-red-600 dark:text-red-400">
+ {formatNumber(product.totalRevenue)}
  </p>
- </div>
- </div>
- 
- {/* Items - with max height and scroll */}
- <div className="max-h-32 overflow-y-auto space-y-1 mb-2 pr-1">
- {receipt.items.map((item: any, idx: number) => (
- <div key={idx} className="flex justify-between text-xs bg-white dark:bg-surface-800 rounded-lg p-2">
- <span className="text-surface-700 dark:text-surface-300 flex-1 truncate">
- {item.name} <span className="text-surface-500">×{item.quantity}</span>
- </span>
- <span className="font-semibold text-surface-900 dark:text-surface-100 ml-2">
- {formatNumber(item.price * item.quantity)}
- </span>
- </div>
- ))}
- </div>
- 
- {/* Payment breakdown - compact */}
- <div className="border-t border-surface-200 dark:border-surface-600 pt-2 space-y-1">
- {receipt.cashAmount > 0 && (
- <div className="flex justify-between text-xs">
- <span className="text-surface-600 dark:text-surface-400">💵 Naqd:</span>
- <span className="font-semibold text-emerald-600 dark:text-emerald-400">
- {formatNumber(receipt.cashAmount)}
- </span>
- </div>
- )}
- {receipt.cardAmount > 0 && (
- <div className="flex justify-between text-xs">
- <span className="text-surface-600 dark:text-surface-400">💳 Karta:</span>
- <span className="font-semibold text-blue-600 dark:text-blue-400">
- {formatNumber(receipt.cardAmount)}
- </span>
- </div>
- )}
- {receipt.debtAmount > 0 && receipt.customer && receipt.customer.name && (
- <div className="flex justify-between text-xs">
- <span className="text-surface-600 dark:text-surface-400">⚠️ Qarz:</span>
- <span className="font-semibold text-danger-600 dark:text-danger-400">
- {formatNumber(receipt.debtAmount)}
- </span>
- </div>
- )}
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
  </div>
  </div>
  ))}

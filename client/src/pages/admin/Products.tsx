@@ -556,6 +556,7 @@ export default function Products() {
  };
  
  let productId = editingProduct?._id;
+ let isNewProduct = false;
  
  if (editingProduct) {
  await api.put(`/products/${editingProduct._id}`, data);
@@ -563,16 +564,26 @@ export default function Products() {
  } else {
  const res = await api.post('/products', data);
  productId = res.data._id;
+ isNewProduct = true;
  showAlert('Mahsulot muvaffaqiyatli qo\'shildi', 'Muvaffaqiyat', 'success');
  }
  
- // Wait for products to load, then scroll to the edited/added product
- await fetchProducts();
+ // Close modal immediately for better UX
  closeModal();
  
+ // Fetch products and scroll when ready
  if (productId) {
- // Products are now loaded, set scroll target immediately
+ console.log(`💾 [SAVE] ${isNewProduct ? 'New' : 'Updated'} product ID:`, productId);
+ 
+ // Fetch new products
+ await fetchProducts();
+ console.log('💾 [SAVE] fetchProducts completed');
+ 
+ // Small delay to ensure state is updated
+ setTimeout(() => {
+ console.log('💾 [SAVE] Setting scroll target:', productId);
  setScrollToProductId(productId);
+ }, 200);
  }
  } catch (err: any) {
  console.error('Submit error:', err);
@@ -623,13 +634,74 @@ export default function Products() {
  const handleDelete = useCallback(async (id: string) => {
  const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
  if (!confirmed) return;
+ 
+ // Get current filtered products at the time of deletion
+ const currentFilteredProducts = products.filter(p => 
+   searchProducts([p], debouncedSearchQuery).length > 0
+ );
+ 
+ // Save the code of the product being deleted
+ const deletedProduct = currentFilteredProducts.find(p => p._id === id);
+ const deletedCode = deletedProduct?.code;
+ 
+ console.log('🗑️ [DELETE] Starting deletion...');
+ console.log('🗑️ [DELETE] Deleted product:', deletedProduct?.name, 'Code:', deletedCode);
+ 
  try {
  await api.delete(`/products/${id}`);
- fetchProducts();
- } catch (err) {
- console.error('Error deleting product:', err);
+ console.log('🗑️ [DELETE] API delete successful');
+ 
+ // Fetch new products
+ await fetchProducts();
+ console.log('🗑️ [DELETE] fetchProducts completed');
+ 
+ // Now find nearest product from UPDATED products list
+ if (deletedCode) {
+ console.log('🗑️ [DELETE] Looking for nearest product to code:', deletedCode);
+ 
+ // Small delay to ensure state is updated
+ setTimeout(() => {
+ // Get fresh products from state via callback
+ setProducts(freshProducts => {
+ const sortedProducts = [...freshProducts].sort((a, b) => {
+ const codeA = parseInt(a.code) || 0;
+ const codeB = parseInt(b.code) || 0;
+ return codeB - codeA;
+ });
+ 
+ console.log('🗑️ [DELETE] Fresh products count:', sortedProducts.length);
+ 
+ const deletedCodeNum = parseInt(deletedCode) || 0;
+ 
+ // Find next product (smaller code)
+ let targetProduct = sortedProducts.find(p => {
+ const pCode = parseInt(p.code) || 0;
+ return pCode < deletedCodeNum;
+ });
+ 
+ // If no next, find previous (larger code)
+ if (!targetProduct) {
+ targetProduct = sortedProducts.find(p => {
+ const pCode = parseInt(p.code) || 0;
+ return pCode > deletedCodeNum;
+ });
  }
- }, [showConfirm, tKey, fetchProducts]);
+ 
+ if (targetProduct) {
+ console.log('🗑️ [DELETE] ✅ Scrolling to:', targetProduct.code, targetProduct.name);
+ setScrollToProductId(targetProduct._id);
+ } else {
+ console.log('🗑️ [DELETE] ❌ No target found');
+ }
+ 
+ return freshProducts; // Don't modify state
+ });
+ }, 200);
+ }
+ } catch (err) {
+ console.error('🗑️ [DELETE] ❌ Error:', err);
+ }
+ }, [showConfirm, tKey, fetchProducts, setScrollToProductId, products, debouncedSearchQuery]);
 
  const openEditModal = useCallback((product: Product) => {
  // Close other modals first

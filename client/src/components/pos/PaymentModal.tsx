@@ -26,6 +26,22 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
     const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
     const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
     const paid = cash + card;
+    
+    // Prevent overpayment - paid amount should not exceed total
+    if (paid > total) {
+      // If cash was just changed and exceeds total, cap it
+      if (cash > total) {
+        setCashAmount(total.toString());
+        setCardAmount('');
+      }
+      // If card was just changed and total paid exceeds, cap card
+      else if (card > 0) {
+        const maxCard = total - cash;
+        setCardAmount(Math.max(0, maxCard).toString());
+      }
+      return;
+    }
+    
     const remaining = Math.max(0, total - paid);
     
     // Only set debt if allowed
@@ -43,6 +59,12 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
     
     const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
     const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
+    
+    // Prevent overpayment
+    if (cash + card > total) {
+      alert(t('To\'langan summa jami summadan yuqori bo\'lmasligi kerak!'));
+      return;
+    }
     
     // If debt not allowed, must pay full amount
     if (!allowDebt && cash + card < total) {
@@ -161,6 +183,15 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
                     ⚠️ {t("Qarz yaratish uchun mijoz tanlang!")}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Warning for overpayment */}
+            {paidAmount > total && (
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-3">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-200 text-center">
+                  ⚠️ {t("To'langan summa jami summadan yuqori bo'lmasligi kerak!")}
+                </p>
               </div>
             )}
 

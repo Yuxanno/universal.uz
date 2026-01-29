@@ -12,6 +12,7 @@ import Login from './pages/Login';
 // ОПТИМИЗАЦИЯ: Ленивая загрузка компонентов для быстрых переходов
 const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const SalesReport = lazy(() => import('./pages/admin/SalesReport'));
 const Kassa = lazy(() => import('./pages/admin/Kassa'));
 const Products = lazy(() => import('./pages/admin/Products'));
 const Warehouses = lazy(() => import('./pages/admin/Warehouses'));
@@ -22,7 +23,6 @@ const Helpers = lazy(() => import('./pages/admin/Helpers'));
 const StaffReceipts = lazy(() => import('./pages/admin/StaffReceipts'));
 const StaffReceiptsArchive = lazy(() => import('./pages/admin/StaffReceiptsArchive'));
 const CashierLayout = lazy(() => import('./layouts/CashierLayout'));
-const CashierProducts = lazy(() => import('./pages/admin/Products'));
 const CashierCustomers = lazy(() => import('./pages/cashier/Customers'));
 const HelperLayout = lazy(() => import('./layouts/HelperLayout'));
 const HelperScanner = lazy(() => import('./pages/helper/Scanner'));
@@ -112,6 +112,7 @@ function App() {
  {/* Admin Routes */}
  <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminLayout /></ProtectedRoute>}>
  <Route index element={<Dashboard />} />
+ <Route path="sales-report" element={<SalesReport />} />
  <Route path="kassa" element={<Kassa />} />
  <Route path="products" element={<Products />} />
  <Route path="warehouses" element={<Warehouses />} />
@@ -126,7 +127,7 @@ function App() {
  {/* Cashier Routes */}
  <Route path="/cashier" element={<ProtectedRoute roles={['cashier']}><CashierLayout /></ProtectedRoute>}>
  <Route index element={<Kassa />} />
- <Route path="products" element={<CashierProducts />} />
+ <Route path="products" element={<Products />} />
  <Route path="customers" element={<CashierCustomers />} />
  <Route path="debts" element={<Debts />} />
  <Route path="staff-receipts" element={<StaffReceipts />} />

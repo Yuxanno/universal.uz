@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
  Search, RotateCcw, Save, CreditCard, Trash2, X, 
- Package, Banknote, Delete, AlertTriangle, Printer, User, Phone
+ Package, Banknote, AlertTriangle, Printer, User, Phone
 } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
@@ -79,6 +79,7 @@ export default function Kassa() {
  phone: '+998',
  region: ''
  });
+ const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
  // Load items from worker (StaffReceipts - "Kassaga yuklash")
  const loadWorkerItems = useCallback(() => {
@@ -215,15 +216,6 @@ export default function Kassa() {
  }, [debouncedSearchQuery, displayedProducts]);
 
  // Memoize callbacks
- const handleNumpadClick = useCallback((value: string) => {
- if (value === 'C') setInputValue('');
- else if (value === '⌫') setInputValue(prev => prev.slice(0, -1));
- else if (value === '+') {
- addProductByCode(inputValue);
- }
- else setInputValue(prev => prev + value);
- }, [inputValue]);
-
  const handleCartItemClick = useCallback((itemId: string) => {
  setSelectedCartItemId(itemId);
  }, []);
@@ -312,8 +304,55 @@ export default function Kassa() {
 
  const openSearch = useCallback(() => {
  setSearchResults(displayedProducts.slice(0, 50));
+ setSelectedProducts(new Set()); // Clear selection when opening
  setShowSearch(true);
  }, [displayedProducts]);
+ 
+ // Toggle product selection
+ const toggleProductSelection = useCallback((productId: string) => {
+ setSelectedProducts(prev => {
+ const newSet = new Set(prev);
+ if (newSet.has(productId)) {
+ newSet.delete(productId);
+ } else {
+ newSet.add(productId);
+ }
+ return newSet;
+ });
+ }, []);
+ 
+ // Add all selected products to cart
+ const addSelectedToCart = useCallback(() => {
+ if (selectedProducts.size === 0) {
+ showAlert('Mahsulot tanlanmagan', 'Ogohlantirish', 'warning');
+ return;
+ }
+ 
+ const productsToAdd = displayedProducts.filter(p => selectedProducts.has(p._id));
+ 
+ setCart(prev => {
+ const newCart = [...prev];
+ productsToAdd.forEach(product => {
+ const existing = newCart.find(p => p._id === product._id);
+ if (existing) {
+ existing.cartQuantity += 1;
+ } else {
+ newCart.push({
+ ...product,
+ cartQuantity: 1,
+ tan_narx: product.costPrice || product.tan_narx,
+ optom_narx: product.price || product.optom_narx
+ });
+ }
+ });
+ return newCart;
+ });
+ 
+ setShowSearch(false);
+ setSearchQuery('');
+ setSelectedProducts(new Set());
+ toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`);
+ }, [selectedProducts, displayedProducts, showAlert, toast]);
  
  // Calculate total amount
  const totalAmount = useMemo(() => {
@@ -401,7 +440,12 @@ export default function Kassa() {
  setShowPayment(false);
  setIsReturnMode(false);
  setPrintReceipt(receiptData);
- setShowReceipt(true);
+ 
+ // Auto-print immediately without showing modal
+ // Print dialog will open automatically - user just clicks "Print" once
+ setTimeout(() => {
+ handlePrint(receiptData); // Pass receiptData directly
+ }, 100);
  
  // Show success message
  if (debtAmount > 0) {
@@ -416,20 +460,15 @@ export default function Kassa() {
  }
  };
 
- const handlePrint = () => {
- if (!printReceipt) return;
- 
- const w = window.open('', '_blank');
- if (!w) {
- showAlert('Popup bloklangan', 'Xatolik', 'danger');
- return;
- }
+ const handlePrint = useCallback((receiptData?: PrintReceipt) => {
+ const receipt = receiptData || printReceipt;
+ if (!receipt) return;
  
  const formatNum = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
  
  // Build items HTML
  let itemsHtml = '';
- printReceipt.items.forEach((item, i) => {
+ receipt.items.forEach((item, i) => {
  itemsHtml += `
  <div class="item">
  <div class="item-name">${i + 1}. ${item.name}</div>
@@ -444,24 +483,28 @@ export default function Kassa() {
 <meta charset="UTF-8">
 <style>
 @page { 
- size: 58mm auto; 
+ size: 76mm auto; 
  margin: 0; 
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
  font-family: 'Courier New', monospace;
  font-size: 13px;
- width: 58mm;
+ width: 76mm;
  padding: 0;
  margin: 0 auto;
  text-align: center;
+}
+@media print {
+ body { page-break-inside: avoid; }
+ .item { page-break-inside: avoid; }
 }
 .header { 
  display: flex; 
  align-items: center; 
  justify-content: center; 
  gap: 2mm; 
- margin: 0.5mm auto 1mm auto;
+ margin: 0.3mm auto 0.8mm auto;
  width: 100%;
  padding: 0;
 }
@@ -494,30 +537,30 @@ body {
 .contacts { 
  display: grid; 
  grid-template-columns: 1fr 1fr; 
- gap: 0.5mm 2mm; 
+ gap: 0.3mm 2mm; 
  font-size: 10px; 
- margin: 0 auto 1mm auto; 
+ margin: 0 auto 0.8mm auto; 
  text-align: center;
- line-height: 1.2;
+ line-height: 1.1;
  width: 100%;
  padding: 0;
  font-weight: bold;
 }
 .contact-item { white-space: nowrap; text-align: center; }
 .contact-item span { font-weight: bold; }
-.line { border-top: 1px dashed #000; margin: 1mm auto; width: 100%; padding: 0; }
-.meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; padding: 0; }
+.line { border-top: 1px dashed #000; margin: 0.8mm auto; width: 100%; padding: 0; }
+.meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin: 0 auto 0.4mm auto; font-weight: bold; width: 100%; padding: 0; }
 .meta { font-size: 9px; font-weight: bold; white-space: nowrap; }
 .items { text-align: center; margin: 0 auto; width: 100%; padding: 0; }
-.item { margin-bottom: 1mm; }
-.item-name { font-weight: bold; font-size: 10px; text-align: center; word-wrap: break-word; line-height: 1.2; }
-.item-calc { display: flex; justify-content: space-between; font-size: 12px; text-align: center; font-weight: bold; }
+.item { margin-bottom: 0.8mm; text-align: center; }
+.item-name { font-weight: bold; font-size: 13px; text-align: center; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; }
+.item-calc { display: flex; justify-content: center; gap: 2mm; font-size: 12px; text-align: center; font-weight: bold; }
 .price { font-weight: bold; }
-.total-box { padding: 1mm 0; margin: 1mm auto 0.5mm auto; text-align: center; width: 100%; }
+.total-box { padding: 0.8mm 0; margin: 0.8mm auto 0.4mm auto; text-align: center; width: 100%; }
 .total-sum { font-size: 14px; font-weight: bold; text-align: center; }
-.payment { font-size: 12px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; font-weight: bold; }
-.payment-details { font-size: 10px; margin: 0 auto 0.5mm auto; text-align: center; width: 100%; color: #333; font-weight: bold; }
-.footer { font-size: 10px; margin: 0.5mm auto 0.5mm auto; text-align: center; width: 100%; color: #000; line-height: 1.3; font-weight: bold; }
+.payment { font-size: 12px; margin: 0 auto 0.4mm auto; text-align: center; width: 100%; font-weight: bold; }
+.payment-details { font-size: 10px; margin: 0 auto 0.4mm auto; text-align: center; width: 100%; color: #333; font-weight: bold; }
+.footer { font-size: 10px; margin: 0.4mm auto 0.4mm auto; text-align: center; width: 100%; color: #000; line-height: 1.2; font-weight: bold; }
 @media print {
  .logo { filter: none; }
 }
@@ -543,8 +586,8 @@ body {
 <div class="line"></div>
 
 <div class="meta-row">
- <div class="meta">Sana: ${printReceipt.date}</div>
- <div class="meta">Chek: #${printReceipt.receiptNumber}</div>
+ <div class="meta">Sana: ${receipt.date}</div>
+ <div class="meta">Chek: #${receipt.receiptNumber}</div>
 </div>
 
 <div class="line"></div>
@@ -556,18 +599,18 @@ ${itemsHtml}
 <div class="line"></div>
 
 <div class="total-box">
- <div class="total-sum">JAMI: ${formatNum(printReceipt.total)} so'm</div>
+ <div class="total-sum">JAMI: ${formatNum(receipt.total)} so'm</div>
 </div>
 
-${printReceipt.paymentMethod === 'mixed' || (printReceipt.cashAmount && printReceipt.cardAmount) || (printReceipt.cashAmount && printReceipt.debtAmount) || (printReceipt.cardAmount && printReceipt.debtAmount) ? `
+${receipt.paymentMethod === 'mixed' || (receipt.cashAmount && receipt.cardAmount) || (receipt.cashAmount && receipt.debtAmount) || (receipt.cardAmount && receipt.debtAmount) ? `
 <div class="payment">To'lov:</div>
 <div class="payment-details">
-${printReceipt.cashAmount && printReceipt.cashAmount > 0 ? `Naqd: ${formatNum(printReceipt.cashAmount)}` : ''}${printReceipt.cashAmount && printReceipt.cashAmount > 0 && (printReceipt.cardAmount || printReceipt.debtAmount) ? ' | ' : ''}${printReceipt.cardAmount && printReceipt.cardAmount > 0 ? `Karta: ${formatNum(printReceipt.cardAmount)}` : ''}${printReceipt.cardAmount && printReceipt.cardAmount > 0 && printReceipt.debtAmount ? ' | ' : ''}${printReceipt.debtAmount && printReceipt.debtAmount > 0 ? `Qarz: ${formatNum(printReceipt.debtAmount)}` : ''}
+${receipt.cashAmount && receipt.cashAmount > 0 ? `Naqd: ${formatNum(receipt.cashAmount)}` : ''}${receipt.cashAmount && receipt.cashAmount > 0 && (receipt.cardAmount || receipt.debtAmount) ? ' | ' : ''}${receipt.cardAmount && receipt.cardAmount > 0 ? `Karta: ${formatNum(receipt.cardAmount)}` : ''}${receipt.cardAmount && receipt.cardAmount > 0 && receipt.debtAmount ? ' | ' : ''}${receipt.debtAmount && receipt.debtAmount > 0 ? `Qarz: ${formatNum(receipt.debtAmount)}` : ''}
 </div>
 ` : `
 <div class="payment">To'lov: ${
- printReceipt.paymentMethod === 'cash' ? 'Naqd pul' :
- printReceipt.paymentMethod === 'card' ? 'Karta orqali' :
+ receipt.paymentMethod === 'cash' ? 'Naqd pul' :
+ receipt.paymentMethod === 'card' ? 'Karta orqali' :
  'Qarz qilindi'
 }</div>
 `}
@@ -576,15 +619,41 @@ ${printReceipt.cashAmount && printReceipt.cashAmount > 0 ? `Naqd: ${formatNum(pr
 Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
 </div>
 
-<script>window.onload=function(){window.print();}</script>
+<script>
+window.onload = function() {
+ window.print();
+ setTimeout(function() { window.close(); }, 100);
+};
+</script>
 </body>
 </html>`;
  
- w.document.write(html);
- w.document.close();
- setShowReceipt(false);
- setPrintReceipt(null);
- };
+ // Create hidden iframe for silent printing
+ const iframe = document.createElement('iframe');
+ iframe.style.position = 'fixed';
+ iframe.style.right = '0';
+ iframe.style.bottom = '0';
+ iframe.style.width = '0';
+ iframe.style.height = '0';
+ iframe.style.border = 'none';
+ document.body.appendChild(iframe);
+ 
+ const doc = iframe.contentWindow?.document;
+ if (doc) {
+ doc.open();
+ doc.write(html);
+ doc.close();
+ }
+ 
+ // Clean up iframe after printing
+ setTimeout(() => {
+ if (document.body.contains(iframe)) {
+ document.body.removeChild(iframe);
+ }
+ setPrintReceipt(null); // Clear receipt data after print
+ }, 1000);
+ }, []);
+
  const saveReceipt = () => {
  if (cart.length === 0) { showAlert("Chek bo'sh", 'Ogohlantirish', 'warning'); return; }
  const newSaved: SavedReceipt = {
@@ -736,14 +805,14 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  </header>
 
  {/* Main Content */}
- <div className="flex-1 flex overflow-hidden gap-6 p-6 pb-28">{/* pb-28 для нижней панели */}
- {/* Left - Cart Section */}
+ <div className="flex-1 flex overflow-hidden p-3 lg:p-6 pb-28 lg:pb-20">
+ {/* Cart Section - Full Width */}
  <div className="flex-1 flex flex-col overflow-hidden">
  {/* Table */}
  <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm">
  {/* Table Wrapper with Horizontal Scroll */}
  <div className="flex-1 overflow-x-auto overflow-y-auto">
- <div className="min-w-[1000px]">{/* Минимальная ширина для таблицы */}
+ <div className="min-w-[1000px]">
  {/* Table Header */}
  <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600">
  <div className="col-span-1 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("Kod")}</div>
@@ -789,103 +858,86 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  </div>
  </div>
  </div>
-
- {/* Right - Numpad & Total */}
- <div className="hidden lg:flex w-96 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6 flex-col shadow-sm">
- {/* Total Display */}
- <div className="total-display mb-4 p-5 bg-gradient-to-br from-blue-50 via-sky-50 to-white dark:from-blue-900/30 dark:via-blue-800/20 dark:to-gray-800 rounded-3xl border-2 border-blue-200 dark:border-blue-700 shadow-xl relative overflow-hidden">
- <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100/40 dark:bg-blue-600/20 rounded-full -mr-12 -mt-12"></div>
- <div className="absolute bottom-0 left-0 w-20 h-20 bg-sky-100/40 dark:bg-sky-600/20 rounded-full -ml-10 -mb-10"></div>
- <div className="relative z-10">
- <p className="text-sm font-black mb-2 uppercase tracking-widest flex items-center gap-2">
- <span className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse"></span>
- <span style={{ color: '#1e3a8a' }}>{tKey("JAMI SUMMA")}</span>
- </p>
- <p className="text-4xl font-black" style={{ color: '#1e3a8a !important' }}>
- <span style={{ color: '#1e3a8a' }}>{total.toLocaleString()}</span>
- <span className="text-xl ml-2 font-bold" style={{ color: '#2563eb' }}> so'm</span>
- </p>
- </div>
- </div>
-
- {/* Input */}
- <input
- type="text"
- value={inputValue}
- onChange={e => setInputValue(e.target.value)}
- onKeyDown={e => e.key === 'Enter' && addProductByCode(inputValue)}
- placeholder={tKey("Kod kiriting...")}
- className="modern-input w-full px-4 py-4 text-center text-xl font-mono font-bold bg-white dark:bg-neutral-700 border-2 border-blue-300 dark:border-neutral-600 rounded-2xl mb-4 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 transition-all shadow-md"
- style={{ color: '#1e3a8a' }}
- />
-
- {/* Numpad */}
- <div className="grid grid-cols-4 gap-2">
- {['7', '8', '9', 'C', '4', '5', '6','⌫', '1', '2', '3', '+', '0', '00', '.'].map((key) => (
- <button
- key={key}
- onClick={() => handleNumpadClick(key)}
- className={`
- numpad-button flex items-center justify-center rounded-xl text-xl font-black transition-all shadow-md hover:shadow-lg
- ${key === 'C' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700' : ''}
- ${key === '⌫' ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700' : ''}
- ${key === '+' ? 'bg-gradient-to-br from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 row-span-2' : ''}
- ${!['C', '⌫', '+'].includes(key) ? 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-neutral-900 dark:text-neutral-100 hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-600 dark:hover:to-gray-700 border border-neutral-200 dark:border-neutral-600' : ''}
- ${key === '+' ? 'h-full' : 'h-14'}
- `}
- >
- {key === '⌫' ? <Delete className="w-5 h-5" /> : key}
- </button>
- ))}
- </div>
- </div>
  </div>
 
  {/* Bottom Action Bar - Fixed - Responsive to sidebar */}
- <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-900 dark:to-neutral-800 border-t border-neutral-200 dark:border-neutral-700 shadow-lg z-20 transition-all duration-300 pl-0 lg:pl-64">
- <div className="px-3 lg:px-6 py-2 lg:py-2">
- <div className="flex items-center gap-1.5 lg:gap-2">
- {/* Action Buttons - Responsive positioning */}
+ <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-white via-slate-50 to-white dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 border-t-2 border-neutral-300 dark:border-neutral-700 shadow-2xl z-20 transition-all duration-300 lg:pl-64">
+ <div className="px-3 lg:px-6 py-2 lg:py-3">
+ {/* Responsive Layout: 2 rows on mobile, 1 row on desktop */}
+ <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-0">
+ {/* Row 1 on mobile: Action Buttons */}
+ <div className="flex items-center gap-2 lg:gap-3 lg:flex-1">
  <button
  onClick={openSearch}
- className="flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95"
  >
- <Search className="w-4 h-4" strokeWidth={2.5} />
+ <Search className="w-5 h-5" strokeWidth={2.5} />
  <span className="hidden sm:inline">Qidirish</span>
  </button>
  
  <button
  onClick={toggleReturnMode}
- className={`flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95 ${
+ className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 ${
  isReturnMode
  ? 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
  : 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900'
  }`}
  >
- <RotateCcw className="w-4 h-4" strokeWidth={2.5} />
- <span className="hidden sm:inline">{isReturnMode ? 'Bekor qilish' : 'Qaytarish'}</span>
+ <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
+ <span className="hidden sm:inline">{isReturnMode ? 'Bekor' : 'Qaytarish'}</span>
  </button>
  
  <button
  onClick={saveReceipt}
- className="flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95"
  >
- <Save className="w-4 h-4" strokeWidth={2.5} />
+ <Save className="w-5 h-5" strokeWidth={2.5} />
  <span className="hidden sm:inline">Saqlash</span>
  </button>
+ </div>
 
- {/* Spacer */}
- <div className="flex-1"></div>
+ {/* Row 2 on mobile: Total + Payment */}
+ <div className="flex items-center gap-3 lg:gap-4">
+ {/* Total Display - Same height as action buttons */}
+ <div className="flex-1 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-lg relative overflow-hidden">
+ {/* Subtle decorative elements */}
+ <div className="absolute top-0 right-0 w-12 h-12 bg-blue-200/30 rounded-full -mr-6 -mt-6"></div>
+ <div className="absolute bottom-0 left-0 w-10 h-10 bg-blue-200/20 rounded-full -ml-5 -mb-5"></div>
+ 
+ <div className="relative z-10 flex items-center gap-2 lg:gap-3">
+ <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
+ <Banknote className="w-4 h-4 lg:w-5 lg:h-5 text-white" strokeWidth={2.5} />
+ </div>
+ <div className="flex items-baseline gap-1.5 min-w-0">
+ <div className="min-w-0">
+ <p className="text-[9px] lg:text-[10px] font-bold text-slate-700 uppercase tracking-wide leading-tight">
+ Jami
+ </p>
+ <p className="text-base lg:text-lg font-black text-slate-900 whitespace-nowrap leading-tight truncate">
+ {total.toLocaleString()}
+ <span className="text-xs lg:text-sm ml-1 font-bold text-slate-800">so'm</span>
+ </p>
+ </div>
+ </div>
+ {/* Cart count badge */}
+ <div className="hidden lg:flex items-center gap-1 px-2 py-0.5 bg-blue-500 rounded-lg ml-1">
+ <Package className="w-3 h-3 text-white" />
+ <span className="text-xs font-black text-white">{cart.length}</span>
+ </div>
+ </div>
+ </div>
 
- {/* Payment Button - Always on right */}
+ {/* Payment Button - Same height as action buttons */}
  <button
  onClick={() => setShowPayment(true)}
  disabled={cart.length === 0}
- className="flex items-center justify-center gap-1 lg:gap-2 px-4 lg:px-6 py-2 lg:py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg lg:rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs lg:text-sm shadow-lg hover:shadow-xl active:scale-95"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 lg:px-8 py-3 lg:py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-base lg:text-lg shadow-lg hover:shadow-xl active:scale-95 relative overflow-hidden group"
  >
- <CreditCard className="w-4 lg:w-5 h-4 lg:h-5" strokeWidth={2.5} />
- <span>To'lov</span>
+ <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
+ <CreditCard className="w-5 h-5 lg:w-6 lg:h-6 relative z-10" strokeWidth={2.5} />
+ <span className="relative z-10">To'lov</span>
  </button>
+ </div>
  </div>
  </div>
  </div>
@@ -903,16 +955,35 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  <Search className="w-8 h-8 text-white" strokeWidth={2.5} />
  </div>
  <div>
- <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">{tKey("Mahsulot qidirish")}</h3>
- <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">{tKey("Nom yoki kod bo'yicha toping")}</p>
+ <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">
+ {selectedProducts.size > 0 ? `${selectedProducts.size} ta tanlandi` : tKey("Mahsulot qidirish")}
+ </h3>
+ <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">
+ {selectedProducts.size > 0 ? 'Savatga qo\'shish uchun tasdiqlang' : tKey("Nom yoki kod bo'yicha toping")}
+ </p>
  </div>
  </div>
+ {selectedProducts.size > 0 ? (
  <button
- onClick={() => setShowSearch(false)}
+ onClick={addSelectedToCart}
+ className="w-12 h-12 flex items-center justify-center rounded-xl bg-green-500 hover:bg-green-600 transition-all hover:scale-110 shadow-lg"
+ title="Savatga qo'shish"
+ >
+ <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+ </svg>
+ </button>
+ ) : (
+ <button
+ onClick={() => {
+ setShowSearch(false);
+ setSelectedProducts(new Set());
+ }}
  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors"
  >
  <X className="w-6 h-6 text-slate-600 dark:text-neutral-400" strokeWidth={2.5} />
  </button>
+ )}
  </div>
  <div className="relative flex items-center">
  <Search className="absolute left-4 w-5 h-5 text-slate-500 pointer-events-none" />
@@ -943,31 +1014,58 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  </div>
  ) : (
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
- {searchResults.map(product => (
- <button
+ {searchResults.map(product => {
+ const isSelected = selectedProducts.has(product._id);
+ return (
+ <div
  key={product._id}
- onClick={() => addToCart(product)}
- className="flex items-center gap-4 p-4 bg-white dark:bg-red-900/20 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-2xl transition-all text-left border-2 border-red-200 hover:border-red-400 hover:shadow-lg group active:scale-95"
+ className={`relative flex items-center gap-3 p-4 rounded-2xl transition-all text-left border-2 group cursor-pointer ${
+ isSelected 
+ ? 'bg-green-50 dark:bg-green-900/30 border-green-500 shadow-lg' 
+ : 'bg-white dark:bg-red-900/20 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 hover:border-red-400 hover:shadow-lg'
+ }`}
+ onClick={() => toggleProductSelection(product._id)}
  >
- <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
- <Package className="w-8 h-8 text-red-600 dark:text-red-400" />
+ {/* Checkbox */}
+ <div className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${
+ isSelected 
+ ? 'bg-green-500 border-green-500' 
+ : 'border-red-300 group-hover:border-red-400'
+ }`}>
+ {isSelected && (
+ <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+ </svg>
+ )}
  </div>
+ 
+ {/* Product Icon */}
+ <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-transform ${
+ isSelected 
+ ? 'bg-green-200 dark:bg-green-800/50 scale-105' 
+ : 'bg-red-100 dark:bg-red-900/30 group-hover:scale-105'
+ }`}>
+ <Package className={`w-7 h-7 ${isSelected ? 'text-green-700' : 'text-red-600 dark:text-red-400'}`} />
+ </div>
+ 
+ {/* Product Info */}
  <div className="flex-1 min-w-0">
- <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1">{product.name}</p>
- <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-2">Kod: {product.code}</p>
- <div className="flex items-center gap-2">
- <span className="text-xs font-bold text-slate-600">Tan:</span>
- <span className="text-sm font-bold text-slate-700 dark:text-neutral-400">
+ <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1 text-sm">{product.name}</p>
+ <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-1.5">Kod: {product.code}</p>
+ <div className="flex items-center gap-2 text-xs">
+ <span className="font-bold text-slate-600">Tan:</span>
+ <span className="font-bold text-slate-700 dark:text-neutral-400">
  {((product as any).costPrice || 0).toLocaleString()}
  </span>
- <span className="text-xs font-bold text-slate-600">•</span>
- <span className="text-sm font-black text-red-600 dark:text-red-400">
+ <span className="font-bold text-slate-600">•</span>
+ <span className={`font-black ${isSelected ? 'text-green-600' : 'text-red-600 dark:text-red-400'}`}>
  {product.price.toLocaleString()}
  </span>
  </div>
  </div>
- </button>
- ))}
+ </div>
+ );
+ })}
  </div>
  )}
  </div>
@@ -1233,9 +1331,9 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  {showReceipt && printReceipt && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
  <div className="fixed inset-0 bg-black/70 backdrop-blur-md animate-fadeIn" onClick={() => setShowReceipt(false)} />
- <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-md shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20">
+ <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-md max-h-[90vh] shadow-2xl relative z-10 overflow-hidden animate-scaleIn border-4 border-white/20 flex flex-col">
  {/* Header with Gradient */}
- <div className="relative overflow-hidden bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600">
+ <div className="relative overflow-hidden bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 flex-shrink-0">
  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHptMC0xMGMwLTIuMjEtMS43OS00LTQtNHMtNCAxLjc5LTQgNCAxLjc5IDQgNCA0IDQtMS43OSA0LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
  <div className="relative p-8">
  <div className="flex items-center gap-5">
@@ -1250,8 +1348,8 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  </div>
  </div>
 
- {/* Receipt Content */}
- <div className="p-6 font-mono text-sm bg-neutral-50 dark:bg-neutral-900">
+ {/* Receipt Content - Scrollable */}
+ <div className="flex-1 overflow-y-auto p-6 font-mono text-sm bg-neutral-50 dark:bg-neutral-900">
  <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 border-2 border-neutral-200 dark:border-neutral-700 shadow-inner">
  <div className="text-center border-b-2 border-dashed border-neutral-300 dark:border-neutral-600 pb-4 mb-4">
  <h2 className="text-2xl font-black tracking-widest text-neutral-900 dark:text-neutral-100 mb-1">UNIVERSAL</h2>
@@ -1298,9 +1396,9 @@ Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
  </div>
 
  {/* Actions */}
- <div className="p-6 bg-neutral-50 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex gap-3">
+ <div className="flex-shrink-0 p-6 bg-neutral-50 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex gap-3">
  <button
- onClick={handlePrint}
+ onClick={() => handlePrint()}
  className="flex-1 flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl font-bold hover:from-primary-600 hover:to-primary-700 transition-all hover:scale-105 shadow-lg"
  >
  <Printer className="w-5 h-5" />

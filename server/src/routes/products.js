@@ -107,7 +107,7 @@ router.get('/next-code', auth, async (req, res) => {
       }
     }
     
-    // OPTIMIZED: Find max code using aggregation (100x faster!)
+    // OPTIMIZED: Find first available code (fills gaps from deleted products)
     const result = await Product.aggregate([
       {
         $project: {
@@ -127,15 +127,18 @@ router.get('/next-code', auth, async (req, res) => {
         }
       },
       {
-        $group: {
-          _id: null,
-          maxCode: { $max: '$numericCode' }
-        }
+        $sort: { numericCode: 1 }
       }
     ]);
     
-    const maxCode = result.length > 0 && result[0].maxCode ? result[0].maxCode : baseCode - 1;
-    const nextCode = maxCode + 1;
+    // Find first gap in sequence
+    let nextCode = baseCode;
+    const usedCodes = new Set(result.map(r => r.numericCode));
+    
+    // Find first available code starting from baseCode
+    while (usedCodes.has(nextCode) && nextCode < baseCode + 100000) {
+      nextCode++;
+    }
     
     res.json({ code: String(nextCode) });
   } catch (error) {
