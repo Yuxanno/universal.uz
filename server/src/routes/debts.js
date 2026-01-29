@@ -55,6 +55,67 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
+// NEW: Get debts grouped by customer
+router.get('/grouped', auth, async (req, res) => {
+  try {
+    const { type } = req.query;
+    const typeFilter = type ? { type } : {};
+    
+    // Aggregate debts by customer
+    const groupedDebts = await Debt.aggregate([
+      { $match: typeFilter },
+      {
+        $group: {
+          _id: '$customer',
+          totalAmount: { $sum: '$amount' },
+          totalPaid: { $sum: '$paidAmount' },
+          remainingAmount: { $sum: { $subtract: ['$amount', '$paidAmount'] } },
+          debtCount: { $sum: 1 },
+          debts: {
+            $push: {
+              _id: '$_id',
+              amount: '$amount',
+              paidAmount: '$paidAmount',
+              dueDate: '$dueDate',
+              status: '$status',
+              description: '$description',
+              collateral: '$collateral',
+              receipt: '$receipt',
+              payments: '$payments',
+              createdAt: '$createdAt'
+            }
+          },
+          latestDebt: { $max: '$createdAt' },
+          oldestDueDate: { $min: '$dueDate' }
+        }
+      },
+      { $sort: { remainingAmount: -1 } }
+    ]);
+    
+    // Populate customer details
+    await Customer.populate(groupedDebts, { path: '_id', select: 'name phone address' });
+    
+    // Transform data for frontend
+    const result = groupedDebts.map(group => ({
+      customer: group._id,
+      totalAmount: group.totalAmount,
+      totalPaid: group.totalPaid,
+      remainingAmount: group.remainingAmount,
+      debtCount: group.debtCount,
+      debts: group.debts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+      latestDebt: group.latestDebt,
+      oldestDueDate: group.oldestDueDate,
+      status: group.remainingAmount === 0 ? 'paid' : 
+              (group.oldestDueDate && new Date(group.oldestDueDate) < new Date()) ? 'overdue' : 'pending'
+    }));
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching grouped debts:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { type, customer, creditorName, amount, dueDate, description, collateral } = req.body;

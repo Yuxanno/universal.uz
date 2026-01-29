@@ -549,15 +549,20 @@ router.post('/', auth, async (req, res) => {
       const Debt = require('../models/Debt');
       const Customer = require('../models/Customer');
       
-      // Get customer info
-      const customerDoc = await Customer.findById(customer);
-      const customerName = customerDoc?.name || 'Mijoz';
-      
-      // Format date as DD.MM.YYYY HH:MM
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
+      try {
+        // Get customer info
+        const customerDoc = await Customer.findById(customer);
+        if (!customerDoc) {
+          console.error('❌ Customer not found for debt creation:', customer);
+          throw new Error('Mijoz topilmadi');
+        }
+        const customerName = customerDoc.name || 'Mijoz';
+        
+        // Format date as DD.MM.YYYY HH:MM
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const dateStr = `${day}.${month}.${year} ${hours}:${minutes}`;
@@ -619,6 +624,10 @@ router.post('/', auth, async (req, res) => {
       await Customer.findByIdAndUpdate(customer, {
         $inc: { debt: debtAmount }
       });
+      } catch (debtError) {
+        console.error('❌ Error creating debt:', debtError);
+        throw new Error(`Qarz yaratishda xatolik: ${debtError.message}`);
+      }
     }
     
     // Update customer purchase history and total purchases if customer is selected and not return

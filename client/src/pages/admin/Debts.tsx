@@ -14,6 +14,24 @@ import { useLanguage } from '../../context/LanguageContext';
 import PhoneInput from '../../components/PhoneInput';
 import DebtDetailsModal from '../../components/debts/DebtDetailsModal';
 
+// Grouped debt interface
+interface GroupedDebt {
+ customer: {
+ _id: string;
+ name: string;
+ phone: string;
+ address?: string;
+ };
+ totalAmount: number;
+ totalPaid: number;
+ remainingAmount: number;
+ debtCount: number;
+ debts: Debt[];
+ latestDebt: string;
+ oldestDueDate: string | null;
+ status: 'pending' | 'overdue' | 'paid';
+}
+
 export default function Debts() {
  const { t } = useLanguage();
  const { user } = useAuth();
@@ -21,6 +39,9 @@ export default function Debts() {
  const { showConfirm, AlertComponent } = useAlert();
  const { customers, addCustomer } = useCustomers();
  const [debts, setDebts] = useState<Debt[]>([]);
+ const [groupedDebts, setGroupedDebts] = useState<GroupedDebt[]>([]);
+ const [viewMode, setViewMode] = useState<'individual' | 'grouped'>('grouped');
+ const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
  const [stats, setStats] = useState({
  total: 0, pending: 0, today: 0, overdue: 0, paid: 0, blacklist: 0, totalAmount: 0
  });
@@ -40,17 +61,31 @@ export default function Debts() {
  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '+998', region: '', district: '' });
  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
+ const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+ const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
  useEffect(() => {
+ if (viewMode === 'grouped') {
+ fetchGroupedDebts();
+ } else {
  fetchDebts();
+ }
  fetchStats();
- }, [debtType]);
+ }, [debtType, viewMode]);
 
  const fetchDebts = async () => {
  try {
  const res = await api.get(`/debts?type=${debtType}`);
  setDebts(res.data);
  } catch (err) { console.error('Error fetching debts:', err); }
+ finally { setLoading(false); }
+ };
+
+ const fetchGroupedDebts = async () => {
+ try {
+ const res = await api.get(`/debts/grouped?type=${debtType}`);
+ setGroupedDebts(res.data);
+ } catch (err) { console.error('Error fetching grouped debts:', err); }
  finally { setLoading(false); }
  };
 
@@ -63,13 +98,20 @@ export default function Debts() {
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
+ 
+ // Validate customer selection for receivable type
+ if (debtType === 'receivable' && !formData.customer) {
+ alert('Iltimos, mijozni tanlang!');
+ return;
+ }
+ 
  try {
  const data = {
  type: debtType,
  customer: debtType === 'receivable' ? formData.customer : undefined,
  creditorName: debtType === 'payable' ? formData.creditorName : undefined,
  amount: Number(formData.amount),
- dueDate: formData.dueDate,
+ dueDate: formData.dueDate || null,
  description: formData.description,
  collateral: formData.collateral
  };
@@ -79,10 +121,18 @@ export default function Debts() {
  } else {
  await api.post('/debts', data);
  }
+ 
+ if (viewMode === 'grouped') {
+ fetchGroupedDebts();
+ } else {
  fetchDebts();
+ }
  fetchStats();
  closeModal();
- } catch (err) { console.error('Error saving debt:', err); }
+ } catch (err) { 
+ console.error('Error saving debt:', err);
+ alert('Xatolik yuz berdi! Iltimos, qaytadan urinib ko\'ring.');
+ }
  };
 
  const handlePayment = async (e: React.FormEvent) => {
@@ -93,7 +143,12 @@ export default function Debts() {
  amount: Number(paymentAmount),
  method: 'cash'
  });
+ 
+ if (viewMode === 'grouped') {
+ fetchGroupedDebts();
+ } else {
  fetchDebts();
+ }
  fetchStats();
  setShowPaymentModal(false);
  setSelectedDebt(null);
@@ -106,7 +161,12 @@ export default function Debts() {
  if (!confirmed) return;
  try {
  await api.delete(`/debts/${id}`);
+ 
+ if (viewMode === 'grouped') {
+ fetchGroupedDebts();
+ } else {
  fetchDebts();
+ }
  fetchStats();
  } catch (err) { console.error('Error deleting debt:', err); }
  };
@@ -117,6 +177,8 @@ export default function Debts() {
  setFormData({ customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' });
  setShowNewCustomerForm(false);
  setNewCustomer({ name: '', phone: '+998', region: '', district: '' });
+ setCustomerSearchQuery('');
+ setShowCustomerDropdown(false);
  };
 
  const openEditModal = (debt: Debt) => {
@@ -130,6 +192,9 @@ export default function Debts() {
  description: (debt as any).description || '',
  collateral: (debt as any).collateral || ''
  });
+ if (debt.customer) {
+ setCustomerSearchQuery(`${debt.customer.name} - ${debt.customer.phone}`);
+ }
  setShowModal(true);
  };
 
@@ -172,6 +237,31 @@ export default function Debts() {
  return matchesSearch && matchesStatus;
  });
 
+ const filteredGroupedDebts = groupedDebts.filter(group => {
+ const name = group.customer?.name || '';
+ const phone = group.customer?.phone || '';
+ const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+ phone.includes(searchQuery);
+ 
+ let matchesStatus = true;
+ if (statusFilter === 'today') {
+ matchesStatus = group.debts.some(debt => {
+ if (debt.dueDate) {
+ const today = new Date();
+ today.setHours(0, 0, 0, 0);
+ const tomorrow = new Date(today.getTime() + 86400000);
+ const dueDate = new Date(debt.dueDate);
+ return dueDate >= today && dueDate < tomorrow && debt.status !== 'paid';
+ }
+ return false;
+ });
+ } else if (statusFilter !== 'all') {
+ matchesStatus = group.status === statusFilter;
+ }
+ 
+ return matchesSearch && matchesStatus;
+ });
+
  const statItems = [
  { label: t('Kutilmoqda'), value: stats.pending, icon: Clock, color: 'gray', filter: 'pending' },
  { label: t("Bugun to'lanadigan"), value: stats.today, icon: Calendar, color: 'primary', filter: 'today' },
@@ -200,8 +290,29 @@ export default function Debts() {
  };
 
  const handleDetailsModalUpdate = () => {
+ if (viewMode === 'grouped') {
+ fetchGroupedDebts();
+ } else {
  fetchDebts();
+ }
  fetchStats();
+ };
+
+ const filteredCustomers = customers.filter(c => {
+ const searchLower = customerSearchQuery.toLowerCase();
+ return c.name.toLowerCase().includes(searchLower) || 
+ c.phone.includes(customerSearchQuery);
+ });
+
+ const selectedCustomer = customers.find(c => c._id === formData.customer);
+
+ const handleCustomerSelect = (customerId: string) => {
+ setFormData({ ...formData, customer: customerId });
+ const customer = customers.find(c => c._id === customerId);
+ if (customer) {
+ setCustomerSearchQuery(`${customer.name} - ${customer.phone}`);
+ }
+ setShowCustomerDropdown(false);
  };
 
  return (
@@ -221,12 +332,10 @@ export default function Debts() {
  </p>
  </div>
  </div>
- {isAdmin && (
  <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all hover:scale-105 shadow-sm font-medium">
  <Plus className="w-4 h-4" />
  <span className="hidden sm:inline">{t("Yangi qarz")}</span>
  </button>
- )}
  </header>
 
  <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
@@ -272,6 +381,32 @@ export default function Debts() {
  </div>
  </div>
 
+ {/* View Mode Toggle */}
+ <div className="inline-flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl shadow-sm">
+ <button
+ onClick={() => setViewMode('grouped')}
+ className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
+ viewMode === 'grouped' 
+ ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-md scale-105' 
+ : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+ }`}
+ >
+ <User className="w-5 h-5" />
+ Mijozlar bo'yicha
+ </button>
+ <button
+ onClick={() => setViewMode('individual')}
+ className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
+ viewMode === 'individual' 
+ ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-md scale-105' 
+ : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
+ }`}
+ >
+ <Wallet className="w-5 h-5" />
+ Barcha qarzlar
+ </button>
+ </div>
+
  {/* Stats */}
  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
  {statItems.map((stat, i) => (
@@ -315,7 +450,180 @@ export default function Debts() {
  <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
  <p className="text-neutral-500 dark:text-neutral-400">Yuklanmoqda...</p>
  </div>
- ) : filteredDebts.length === 0 ? (
+ ) : viewMode === 'grouped' ? (
+ /* Grouped View */
+ filteredGroupedDebts.length === 0 ? (
+ <div className="flex flex-col items-center justify-center py-16 px-4">
+ <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
+ <AlertTriangle className="w-8 h-8 text-neutral-400" />
+ </div>
+ <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Mijozlar topilmadi</h3>
+ <p className="text-neutral-500 dark:text-neutral-400 text-center max-w-md">
+ {searchQuery || statusFilter !== 'all' ? 'Filtr bo\'yicha mijozlar topilmadi' : 'Hozircha qarzlar yo\'q'}
+ </p>
+ </div>
+ ) : (
+ <div className="space-y-3 p-4">
+ {filteredGroupedDebts.map(group => (
+ <div 
+ key={group.customer._id}
+ className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 overflow-hidden hover:border-primary-500 transition-all hover:shadow-lg"
+ >
+ {/* Customer Header */}
+ <div 
+ onClick={() => setExpandedCustomer(expandedCustomer === group.customer._id ? null : group.customer._id)}
+ className="p-5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-all"
+ >
+ <div className="flex items-start gap-4">
+ <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-900/40">
+ <User className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="flex items-start justify-between mb-2">
+ <div className="flex-1">
+ <h4 className="font-bold text-lg text-neutral-900 dark:text-neutral-100 mb-1">{group.customer.name}</h4>
+ {group.customer.phone && (
+ <p className="text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+ <Phone className="w-3 h-3" />
+ {group.customer.phone}
+ </p>
+ )}
+ </div>
+ <span className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 ${
+ group.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
+ group.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+ 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
+ }`}>
+ {group.status === 'paid' ? <CheckCircle2 className="w-3 h-3" /> :
+ group.status === 'overdue' ? <AlertCircle className="w-3 h-3" /> :
+ <Clock className="w-3 h-3" />}
+ {group.status === 'paid' ? "To'langan" :
+ group.status === 'overdue' ? "O'tgan" : 'Kutilmoqda'}
+ </span>
+ </div>
+ 
+ <div className="grid grid-cols-3 gap-3 mt-3">
+ <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
+ <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Jami qarz</p>
+ <p className="text-lg font-black text-neutral-900 dark:text-neutral-100">{formatNumber(group.totalAmount)}</p>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">so'm</p>
+ </div>
+ <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-xl p-3 border border-emerald-200 dark:border-emerald-800">
+ <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">To'langan</p>
+ <p className="text-lg font-black text-emerald-700 dark:text-emerald-300">{formatNumber(group.totalPaid)}</p>
+ <p className="text-xs text-emerald-600 dark:text-emerald-400">so'm</p>
+ </div>
+ <div className="rounded-xl p-3 border-2 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 dark:from-primary-900/20 dark:to-primary-900/30 dark:border-primary-800">
+ <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Qoldiq</p>
+ <p className="text-lg font-black text-primary-600 dark:text-primary-400">{formatNumber(group.remainingAmount)}</p>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">so'm</p>
+ </div>
+ </div>
+ 
+ <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+ <span className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+ {group.debtCount} ta qarz
+ </span>
+ <button className="text-primary-600 dark:text-primary-400 text-sm font-bold hover:underline">
+ {expandedCustomer === group.customer._id ? 'Yopish' : 'Batafsil'}
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+ 
+ {/* Expanded Debts */}
+ {expandedCustomer === group.customer._id && (
+ <div className="border-t-2 border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 p-4 space-y-2">
+ {group.debts.map(debt => (
+ <div 
+ key={debt._id}
+ onClick={() => handleRowClick(debt)}
+ className="bg-white dark:bg-neutral-800 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 hover:border-primary-500 transition-all cursor-pointer"
+ >
+ <div className="flex items-start justify-between mb-3">
+ <div className="flex-1">
+ {(debt as any).description && (
+ <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+ {(debt as any).description}
+ </p>
+ )}
+ <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+ <span className="flex items-center gap-1">
+ <Calendar className="w-3 h-3" />
+ {debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('en-GB').replace(/\//g, '.') : 'Muddatsiz'}
+ </span>
+ {(debt as any).collateral && (
+ <span className="flex items-center gap-1">
+ <AlertTriangle className="w-3 h-3" />
+ Zalog: {(debt as any).collateral}
+ </span>
+ )}
+ </div>
+ </div>
+ <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+ debt.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
+ debt.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+ 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
+ }`}>
+ {debt.status === 'paid' ? "To'langan" :
+ debt.status === 'overdue' ? "O'tgan" : 'Kutilmoqda'}
+ </span>
+ </div>
+ 
+ <div className="grid grid-cols-3 gap-2">
+ <div>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">Qarz</p>
+ <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(debt.amount)}</p>
+ </div>
+ <div>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">To'langan</p>
+ <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatNumber(debt.paidAmount)}</p>
+ </div>
+ <div>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">Qoldiq</p>
+ <p className="text-sm font-bold text-primary-600 dark:text-primary-400">{formatNumber(debt.amount - debt.paidAmount)}</p>
+ </div>
+ </div>
+ 
+ <div className="flex gap-2 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+ {debt.status !== 'paid' && (
+ <button 
+ onClick={(e) => { e.stopPropagation(); setSelectedDebt(debt); setShowPaymentModal(true); }} 
+ className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary-100 text-primary-600 hover:bg-primary-200 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 transition-all text-sm font-bold"
+ >
+ <DollarSign className="w-4 h-4" />
+ To'lov
+ </button>
+ )}
+ {isAdmin && (
+ <>
+ <button 
+ onClick={(e) => { e.stopPropagation(); openEditModal(debt); }} 
+ className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-all text-sm font-bold"
+ >
+ <Edit className="w-4 h-4" />
+ </button>
+ <button 
+ onClick={(e) => { e.stopPropagation(); handleDelete(debt._id); }} 
+ className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-all text-sm font-bold"
+ >
+ <Trash2 className="w-4 h-4" />
+ </button>
+ </>
+ )}
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+ ))}
+ </div>
+ )
+ ) : (
+ /* Individual View - existing code */
+ filteredDebts.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-16 px-4">
  <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
  <AlertTriangle className="w-8 h-8 text-neutral-400" />
@@ -525,6 +833,7 @@ export default function Debts() {
  ))}
  </div>
  </>
+ )
  )}
  </div>
  </div>
@@ -635,11 +944,78 @@ export default function Debts() {
  </div>
  ) : (
  <div className="flex gap-2">
- <select className="flex-1 px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all" value={formData.customer}
- onChange={e => setFormData({...formData, customer: e.target.value})} required>
- <option value="">Tanlang</option>
- {customers.map(c => <option key={c._id} value={c._id}>{c.name} - {c.phone}</option>)}
- </select>
+ <div className="flex-1 relative">
+ <div className="relative">
+ <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 pointer-events-none" />
+ <input
+ type="text"
+ className="w-full pl-12 pr-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all"
+ placeholder="Mijozni qidiring..."
+ value={customerSearchQuery}
+ onChange={e => {
+ setCustomerSearchQuery(e.target.value);
+ setShowCustomerDropdown(true);
+ if (!e.target.value) {
+ setFormData({ ...formData, customer: '' });
+ }
+ }}
+ onFocus={() => setShowCustomerDropdown(true)}
+ onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
+ autoComplete="off"
+ />
+ {formData.customer && selectedCustomer && (
+ <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+ <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30 px-2 py-1 rounded-lg">
+ ✓ Tanlandi
+ </span>
+ <button
+ type="button"
+ onClick={() => {
+ setFormData({ ...formData, customer: '' });
+ setCustomerSearchQuery('');
+ }}
+ className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all"
+ >
+ <X className="w-4 h-4 text-neutral-500" />
+ </button>
+ </div>
+ )}
+ </div>
+ {showCustomerDropdown && (
+ <div className="absolute z-50 w-full mt-2 bg-white dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+ {filteredCustomers.length > 0 ? (
+ filteredCustomers.map(c => (
+ <button
+ key={c._id}
+ type="button"
+ onClick={() => handleCustomerSelect(c._id)}
+ className={`w-full px-4 py-3 text-left hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all border-b border-neutral-100 dark:border-neutral-600 last:border-b-0 ${
+ formData.customer === c._id ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+ }`}
+ >
+ <div className="flex items-center justify-between">
+ <div>
+ <p className="font-semibold text-neutral-900 dark:text-neutral-100">{c.name}</p>
+ <p className="text-sm text-neutral-500 dark:text-neutral-400">{c.phone}</p>
+ </div>
+ {formData.customer === c._id && (
+ <CheckCircle2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+ )}
+ </div>
+ </button>
+ ))
+ ) : (
+ <div className="px-4 py-6 text-center text-neutral-500 dark:text-neutral-400">
+ <p className="text-sm">Mijoz topilmadi</p>
+ <p className="text-xs mt-1">Yangi mijoz qo'shish uchun + tugmasini bosing</p>
+ </div>
+ )}
+ </div>
+ )}
+ {!formData.customer && (
+ <p className="text-xs text-red-500 dark:text-red-400 mt-1">* Mijozni tanlash majburiy</p>
+ )}
+ </div>
  <button 
  type="button" 
  onClick={() => setShowNewCustomerForm(true)}
@@ -757,14 +1133,12 @@ export default function Debts() {
  )}
 
  {/* Mobile FAB */}
- {isAdmin && (
  <button
  onClick={() => setShowModal(true)}
  className="lg:hidden fixed right-4 bottom-20 w-14 h-14 bg-primary-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-primary-600 active:scale-95 transition-all z-30"
  >
  <Plus className="w-6 h-6" />
  </button>
- )}
  </div>
  );
 }

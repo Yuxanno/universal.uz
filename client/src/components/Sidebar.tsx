@@ -278,11 +278,13 @@ export default function Sidebar({ items, basePath, collapsed = false, setCollaps
 
 export const adminMenuItems: MenuItem[] = [
  { icon: <LayoutDashboard className="w-5 h-5" />, label: 'Statistika', path: '' },
+ { icon: <ShoppingCart className="w-5 h-5" />, label: 'Kassa', path: '/kassa' },
  { icon: <Package className="w-5 h-5" />, label: 'Tovarlar', path: '/products' },
  { icon: <Warehouse className="w-5 h-5" />, label: 'Omborlar', path: '/warehouses' },
  { icon: <Users className="w-5 h-5" />, label: 'Mijozlar', path: '/customers' },
  { icon: <CreditCard className="w-5 h-5" />, label: 'Qarz daftarcha', path: '/debts' },
  { icon: <ShoppingBag className="w-5 h-5" />, label: 'Buyurtmalar', path: '/orders' },
+ { icon: <Receipt className="w-5 h-5" />, label: "Xodimlar cheklari", path: '/staff-receipts' },
  { icon: <UserPlus className="w-5 h-5" />, label: "Yordamchilar", path: '/helpers' },
 ];
 

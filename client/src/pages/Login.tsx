@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Lock, ArrowRight, Shield } from 'lucide-react';
@@ -13,8 +13,21 @@ export default function Login() {
  const [showPassword, setShowPassword] = useState(false);
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
- const { login } = useAuth();
+ const { login, user, loading: authLoading } = useAuth();
  const navigate = useNavigate();
+
+ // Redirect if already logged in (on page load/refresh)
+ useEffect(() => {
+ if (user && !authLoading) {
+ if (user.role === 'admin') {
+ navigate('/admin', { replace: true });
+ } else if (user.role === 'cashier') {
+ navigate('/cashier', { replace: true });
+ } else {
+ navigate('/helper', { replace: true });
+ }
+ }
+ }, [user, authLoading, navigate]);
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
@@ -22,8 +35,16 @@ export default function Login() {
  setLoading(true);
  try {
  const rawPhone = getRawPhone(phone);
- await login(rawPhone, password);
- navigate('/');
+ const userData = await login(rawPhone, password);
+ 
+ // Immediate redirect after successful login
+ if (userData?.role === 'admin') {
+ navigate('/admin', { replace: true });
+ } else if (userData?.role === 'cashier') {
+ navigate('/cashier', { replace: true });
+ } else {
+ navigate('/helper', { replace: true });
+ }
  } catch (err: any) {
  setError(err.response?.data?.message || t('Xatolik yuz berdi'));
  } finally {
