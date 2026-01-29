@@ -234,7 +234,6 @@ export default function Kassa() {
  // Modal'ni darhol yopadi
  setShowSearch(false);
  setSearchQuery('');
- setInputValue('');
  }, []);
 
  const removeFromCart = useCallback((id: string) => {
@@ -985,7 +984,7 @@ window.onload = function() {
  </div>
  {/* Results */}
  <div className="flex-1 overflow-auto p-4 bg-white dark:bg-neutral-800">
- {isSearching ? (
+ {loading ? (
  <div className="flex flex-col items-center justify-center py-12">
  <div className="w-12 h-12 border-4 border-red-200 border-t-red-500 rounded-full animate-spin mb-4"></div>
  <p className="text-sm font-semibold text-slate-600">Qidirilmoqda...</p>

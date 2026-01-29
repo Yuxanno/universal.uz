@@ -503,7 +503,7 @@ export default function SalesReport() {
                           dataKey="amount"
                           paddingAngle={2}
                         >
-                          {stats.paymentBreakdown.map((item, index) => (
+                          {stats.paymentBreakdown.map((_item, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
