@@ -41,6 +41,11 @@ export default function HelperScanner() {
  const isFirstLoad = useRef(true);
  const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
  const isLoadingFromArchive = useRef(false); // Flag to prevent sync when loading from archive
+ 
+ // SENIOR SOLUTION: Prevent duplicate scans with cooldown
+ const lastScannedCode = useRef<string | null>(null);
+ const lastScanTime = useRef<number>(0);
+ const SCAN_COOLDOWN_MS = 1500; // 1.5 seconds cooldown between same product scans
 
  useEffect(() => {
  const init = async () => {
@@ -188,6 +193,21 @@ export default function HelperScanner() {
  },
  (decodedText) => {
  console.log('✅ QR Code scanned:', decodedText);
+ 
+ // SENIOR SOLUTION: Prevent duplicate scans with cooldown
+ const now = Date.now();
+ const timeSinceLastScan = now - lastScanTime.current;
+ 
+ // If same code scanned within cooldown period, ignore it
+ if (lastScannedCode.current === decodedText && timeSinceLastScan < SCAN_COOLDOWN_MS) {
+ console.log(`⏳ [COOLDOWN] Ignoring duplicate scan (${timeSinceLastScan}ms since last scan)`);
+ return; // IGNORE duplicate scan
+ }
+ 
+ // Update last scan tracking
+ lastScannedCode.current = decodedText;
+ lastScanTime.current = now;
+ 
  let product = null;
  
  // Normalize scanned text: trim whitespace and convert to lowercase for comparison

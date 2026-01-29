@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import Sidebar, { adminMenuItems } from '../components/Sidebar';
-import BottomNavigation from '../components/BottomNavigation';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -123,14 +122,11 @@ export default function AdminLayout() {
  )}
  
  {/* Main Content */}
- <main className={`transition-all duration-300 ease-smooth pt-14 lg:pt-0 pb-20 lg:pb-0 ${
+ <main className={`transition-all duration-300 ease-smooth pt-14 lg:pt-0 ${
  collapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
  }`}>
  <Outlet />
  </main>
- 
- {/* Mobile Bottom Navigation */}
- <BottomNavigation />
  </div>
  );
 }
