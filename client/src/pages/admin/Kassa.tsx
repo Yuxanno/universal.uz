@@ -461,7 +461,7 @@ body {
 .item-name { font-weight: bold; }
 .item-calc { display: flex; justify-content: space-between; font-size: 10px; }
 .price { font-weight: bold; }
-.total-box { border: 2px solid #000; padding: 2mm; margin: 2mm 0; text-align: center; }
+.total-box { padding: 2mm; margin: 2mm 0; text-align: center; }
 .total-sum { font-size: 13px; font-weight: bold; }
 .payment { font-size: 10px; margin: 2mm 0; }
 .footer { font-size: 11px; font-weight: bold; }
