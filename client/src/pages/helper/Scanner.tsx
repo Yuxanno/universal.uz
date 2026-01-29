@@ -207,7 +207,7 @@ export default function HelperScanner() {
  console.log('✅ Product found:', product.name);
  // AVTOMATIK QO'SHISH - savol bo'lmasin
  addToCart(product);
- toast.success('Tovar qo'shildi!', product.name);
+ toast.success("Tovar qo'shildi!", product.name);
  // SKANER YOPILMASIN - davom etsin, ketma-ket skaner qilish mumkin
  } else {
  console.log('❌ Product not found for:', decodedText);
