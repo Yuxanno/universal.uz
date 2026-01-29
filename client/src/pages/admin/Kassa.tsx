@@ -430,48 +430,89 @@ export default function Kassa() {
 <meta charset="UTF-8">
 <style>
 @page { 
- size: 2in 4in; 
+ size: 58mm auto; 
  margin: 0; 
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
  font-family: 'Courier New', monospace;
- font-size: 11px;
- width: 2in;
+ font-size: 13px;
+ width: 58mm;
  padding: 3mm;
+ margin: 0 auto;
  text-align: center;
 }
-.title { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
-.subtitle { font-size: 9px; margin-bottom: 3mm; }
+.header { 
+ display: flex; 
+ align-items: center; 
+ justify-content: center; 
+ gap: 2mm; 
+ margin: 0 auto 2mm auto;
+ width: 100%;
+}
+.logo { 
+ width: auto; 
+ height: 12mm;
+ object-fit: contain;
+ filter: brightness(0.8) saturate(1.2);
+}
+.header-text { 
+ display: flex; 
+ flex-direction: column; 
+ align-items: flex-start;
+ justify-content: center;
+}
+.title { 
+ font-size: 18px; 
+ font-weight: bold; 
+ line-height: 1.2;
+ text-align: left;
+ color: #1a1a1a;
+}
+.subtitle { 
+ font-size: 10px; 
+ font-weight: normal; 
+ line-height: 1.2;
+ text-align: left;
+ color: #333;
+}
 .contacts { 
  display: grid; 
  grid-template-columns: 1fr 1fr; 
  gap: 1mm 2mm; 
- font-size: 8px; 
- margin-bottom: 3mm; 
- text-align: left;
+ font-size: 10px; 
+ margin: 0 auto 2mm auto; 
+ text-align: center;
  line-height: 1.3;
+ width: 100%;
 }
-.contact-item { white-space: nowrap; }
+.contact-item { white-space: nowrap; text-align: center; }
 .contact-item strong { font-weight: bold; }
-.line { border-top: 1px dashed #000; margin: 2mm 0; }
-.meta { font-size: 10px; text-align: left; margin-bottom: 1mm; }
-.items { text-align: left; }
-.item { margin-bottom: 2mm; }
-.item-name { font-weight: bold; }
-.item-calc { display: flex; justify-content: space-between; font-size: 10px; }
+.line { border-top: 1px dashed #000; margin: 1.5mm auto; width: 100%; }
+.meta { font-size: 12px; text-align: center; margin: 0 auto 0.5mm auto; font-weight: bold; width: 100%; }
+.items { text-align: center; margin: 0 auto; width: 100%; }
+.item { margin-bottom: 1.5mm; }
+.item-name { font-weight: bold; font-size: 11px; text-align: center; word-wrap: break-word; }
+.item-calc { display: flex; justify-content: space-between; font-size: 12px; text-align: center; }
 .price { font-weight: bold; }
-.total-box { padding: 2mm; margin: 2mm 0; text-align: center; }
-.total-sum { font-size: 13px; font-weight: bold; }
-.payment { font-size: 10px; margin: 2mm 0; }
-.footer { font-size: 11px; font-weight: bold; }
-.footer-sub { font-size: 9px; }
+.total-box { padding: 1.5mm; margin: 1.5mm auto; text-align: center; width: 100%; }
+.total-sum { font-size: 13px; font-weight: bold; text-align: center; }
+.payment { font-size: 12px; margin: 1.5mm auto; text-align: center; width: 100%; }
+@media print {
+ .logo { filter: none; }
+}
 </style>
 </head>
 <body>
 
-<div class="title">UNIVERSAL</div>
-<div class="subtitle">Savdo markazi</div>
+<div class="header">
+ <img src="/chek_logo.jpg" alt="Logo" class="logo">
+ <div class="header-text">
+ <div class="title">UNIVERSAL</div>
+ <div class="subtitle">Savdo markazi</div>
+ </div>
+</div>
+
 <div class="contacts">
  <div class="contact-item"><strong>+99893 140-00-04</strong><br>ASADBEK</div>
  <div class="contact-item"><strong>+99893 657-66-87</strong><br>RAMAZON</div>
@@ -497,11 +538,6 @@ ${itemsHtml}
 </div>
 
 <div class="payment">To'lov: ${printReceipt.paymentMethod === 'cash' ? 'Naqd pul' : 'Plastik karta'}</div>
-
-<div class="line"></div>
-
-<div class="footer">Xaridingiz uchun rahmat!</div>
-<div class="footer-sub">Yana kutamiz!</div>
 
 <script>window.onload=function(){window.print();}</script>
 </body>
@@ -582,73 +618,73 @@ ${itemsHtml}
  <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
  
  {/* Header */}
- <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-6 py-3 sticky top-0 z-40 shadow-sm">
- <div className="flex items-center justify-between gap-4">
- <div className="flex items-center gap-3">
- <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+ <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-3 lg:px-6 py-2 lg:py-3 sticky top-0 z-40 shadow-sm">
+ <div className="flex items-center justify-between gap-2 lg:gap-4">
+ <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+ <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center flex-shrink-0 ${
  isReturnMode 
  ? 'bg-warning-100 dark:bg-warning-900/30' 
  : 'bg-primary-100 dark:bg-primary-900/30'
  }`}>
  {isReturnMode ? (
- <RotateCcw className={`w-5 h-5 ${isReturnMode ? 'text-warning-600' : 'text-primary-600'}`} />
+ <RotateCcw className={`w-4 h-4 lg:w-5 lg:h-5 ${isReturnMode ? 'text-warning-600' : 'text-primary-600'}`} />
  ) : (
- <Package className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+ <Package className="w-4 h-4 lg:w-5 lg:h-5 text-primary-600 dark:text-primary-400" />
  )}
  </div>
- <div>
- <h1 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+ <div className="min-w-0 flex-1">
+ <h1 className="text-sm lg:text-lg font-bold text-neutral-900 dark:text-neutral-100 truncate">
  {isReturnMode ? tKey('Qaytarish rejimi') : tKey('Kassa (POS)')}
  </h1>
- <p className="text-sm font-semibold">
+ <p className="text-xs lg:text-sm font-semibold truncate">
  <span className="text-neutral-600 dark:text-neutral-400">{cart.length} {tKey('ta mahsulot')}</span>
- <span className="mx-2 text-neutral-300 dark:text-neutral-600">•</span>
+ <span className="mx-1 lg:mx-2 text-neutral-300 dark:text-neutral-600">•</span>
  <span className="text-pink-600 dark:text-pink-400 font-bold">{total.toLocaleString()} {tKey("so'm")}</span>
  </p>
  </div>
  </div>
 
  {/* Customer Select & Saved Receipts */}
- <div className="flex items-center gap-2">
+ <div className="flex items-center gap-1.5 lg:gap-2 flex-shrink-0">
  {/* Customer Select */}
- <div className="flex items-center gap-2">
+ <div className="flex items-center gap-1.5 lg:gap-2">
  <button
  onClick={() => setShowCustomerSelect(true)}
- className="relative flex items-center gap-2 px-3 py-2.5 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[250px]"
+ className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2.5 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-xs lg:text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[120px] lg:min-w-[250px]"
  >
- <User className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+ <User className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-neutral-400 flex-shrink-0" />
  <div className="flex-1 text-left min-w-0">
  {selectedCustomer ? (
  <>
- <div className="truncate font-bold leading-tight">
+ <div className="truncate font-bold leading-tight text-xs lg:text-sm">
  {customers.find(c => c._id === selectedCustomer)?.name || tKey("Oddiy mijoz")}
  </div>
  {customers.find(c => c._id === selectedCustomer)?.phone && (
- <div className="text-xs text-neutral-500 truncate leading-tight">
+ <div className="hidden lg:block text-xs text-neutral-500 truncate leading-tight">
  {customers.find(c => c._id === selectedCustomer)?.phone}
  </div>
  )}
  </>
  ) : (
- <div className="truncate leading-tight">{tKey("Oddiy mijoz")}</div>
+ <div className="truncate leading-tight text-xs lg:text-sm">{tKey("Oddiy mijoz")}</div>
  )}
  </div>
- <svg className="w-4 h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <svg className="w-3 h-3 lg:w-4 lg:h-4 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
  </svg>
  </button>
  <button
  onClick={() => setShowCustomerModal(true)}
- className="flex items-center justify-center w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
+ className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
  title="Yangi mijoz qo'shish"
  >
- <span className="text-xl font-bold leading-none">+</span>
+ <span className="text-lg lg:text-xl font-bold leading-none">+</span>
  </button>
  </div>
 
  <button
  onClick={() => setShowSavedReceipts(true)}
- className="relative flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-xl text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all hover:scale-105" 
+ className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all hover:scale-105" 
  >
  <Save className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
  <span className="text-neutral-700 dark:text-neutral-300">Saqlangan</span>
@@ -718,7 +754,7 @@ ${itemsHtml}
  </div>
 
  {/* Right - Numpad & Total */}
- <div className="flex w-96 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6 flex-col shadow-sm">
+ <div className="hidden lg:flex w-96 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 p-6 flex-col shadow-sm">
  {/* Total Display */}
  <div className="total-display mb-4 p-5 bg-gradient-to-br from-blue-50 via-sky-50 to-white dark:from-blue-900/30 dark:via-blue-800/20 dark:to-gray-800 rounded-3xl border-2 border-blue-200 dark:border-blue-700 shadow-xl relative overflow-hidden">
  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100/40 dark:bg-blue-600/20 rounded-full -mr-12 -mt-12"></div>
@@ -770,35 +806,35 @@ ${itemsHtml}
 
  {/* Bottom Action Bar - Fixed - Responsive to sidebar */}
  <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-neutral-900 dark:to-neutral-800 border-t border-neutral-200 dark:border-neutral-700 shadow-lg z-20 transition-all duration-300 pl-0 lg:pl-64">
- <div className="px-6 py-2">
- <div className="flex items-center gap-2">
+ <div className="px-3 lg:px-6 py-2 lg:py-2">
+ <div className="flex items-center gap-1.5 lg:gap-2">
  {/* Action Buttons - Responsive positioning */}
  <button
  onClick={openSearch}
- className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95"
+ className="flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95"
  >
  <Search className="w-4 h-4" strokeWidth={2.5} />
- <span>Qidirish</span>
+ <span className="hidden sm:inline">Qidirish</span>
  </button>
  
  <button
  onClick={toggleReturnMode}
- className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 ${
+ className={`flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95 ${
  isReturnMode
  ? 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
  : 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900'
  }`}
  >
  <RotateCcw className="w-4 h-4" strokeWidth={2.5} />
- <span>{isReturnMode ? 'Bekor qilish' : 'Qaytarish'}</span>
+ <span className="hidden sm:inline">{isReturnMode ? 'Bekor qilish' : 'Qaytarish'}</span>
  </button>
  
  <button
  onClick={saveReceipt}
- className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95"
+ className="flex items-center justify-center gap-1 lg:gap-2 px-3 lg:px-5 py-2 lg:py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg lg:rounded-xl transition-all font-semibold text-xs lg:text-sm shadow-md hover:shadow-lg active:scale-95"
  >
  <Save className="w-4 h-4" strokeWidth={2.5} />
- <span>Saqlash</span>
+ <span className="hidden sm:inline">Saqlash</span>
  </button>
 
  {/* Spacer */}
@@ -808,10 +844,10 @@ ${itemsHtml}
  <button
  onClick={() => setShowPayment(true)}
  disabled={cart.length === 0}
- className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm shadow-lg hover:shadow-xl active:scale-95"
+ className="flex items-center justify-center gap-1 lg:gap-2 px-4 lg:px-6 py-2 lg:py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg lg:rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs lg:text-sm shadow-lg hover:shadow-xl active:scale-95"
  >
- <CreditCard className="w-5 h-5" strokeWidth={2.5} />
- <span>To'lov qilish</span>
+ <CreditCard className="w-4 lg:w-5 h-4 lg:h-5" strokeWidth={2.5} />
+ <span>To'lov</span>
  </button>
  </div>
  </div>
@@ -1220,11 +1256,6 @@ ${itemsHtml}
  <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
  To'lov: {printReceipt.paymentMethod === 'cash' ? '💵 Naqd pul' : '💳 Plastik karta'}
  </p>
- </div>
- 
- <div className="text-center mt-4 pt-4 border-t border-dashed border-neutral-300 dark:border-neutral-600">
- <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">Xaridingiz uchun rahmat!</p>
- <p className="text-xs text-neutral-500 dark:text-neutral-400">Yana kutamiz! 😊</p>
  </div>
  </div>
  </div>

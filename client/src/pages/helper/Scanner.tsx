@@ -205,13 +205,15 @@ export default function HelperScanner() {
 
  if (product) {
  console.log('✅ Product found:', product.name);
- setScannedProduct(product);
- toast.success('Tovar topildi!', product.name);
+ // AVTOMATIK QO'SHISH - savol bo'lmasin
+ addToCart(product);
+ toast.success('Tovar qo'shildi!', product.name);
+ // SKANER YOPILMASIN - davom etsin, ketma-ket skaner qilish mumkin
  } else {
  console.log('❌ Product not found for:', decodedText);
  showAlert('Tovar topilmadi: ' + decodedText, 'Xatolik', 'warning');
  }
- stopScanner();
+ // stopScanner() ni olib tashladik - skaner davom etadi
  },
  (_errorMessage) => {
  // Scan error - ignore (happens frequently)
@@ -224,7 +226,7 @@ export default function HelperScanner() {
  showAlert('Kamerani ishga tushirishda xatolik: ' + err.message, 'Xatolik', 'danger');
  setScanning(false);
  }
- }, 100);
+ }, 10); // TEZROQ: 100ms → 10ms
  };
 
  const stopScanner = async () => {
@@ -685,21 +687,22 @@ export default function HelperScanner() {
  <div className="fixed inset-0 z-50 bg-black flex flex-col m-0 p-0" style={{ marginTop: 0, paddingTop: 0 }}>
  {/* Header */}
  <div className="relative z-20 bg-gradient-to-b from-black via-black/80 to-transparent">
- <div className="safe-top px-4 py-4 flex items-center justify-between">
+ <div className="safe-top px-4 py-3 flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
  <QrCode className="w-5 h-5 text-white" />
  </div>
  <div>
  <h3 className="text-white text-lg font-bold">QR Skaner</h3>
- <p className="text-white/70 text-xs">Kodni markazga qo'ying</p>
+ <p className="text-white/70 text-xs">Ketma-ket skaner qiling</p>
  </div>
  </div>
  <button
  onClick={stopScanner}
- className="w-10 h-10 flex items-center justify-center bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-full transition-all"
+ className="w-9 h-9 flex items-center justify-center bg-red-500/90 backdrop-blur-md hover:bg-red-600 text-white rounded-full transition-all shadow-lg hover:scale-110 active:scale-95"
+ title="Yopish"
  >
- <X className="w-6 h-6" />
+ <X className="w-5 h-5" strokeWidth={2.5} />
  </button>
  </div>
  </div>

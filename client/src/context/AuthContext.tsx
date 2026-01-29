@@ -5,7 +5,7 @@ import api from '../utils/api';
 interface AuthContextType {
  user: User | null;
  loading: boolean;
- login: (phone: string, password: string) => Promise<void>;
+ login: (phone: string, password: string) => Promise<User>;
  logout: () => void;
  updateUser: (userData: User) => void;
 }
@@ -32,6 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  const res = await api.post('/auth/login', { phone, password });
  localStorage.setItem('token', res.data.token);
  setUser(res.data.user);
+ return res.data.user; // Return user data for immediate redirect
  }, []);
 
  const logout = useCallback(() => {
