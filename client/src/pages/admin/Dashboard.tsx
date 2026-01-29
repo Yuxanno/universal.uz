@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import { 
  DollarSign, TrendingUp, ShoppingCart, Receipt, Package, 
- Clock, RefreshCw, ArrowUpRight, ArrowDownRight, X, User
+ Clock, RefreshCw, ArrowUpRight, ArrowDownRight, X
 } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import api from '../../utils/api';
