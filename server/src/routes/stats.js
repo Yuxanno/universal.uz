@@ -69,18 +69,22 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
   try {
     const { period = 'week' } = req.query;
     
-    // Uzbekistan timezone offset (UTC+5)
-    const tzOffset = 5 * 60; // minutes
-    
     if (period === 'today') {
-      // Hourly data for today - single aggregation query
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
+      // Hourly data for today - with Uzbekistan timezone (UTC+5)
+      const now = new Date();
+      const uzbekistanOffset = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+      const uzbekistanNow = new Date(now.getTime() + uzbekistanOffset);
+      
+      // Get today's start in Uzbekistan time, then convert back to UTC for MongoDB query
+      const today = new Date(uzbekistanNow);
+      today.setUTCHours(0, 0, 0, 0);
+      const todayUTC = new Date(today.getTime() - uzbekistanOffset);
+      
+      const tomorrow = new Date(todayUTC);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
       const hourlyData = await Receipt.aggregate([
-        { $match: { status: 'completed', createdAt: { $gte: today, $lt: tomorrow } } },
+        { $match: { status: 'completed', createdAt: { $gte: todayUTC, $lt: tomorrow } } },
         { 
           $group: { 
             _id: { 
@@ -107,11 +111,18 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
       
       res.json(data);
     } else {
-      // Daily data for week/month - single aggregation query
+      // Daily data for week/month - with Uzbekistan timezone (UTC+5)
       const days = period === 'month' ? 30 : 7;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days + 1);
-      startDate.setHours(0, 0, 0, 0);
+      
+      const now = new Date();
+      const uzbekistanOffset = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+      const uzbekistanNow = new Date(now.getTime() + uzbekistanOffset);
+      
+      // Get start date in Uzbekistan time, then convert back to UTC for MongoDB query
+      const startDateUzbekistan = new Date(uzbekistanNow);
+      startDateUzbekistan.setUTCHours(0, 0, 0, 0);
+      startDateUzbekistan.setDate(startDateUzbekistan.getDate() - days + 1);
+      const startDate = new Date(startDateUzbekistan.getTime() - uzbekistanOffset);
       
       const dailyData = await Receipt.aggregate([
         { $match: { status: 'completed', createdAt: { $gte: startDate } } },
