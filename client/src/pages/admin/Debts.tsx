@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
 import { 
-  Plus, AlertTriangle, X, DollarSign, Calendar, User, 
-  Clock, CheckCircle2, AlertCircle, Trash2, Wallet, ArrowDownLeft, ArrowUpRight, Search, Phone
+  AlertTriangle, Calendar, User, 
+  Clock, CheckCircle2, AlertCircle, Wallet, ArrowDownLeft, ArrowUpRight, Search, Phone
 } from 'lucide-react';
 import { Debt } from '../../types';
 import api from '../../utils/api';
-import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
+import { formatNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
-import { useCustomers } from '../../context/CustomersContext';
-import { regions, regionNames } from '../../data/regions';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import PhoneInput from '../../components/PhoneInput';
 import DebtDetailsModal from '../../components/debts/DebtDetailsModal';
 
 interface GroupedDebt {
@@ -35,30 +32,17 @@ export default function Debts() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const { showConfirm, AlertComponent } = useAlert();
-  const { customers, addCustomer } = useCustomers();
+  const { AlertComponent } = useAlert();
   const [groupedDebts, setGroupedDebts] = useState<GroupedDebt[]>([]);
   const [stats, setStats] = useState({
     total: 0, pending: 0, today: 0, overdue: 0, paid: 0, totalAmount: 0
   });
-  const [showModal, setShowModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDebtForDetails, setSelectedDebtForDetails] = useState<Debt | null>(null);
   const [loading, setLoading] = useState(true);
   const [debtType, setDebtType] = useState<'receivable' | 'payable'>('receivable');
-  const [formData, setFormData] = useState({ 
-    customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' 
-  });
-  const [paymentAmount, setPaymentAmount] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '+998', region: '', district: '' });
-  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
-  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   useEffect(() => {
     fetchGroupedDebts();
@@ -83,123 +67,6 @@ export default function Debts() {
     } catch (err) { 
       console.error('Error fetching stats:', err); 
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (debtType === 'receivable' && !formData.customer) {
-      alert('Iltimos, mijozni tanlang!');
-      return;
-    }
-    
-    try {
-      const data = {
-        type: debtType,
-        customer: debtType === 'receivable' ? formData.customer : undefined,
-        creditorName: debtType === 'payable' ? formData.creditorName : undefined,
-        amount: Number(formData.amount),
-        dueDate: formData.dueDate || null,
-        description: formData.description,
-        collateral: formData.collateral
-      };
-      
-      if (editingDebt) {
-        await api.put(`/debts/${editingDebt._id}`, data);
-      } else {
-        await api.post('/debts', data);
-      }
-      
-      fetchGroupedDebts();
-      fetchStats();
-      closeModal();
-    } catch (err) { 
-      console.error('Error saving debt:', err);
-      alert('Xatolik yuz berdi! Iltimos, qaytadan urinib ko\'ring.');
-    }
-  };
-
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDebt) return;
-    
-    try {
-      await api.post(`/debts/${selectedDebt._id}/payment`, {
-        amount: Number(paymentAmount),
-        method: 'cash'
-      });
-      
-      fetchGroupedDebts();
-      fetchStats();
-      setShowPaymentModal(false);
-      setSelectedDebt(null);
-      setPaymentAmount('');
-    } catch (err) { 
-      console.error('Error making payment:', err); 
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm(t("Qarzni o'chirishni tasdiqlaysizmi?"), t("O'chirish"));
-    if (!confirmed) return;
-    
-    try {
-      await api.delete(`/debts/${id}`);
-      fetchGroupedDebts();
-      fetchStats();
-    } catch (err) { 
-      console.error('Error deleting debt:', err); 
-    }
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingDebt(null);
-    setFormData({ customer: '', creditorName: '', amount: '', dueDate: '', description: '', collateral: '' });
-    setShowNewCustomerForm(false);
-    setNewCustomer({ name: '', phone: '+998', region: '', district: '' });
-    setCustomerSearchQuery('');
-    setShowCustomerDropdown(false);
-  };
-
-  const openEditModal = (debt: Debt) => {
-    setEditingDebt(debt);
-    setDebtType((debt as any).type as 'receivable' | 'payable');
-    setFormData({
-      customer: debt.customer?._id || '',
-      creditorName: (debt as any).creditorName || '',
-      amount: String(debt.amount),
-      dueDate: debt.dueDate ? debt.dueDate.split('T')[0] : '',
-      description: (debt as any).description || '',
-      collateral: (debt as any).collateral || ''
-    });
-    if (debt.customer) {
-      setCustomerSearchQuery(`${debt.customer.name} - ${debt.customer.phone}`);
-    }
-    setShowModal(true);
-  };
-
-  const handleCreateCustomer = async () => {
-    if (!newCustomer.name || !newCustomer.phone) return;
-    
-    try {
-      const data = {
-        name: newCustomer.name,
-        phone: newCustomer.phone,
-        address: newCustomer.region && newCustomer.district ? `${newCustomer.region}, ${newCustomer.district}` : ''
-      };
-      const customer = await addCustomer(data);
-      setFormData({ ...formData, customer: customer._id });
-      setShowNewCustomerForm(false);
-      setNewCustomer({ name: '', phone: '+998', region: '', district: '' });
-    } catch (err) { 
-      console.error('Error creating customer:', err); 
-    }
-  };
-
-  const handleRowClick = (debt: Debt) => {
-    setSelectedDebtForDetails(debt);
-    setShowDetailsModal(true);
   };
 
   const handleDetailsModalClose = () => {
@@ -245,21 +112,6 @@ export default function Debts() {
     { label: t('Jami qarz'), value: `${formatNumber(stats.totalAmount)} ${t("so'm")}`, icon: Wallet, color: 'gray', filter: null },
   ];
 
-  const filteredCustomers = customers.filter(c => {
-    const searchLower = customerSearchQuery.toLowerCase();
-    return c.name.toLowerCase().includes(searchLower) || 
-      c.phone.includes(customerSearchQuery);
-  });
-
-  const handleCustomerSelect = (customerId: string) => {
-    setFormData({ ...formData, customer: customerId });
-    const customer = customers.find(c => c._id === customerId);
-    if (customer) {
-      setCustomerSearchQuery(`${customer.name} - ${customer.phone}`);
-    }
-    setShowCustomerDropdown(false);
-  };
-
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 pb-20 lg:pb-0">
       {AlertComponent}
@@ -276,10 +128,6 @@ export default function Debts() {
             </p>
           </div>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all hover:scale-105 shadow-sm font-medium">
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{t("Yangi qarz")}</span>
-        </button>
       </header>
 
       <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
