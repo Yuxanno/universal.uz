@@ -252,16 +252,23 @@ router.get('/sales-report', auth, authorize('admin'), async (req, res) => {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
     
-    // Hourly/Daily data
+    // Hourly/Daily data - with Uzbekistan timezone
     const timeMap = new Map();
     receipts.forEach(receipt => {
-      const date = new Date(receipt.createdAt);
+      const dateUTC = new Date(receipt.createdAt);
+      // Convert to Uzbekistan time
+      const dateUzbekistan = new Date(dateUTC.getTime() + uzbekistanOffset);
       let key;
       
       if (period === 'today') {
-        key = date.getHours().toString().padStart(2, '0') + ':00';
+        // Use Uzbekistan hour
+        key = dateUzbekistan.getUTCHours().toString().padStart(2, '0') + ':00';
       } else {
-        key = date.toISOString().split('T')[0]; // YYYY-MM-DD format for sorting
+        // Use Uzbekistan date
+        const year = dateUzbekistan.getUTCFullYear();
+        const month = (dateUzbekistan.getUTCMonth() + 1).toString().padStart(2, '0');
+        const day = dateUzbekistan.getUTCDate().toString().padStart(2, '0');
+        key = `${year}-${month}-${day}`; // YYYY-MM-DD format for sorting
       }
       
       if (timeMap.has(key)) {
@@ -269,7 +276,7 @@ router.get('/sales-report', auth, authorize('admin'), async (req, res) => {
         existing.sales += receipt.total;
         existing.count += 1;
       } else {
-        timeMap.set(key, { key, sales: receipt.total, count: 1, date });
+        timeMap.set(key, { key, sales: receipt.total, count: 1, date: dateUzbekistan });
       }
     });
     
@@ -288,29 +295,35 @@ router.get('/sales-report', auth, authorize('admin'), async (req, res) => {
         });
       }
     } else {
-      // For week/month: sort by date (oldest to newest)
+      // For week/month: sort by date (oldest to newest) - using Uzbekistan timezone
       const days = period === 'month' ? 30 : 7;
       const sortedEntries = Array.from(timeMap.values()).sort((a, b) => 
         new Date(a.key).getTime() - new Date(b.key).getTime()
       );
       
-      // Create array with all days - sorted from oldest to newest
+      // Create array with all days - sorted from oldest to newest - using Uzbekistan timezone
       for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const dateKey = date.toISOString().split('T')[0];
+        const dateUTC = new Date();
+        const dateUzbekistan = new Date(dateUTC.getTime() + uzbekistanOffset);
+        dateUzbekistan.setUTCDate(dateUzbekistan.getUTCDate() - i);
+        dateUzbekistan.setUTCHours(0, 0, 0, 0);
+        
+        const year = dateUzbekistan.getUTCFullYear();
+        const month = (dateUzbekistan.getUTCMonth() + 1).toString().padStart(2, '0');
+        const day = dateUzbekistan.getUTCDate().toString().padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+        
         const existing = sortedEntries.find(e => e.key === dateKey);
         
         // Format: "26.01" (DD.MM)
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dayStr = dateUzbekistan.getUTCDate().toString().padStart(2, '0');
+        const monthStr = (dateUzbekistan.getUTCMonth() + 1).toString().padStart(2, '0');
         
         hourlyData.push({
-          hour: `${day}.${month}`,
+          hour: `${dayStr}.${monthStr}`,
           sales: existing ? existing.sales : 0,
           count: existing ? existing.count : 0,
-          sortKey: date.getTime() // For debugging
+          sortKey: dateUzbekistan.getTime() // For debugging
         });
       }
       
