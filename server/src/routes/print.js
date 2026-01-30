@@ -159,14 +159,13 @@ function buildReceipt(data) {
       addCmd(CMD.BOLD_OFF);
     }
     
-    // Quantity x Price = Sum
-    const qty = String(item.quantity);
+    // Price x Quantity = Sum (центрировано)
     const price = formatNum(item.price);
+    const qty = formatNum(item.quantity);
     const sum = formatNum(item.price * item.quantity);
     
-    // Format: "100 x 5 000 = 500 000"
-    const calcPart = qty + ' x ' + price + ' =';
-    const line = makeLine(calcPart, sum);
+    // Format: "190 000 x 1 = 190 000"
+    const line = `${price} x ${qty} = ${sum}`;
     addLine(line);
     addLine('');
   }

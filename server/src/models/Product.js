@@ -14,6 +14,15 @@ const productSchema = new mongoose.Schema({
   category: String,
   images: [{ type: String }], // Array of image paths
   minStock: { type: Number, default: 5 },
+  // Product variants (types/xillar)
+  variants: [{
+    name: { type: String, required: true }, // Tur nomi (masalan: "Katta", "Kichik", "O'rtacha")
+    description: { type: String }, // Izoh (ixtiyoriy)
+    price: { type: Number }, // Tur narxi (agar asosiy narxdan farq qilsa)
+    code: { type: String }, // Tur kodi (ixtiyoriy)
+    quantity: { type: Number, default: 0 }, // Tur miqdori
+    isActive: { type: Boolean, default: true }
+  }],
   // Package/batch information
   packages: [{
     packageCount: { type: Number, required: true }, // Nechta qop

@@ -11,6 +11,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { searchProducts } from '../../utils/productSearch';
 import { initSocket } from '../../utils/socket';
 import { useAuth } from '../../context/AuthContext';
+import ProductVariantsModal from '../../components/ProductVariantsModal';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -22,6 +23,7 @@ const ProductRow = memo(({
  onPrint, 
  onEdit, 
  onDelete,
+ onVariantsClick,
  getProductImage,
  uz,
  formatNumber,
@@ -65,7 +67,13 @@ const ProductRow = memo(({
  <span className="font-mono text-sm bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">{product.code}</span>
  </div>
  <div className="min-w-0">
- <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{uz(product.name)}</p>
+ <p 
+ className="font-medium text-neutral-900 dark:text-neutral-100 truncate cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+ onClick={(e) => { e.stopPropagation(); onVariantsClick(product); }}
+ title="Mahsulot turlarini ko'rish"
+ >
+ {uz(product.name)}
+ </p>
  </div>
  {!isCashier && (
  <div>
@@ -125,6 +133,7 @@ const ProductCard = memo(({
  onPrint, 
  onEdit, 
  onDelete,
+ onVariantsClick,
  getProductImage,
  uz,
  formatNumber,
@@ -146,7 +155,12 @@ const ProductCard = memo(({
  </div>
  )}
  <div className="flex-1 min-w-0">
- <h4 className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">{uz(product.name)}</h4>
+ <h4 
+ className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+ onClick={() => onVariantsClick(product)}
+ >
+ {uz(product.name)}
+ </h4>
  <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono">Kod: {product.code}</p>
  {!isCashier && (
  <span className="inline-block mt-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">
@@ -258,6 +272,10 @@ export default function Products() {
  // Bulk selection state
  const [selectionMode, setSelectionMode] = useState(false);
  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+ 
+ // Variant modal state
+ const [showVariantsModal, setShowVariantsModal] = useState(false);
+ const [variantProduct, setVariantProduct] = useState<Product | null>(null);
  const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
  const [bulkPrintQuantity, setBulkPrintQuantity] = useState('1');
 
@@ -519,7 +537,15 @@ export default function Products() {
  }
  
  let finalQuantity = Number(formData.quantity);
- let finalCostPrice = Number(formData.costPrice);
+ // Agar costPrice bo'sh bo'lsa va tahrirlash rejimida bo'lsa, oldingi qiymatni saqlaydi
+ let finalCostPrice: number;
+ if (formData.costPrice && formData.costPrice.trim() !== '') {
+ finalCostPrice = Number(formData.costPrice.replace(/\s/g, ''));
+ } else if (editingProduct?.costPrice) {
+ finalCostPrice = editingProduct.costPrice;
+ } else {
+ finalCostPrice = 0;
+ }
  let packageInfo = null;
  
  // If package data is provided, calculate totals
@@ -631,6 +657,11 @@ export default function Products() {
  }
  };
 
+ const handleVariantsClick = (product: Product) => {
+ setVariantProduct(product);
+ setShowVariantsModal(true);
+ };
+
  const handleDelete = useCallback(async (id: string) => {
  const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
  if (!confirmed) return;
@@ -715,9 +746,9 @@ export default function Products() {
  setFormData({
  code: product.code,
  name: product.name,
- costPrice: String((product as any).costPrice || 0),
+ costPrice: (product as any).costPrice ? String((product as any).costPrice) : '',
  wholesalePrice: String(product.price),
- donaNarx: String((product as any).dona_narx || ''),
+ donaNarx: (product as any).dona_narx ? String((product as any).dona_narx) : '',
  quantity: String(product.quantity)
  });
  
@@ -1554,6 +1585,7 @@ ${allLabelsHtml}
  onPrint={openPrintModal}
  onEdit={openEditModal}
  onDelete={handleDelete}
+ onVariantsClick={handleVariantsClick}
  getProductImage={getProductImage}
  uz={uz}
  formatNumber={formatNumber}
@@ -1577,6 +1609,7 @@ ${allLabelsHtml}
  onPrint={openPrintModal}
  onEdit={openEditModal}
  onDelete={handleDelete}
+ onVariantsClick={handleVariantsClick}
  getProductImage={getProductImage}
  uz={uz}
  formatNumber={formatNumber}
@@ -2201,6 +2234,18 @@ ${allLabelsHtml}
  >
  <Plus className="w-8 h-8" strokeWidth={3} />
  </button>
+
+ {/* Product Variants Modal */}
+ {showVariantsModal && variantProduct && (
+ <ProductVariantsModal
+ product={variantProduct}
+ onClose={() => {
+ setShowVariantsModal(false);
+ setVariantProduct(null);
+ }}
+ onUpdate={fetchProducts}
+ />
+ )}
  </div>
  );
 }
