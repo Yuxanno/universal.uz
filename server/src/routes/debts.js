@@ -82,7 +82,8 @@ router.get('/grouped', auth, async (req, res) => {
               collateral: '$collateral',
               receipt: '$receipt',
               payments: '$payments',
-              createdAt: '$createdAt'
+              createdAt: '$createdAt',
+              customer: '$customer'
             }
           },
           latestDebt: { $max: '$createdAt' },
@@ -92,8 +93,20 @@ router.get('/grouped', auth, async (req, res) => {
       { $sort: { remainingAmount: -1 } }
     ]);
     
-    // Populate customer details
+    // Populate customer details on the group
     await Customer.populate(groupedDebts, { path: '_id', select: 'name phone address' });
+    
+    // Populate customer details on each debt and receipt details
+    for (const group of groupedDebts) {
+      await Customer.populate(group.debts, { path: 'customer', select: 'name phone address' });
+      await Debt.populate(group.debts, {
+        path: 'receipt',
+        populate: [
+          { path: 'items.product', select: 'name code' },
+          { path: 'createdBy', select: 'name username' }
+        ]
+      });
+    }
     
     // Transform data for frontend
     const result = groupedDebts.map(group => ({

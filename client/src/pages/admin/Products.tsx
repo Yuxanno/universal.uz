@@ -83,16 +83,13 @@ const ProductRow = memo(({
  </div>
  )}
  <div className="text-right">
- <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.costPrice || 0)}</p>
- <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
+ <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.costPrice || 0)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
  </div>
  <div className="text-right">
- <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
- <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
+ <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
  </div>
  <div className="text-right">
- <p className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(product.dona_narx || 0)}</p>
- <p className="text-sm text-neutral-500 dark:text-neutral-400">so'm</p>
+ <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.dona_narx || 0)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
  </div>
  <div className="text-center">
  <span className={`font-semibold ${
@@ -662,6 +659,13 @@ export default function Products() {
  setShowVariantsModal(true);
  };
 
+ const handleVariantsUpdate = useCallback(() => {
+ console.log('🔄 [Variants] Refreshing products after variant update...');
+ // Reset fetch ref to allow refresh
+ hasFetchedRef.current = false;
+ fetchProducts();
+ }, [fetchProducts]);
+
  const handleDelete = useCallback(async (id: string) => {
  const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
  if (!confirmed) return;
@@ -999,7 +1003,7 @@ export default function Products() {
  <div class="content-row">
  <div class="left-section">
  <div class="name">${uz(printProduct.name)}</div>
- <div class="code">Kod: ${printProduct.code}</div>
+ <div class="code"><span class="code-label">Kod:</span> <span class="code-number">${printProduct.code}</span></div>
  </div>
  <div class="right-section">
  <div class="qr-container">
@@ -1018,7 +1022,7 @@ export default function Products() {
  <title>Ценник - ${uz(printProduct.name)}</title>
  <style>
  * { margin: 0; padding: 0; box-sizing: border-box; }
- @page { size: 58mm 40mm; margin: 0; }
+ @page { size: 58mm 39mm; margin: 0; }
  @media print {
  body { width: 58mm; }
  .label { page-break-after: always; }
@@ -1027,8 +1031,8 @@ export default function Products() {
  body { font-family: Arial, sans-serif; background: white; }
  .label { 
  width: 58mm; 
- height: 40mm; 
- padding: 2mm;
+ height: 39mm; 
+ padding: 1.5mm;
  display: flex; 
  flex-direction: column;
  justify-content: center;
@@ -1072,9 +1076,19 @@ export default function Products() {
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 12pt; 
  color: #000;
- font-weight: 700;
+ white-space: nowrap;
+ display: flex;
+ align-items: baseline;
+ gap: 2px;
+ }
+ .code-label {
+ font-size: 10pt;
+ font-weight: 600;
+ }
+ .code-number {
+ font-size: 14pt;
+ font-weight: 900;
  }
  .qr-container { 
  width: 24mm; 
@@ -1194,7 +1208,7 @@ export default function Products() {
  <div class="content-row">
  <div class="left-section">
  <div class="name">${uz(product.name)}</div>
- <div class="code">Kod: ${product.code}</div>
+ <div class="code"><span class="code-label">Kod:</span> <span class="code-number">${product.code}</span></div>
  </div>
  <div class="right-section">
  <div class="qr-container">
@@ -1216,7 +1230,7 @@ export default function Products() {
  <title>Ценники - ${selectedProducts.length} ta mahsulot</title>
  <style>
  * { margin: 0; padding: 0; box-sizing: border-box; }
- @page { size: 58mm 40mm; margin: 0; }
+ @page { size: 58mm 39mm; margin: 0; }
  @media print {
  body { width: 58mm; }
  .label { page-break-after: always; }
@@ -1225,8 +1239,8 @@ export default function Products() {
  body { font-family: Arial, sans-serif; background: white; }
  .label { 
  width: 58mm; 
- height: 40mm; 
- padding: 2mm;
+ height: 39mm; 
+ padding: 1.5mm;
  display: flex; 
  flex-direction: column;
  justify-content: center;
@@ -1234,7 +1248,7 @@ export default function Products() {
  .price-row {
  width: 100%;
  text-align: center;
- margin-bottom: 2mm;
+ margin-bottom: 1mm;
  }
  .price { 
  font-size: 22pt; 
@@ -1248,7 +1262,7 @@ export default function Products() {
  display: flex;
  align-items: center;
  justify-content: space-between;
- gap: 2mm;
+ gap: 1.5mm;
  }
  .left-section { 
  flex: 0 0 28mm;
@@ -1263,16 +1277,26 @@ export default function Products() {
  .name { 
  font-size: 11pt; 
  font-weight: bold; 
- margin-bottom: 1mm; 
+ margin-bottom: 0.5mm; 
  line-height: 1.1;
  color: #000;
  word-wrap: break-word;
  overflow-wrap: break-word;
  }
  .code { 
- font-size: 12pt; 
  color: #000;
- font-weight: 700;
+ white-space: nowrap;
+ display: flex;
+ align-items: baseline;
+ gap: 2px;
+ }
+ .code-label {
+ font-size: 10pt;
+ font-weight: 600;
+ }
+ .code-number {
+ font-size: 14pt;
+ font-weight: 900;
  }
  .qr-container { 
  width: 24mm; 
@@ -1445,7 +1469,7 @@ ${allLabelsHtml}
  { label: tKey('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
  { label: tKey('Kam qolgan'), value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
  { label: tKey('Tugagan'), value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
- { label: tKey('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${tKey("so'm")}`, icon: DollarSign, color: 'success', filter: null },
+ ...(!isCashier ? [{ label: tKey('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${tKey("so'm")}`, icon: DollarSign, color: 'success', filter: null }] : []),
  ];
 
  const getProductImage = useCallback((product: any) => {
@@ -1841,7 +1865,10 @@ ${allLabelsHtml}
  </div>
  <div className="text-center mb-4">
  <p className="font-semibold text-surface-900">{uz(selectedProduct.name)}</p>
- <p className="text-sm text-surface-500">Kod: {selectedProduct.code}</p>
+ <p className="my-2">
+ <span className="text-sm text-surface-500">Kod: </span>
+ <span className="text-3xl font-bold text-surface-900">{selectedProduct.code}</span>
+ </p>
  <p className="text-sm text-surface-500">Tan narxi: {formatNumber((selectedProduct as any).costPrice || 0)} so'm</p>
  <p className="text-sm text-surface-500">Optom: {formatNumber(selectedProduct.price)} so'm</p>
  </div>
@@ -2243,9 +2270,13 @@ ${allLabelsHtml}
  setShowVariantsModal(false);
  setVariantProduct(null);
  }}
- onUpdate={fetchProducts}
+ onUpdate={handleVariantsUpdate}
  />
  )}
  </div>
  );
 }
+
+
+
+

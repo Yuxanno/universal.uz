@@ -74,6 +74,12 @@ export default function ProductVariantsModal({ product, onClose, onUpdate }: Pro
       setVariants(updatedVariants);
       showAlert(editingId ? 'Tur yangilandi' : 'Tur qo\'shildi', 'success');
       resetForm();
+      
+      // Clear cache to force fresh data load
+      sessionStorage.removeItem('products_cache');
+      sessionStorage.removeItem('products_cache_time');
+      console.log('🗑️ [Variants] Cache cleared after variant update');
+      
       onUpdate();
     } catch (error: any) {
       showAlert(error.response?.data?.message || 'Xatolik yuz berdi', 'error');
@@ -101,6 +107,12 @@ export default function ProductVariantsModal({ product, onClose, onUpdate }: Pro
 
       setVariants(updatedVariants);
       showAlert('Tur o\'chirildi', 'success');
+      
+      // Clear cache to force fresh data load
+      sessionStorage.removeItem('products_cache');
+      sessionStorage.removeItem('products_cache_time');
+      console.log('🗑️ [Variants] Cache cleared after variant delete');
+      
       onUpdate();
     } catch (error: any) {
       showAlert(error.response?.data?.message || 'Xatolik yuz berdi', 'error');
@@ -122,12 +134,23 @@ export default function ProductVariantsModal({ product, onClose, onUpdate }: Pro
               Mahsulot turlari (xillari)
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {!isAdding && (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Yangi tur</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -186,15 +209,7 @@ export default function ProductVariantsModal({ product, onClose, onUpdate }: Pro
                 </button>
               </div>
             </form>
-          ) : (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors mb-4"
-            >
-              <Plus className="w-5 h-5" />
-              Yangi tur qo'shish
-            </button>
-          )}
+          ) : null}
 
           {/* Variants List */}
           {variants.length > 0 ? (
@@ -224,10 +239,18 @@ export default function ProductVariantsModal({ product, onClose, onUpdate }: Pro
                           </span>
                         </div>
                         
-                        {variant.description && !expandedVariantId && (
-                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 line-clamp-1">
-                            {variant.description}
-                          </p>
+                        {/* Izoh - faqat hover da ko'rinadi */}
+                        {variant.description && (
+                          <div className="relative group mt-1">
+                            <p className="text-xs text-primary-600 dark:text-primary-400 cursor-help inline-flex items-center gap-1">
+                              💬 Izoh mavjud
+                            </p>
+                            <div className="absolute left-0 top-full mt-2 w-72 max-w-sm p-3 bg-white dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 text-sm rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                              <div className="font-medium text-xs text-neutral-500 dark:text-neutral-400 mb-1">Izoh:</div>
+                              <div className="text-sm leading-relaxed">{variant.description}</div>
+                              <div className="absolute -top-2 left-4 w-4 h-4 bg-white dark:bg-neutral-800 border-l-2 border-t-2 border-neutral-200 dark:border-neutral-600 transform rotate-45"></div>
+                            </div>
+                          </div>
                         )}
                       </div>
 

@@ -22,35 +22,48 @@ interface DebtDetailsModalProps {
 export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetailsModalProps) {
   const { t } = useLanguage();
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [cashAmount, setCashAmount] = useState('');
+  const [cardAmount, setCardAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const remainingAmount = debt.amount - debt.paidAmount;
   const paymentProgress = (debt.paidAmount / debt.amount) * 100;
 
+  // Calculate amounts from different sources
+  const manualDebtAmount = (debt as any).receipt ? 0 : debt.amount;
+  const receiptDebtAmount = (debt as any).receipt ? debt.amount : 0;
+
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    const amount = parseFloat(paymentAmount.replace(/\s/g, '')) || 0;
-    if (amount <= 0 || amount > remainingAmount) {
+    const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
+    const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
+    const totalPayment = cash + card;
+
+    if (totalPayment <= 0 || totalPayment > remainingAmount) {
       alert(t('Noto\'g\'ri summa!'));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.post(`/debts/${debt._id}/payment`, {
-        amount,
-        method: paymentMethod
-      });
+      // If both cash and card, make two separate payments
+      if (cash > 0 && card > 0) {
+        await api.post(`/debts/${debt._id}/payment`, { amount: cash, method: 'cash' });
+        await api.post(`/debts/${debt._id}/payment`, { amount: card, method: 'card' });
+      } else if (cash > 0) {
+        await api.post(`/debts/${debt._id}/payment`, { amount: cash, method: 'cash' });
+      } else if (card > 0) {
+        await api.post(`/debts/${debt._id}/payment`, { amount: card, method: 'card' });
+      }
       
       setShowPaymentForm(false);
-      setPaymentAmount('');
+      setCashAmount('');
+      setCardAmount('');
       onUpdate();
       
-      if (amount >= remainingAmount) {
+      if (totalPayment >= remainingAmount) {
         setTimeout(() => onClose(), 1000);
       }
     } catch (err) {
@@ -63,7 +76,13 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
 
   const getDebtorName = () => {
     if (debt.customer?.name) return debt.customer.name;
-    return (debt as any).creditorName || t("Noma'lum");
+    if ((debt as any).creditorName) return (debt as any).creditorName;
+    
+    // Debug: log the debt object
+    console.log('Debt object:', debt);
+    console.log('Customer:', debt.customer);
+    
+    return t("Mijoz nomi ko'rsatilmagan");
   };
 
   const getDebtorPhone = () => {
@@ -118,21 +137,6 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className="p-6 space-y-4">
-            {/* Description - if no receipt, show description first */}
-            {!(debt as any).receipt && (debt as any).description && (
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">{t("Qarz haqida")}</p>
-                    <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed">
-                      {(debt as any).description}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Customer Info */}
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
@@ -141,7 +145,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                    {(debt as any).type === 'receivable' ? t('Qarzdor') : t('Kreditor')}
+                    {(debt as any).type === 'receivable' ? t('Qarzdor') : t('Kimga qarzdorman')}
                   </p>
                   <p className="text-lg font-black text-blue-900 dark:text-blue-100 mb-1">
                     {getDebtorName()}
@@ -232,6 +236,55 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               )}
             </div>
 
+            {/* Receipt Info - Show where debt came from */}
+            {(debt as any).receipt ? (
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/30 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-800">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-2">{t("Qarz manbai")}</p>
+                    <p className="text-sm font-bold text-purple-900 dark:text-purple-100 mb-1">
+                      📄 {t("Sotuvdan")} - {formatNumber(receiptDebtAmount)} {t("so'm")}
+                    </p>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+                      {t("Chek")} #{(debt as any).receipt?.receiptNumber || (debt as any).receipt?._id?.slice(-6) || 'N/A'}
+                    </p>
+                    {(debt as any).receipt?.createdAt && (
+                      <p className="text-xs text-purple-700 dark:text-purple-300">
+                        📅 {new Date((debt as any).receipt.createdAt).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date((debt as any).receipt.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                    {(debt as any).receipt?.createdBy && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                        👤 {t("Sotuvchi")}: {(debt as any).receipt.createdBy.name || (debt as any).receipt.createdBy.username}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">{t("Qarz manbai")}</p>
+                    <p className="text-sm font-bold text-blue-900 dark:text-blue-100 mb-1">
+                      ✍️ {t("Qo'lda qo'shilgan")} - {formatNumber(manualDebtAmount)} {t("so'm")}
+                    </p>
+                    {(debt as any).createdAt && (
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        📅 {new Date((debt as any).createdAt).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date((debt as any).createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Description - if receipt exists, show description below receipt */}
             {(debt as any).receipt && (debt as any).description && (
               <div className="bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 rounded-2xl p-5 border-2 border-neutral-200 dark:border-neutral-600">
@@ -305,53 +358,46 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                   {t("To'lov qilish")}
                 </h4>
 
-                <div>
-                  <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block">
-                    {t("Summa")}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
-                    placeholder="0"
-                    value={formatInputNumber(paymentAmount)}
-                    onChange={e => setPaymentAmount(parseNumber(e.target.value))}
-                    required
-                  />
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 text-center">
-                    {t("Maksimal")}: {formatNumber(remainingAmount)} {t("so'm")}
-                  </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block flex items-center gap-2">
+                      <Banknote className="w-4 h-4" />
+                      {t("Naqd")}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
+                      placeholder="0"
+                      value={formatInputNumber(cashAmount)}
+                      onChange={e => setCashAmount(parseNumber(e.target.value))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-2 block flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      {t("Karta")}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all text-lg font-bold text-center"
+                      placeholder="0"
+                      value={formatInputNumber(cardAmount)}
+                      onChange={e => setCardAmount(parseNumber(e.target.value))}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block">
-                    {t("To'lov turi")}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('cash')}
-                      className={`py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                        paymentMethod === 'cash'
-                          ? 'bg-emerald-500 text-white shadow-lg scale-105'
-                          : 'bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-emerald-100'
-                      }`}
-                    >
-                      <Banknote className="w-5 h-5" />
-                      {t("Naqd")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('card')}
-                      className={`py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                        paymentMethod === 'card'
-                          ? 'bg-blue-500 text-white shadow-lg scale-105'
-                          : 'bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-blue-100'
-                      }`}
-                    >
-                      <CreditCard className="w-5 h-5" />
-                      {t("Karta")}
-                    </button>
+                <div className="bg-white dark:bg-neutral-700 rounded-xl p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{t("Jami to'lov")}:</span>
+                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                      {formatNumber((parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0))} {t("so'm")}
+                    </span>
                   </div>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 text-center">
+                    {t("Qoldiq")}: {formatNumber(remainingAmount)} {t("so'm")}
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -359,7 +405,8 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                     type="button"
                     onClick={() => {
                       setShowPaymentForm(false);
-                      setPaymentAmount('');
+                      setCashAmount('');
+                      setCardAmount('');
                     }}
                     disabled={isSubmitting}
                     className="flex-1 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95 disabled:opacity-50"
