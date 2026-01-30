@@ -457,7 +457,7 @@ export default function Kassa() {
  itemsHtml += `
  <div class="item">
  <div class="item-name">${i + 1}. ${item.name}</div>
- <div class="item-calc">${formatNum(item.price)} x ${formatNum(item.quantity)} = ${formatNum(item.price * item.quantity)}</div>
+ <div class="item-calc">${formatNum(item.quantity)} x ${formatNum(item.price)} = ${formatNum(item.price * item.quantity)}</div>
  </div>
  `;
  });
@@ -536,10 +536,10 @@ body {
 .line { border-top: 1px dashed #000; margin: 0.8mm auto; width: 100%; padding: 0; }
 .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 9px; margin: 0 auto 0.4mm auto; font-weight: bold; width: 100%; padding: 0; }
 .meta { font-size: 9px; font-weight: bold; white-space: nowrap; }
-.items { text-align: center; margin: 0 auto; width: 100%; padding: 0; }
-.item { margin-bottom: 0.8mm; text-align: center; }
-.item-name { font-weight: bold; font-size: 13px; text-align: center; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; }
-.item-calc { display: block; text-align: center; font-size: 12px; font-weight: bold; /* Updated format: price x qty = total */ }
+.items { text-align: left; margin: 0 auto; width: 100%; padding: 0 2mm; }
+.item { margin-bottom: 0.8mm; text-align: left; }
+.item-name { font-weight: bold; font-size: 13px; text-align: left; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; padding-left: 2mm; }
+.item-calc { display: block; text-align: left; font-size: 12px; font-weight: bold; padding-left: 2mm; /* Format: qty x price = total */ }
 .price { font-weight: bold; }
 .total-box { padding: 0.8mm 0; margin: 0.8mm auto 0.4mm auto; text-align: center; width: 100%; }
 .total-sum { font-size: 14px; font-weight: bold; text-align: center; }

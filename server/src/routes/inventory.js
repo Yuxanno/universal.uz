@@ -117,7 +117,7 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
       // Query 2: Get ALL products at once (parallel!)
       Product.find(
         {},
-        'name code price costPrice dona_narx images' // Only needed fields
+        'name code price costPrice dona_narx images variants' // Added variants field
       )
       .lean()
       .maxTimeMS(30000)
@@ -187,7 +187,8 @@ router.get('/warehouse/:warehouseId', auth, async (req, res) => {
         price: inv.product.price,
         costPrice: inv.product.costPrice,
         dona_narx: inv.product.dona_narx,
-        images: inv.product.images?.[0] ? [inv.product.images[0]] : []
+        images: inv.product.images?.[0] ? [inv.product.images[0]] : [],
+        variants: inv.product.variants || [] // Added variants
       }
     }));
 

@@ -227,18 +227,18 @@ function generateReceiptText(receipt, settings = {}) {
   
   // Товары
   receipt.items.forEach((item, i) => {
-    // Название товара (полная ширина, жирный)
-    const name = item.name.length > width 
-      ? item.name.substring(0, width) 
+    // Название товара (с левой стороны, с отступом 2 пробела)
+    const name = item.name.length > (width - 5) 
+      ? item.name.substring(0, width - 5) 
       : item.name;
-    text += centerText(`${i + 1}. ${name}`, width) + '\n';
+    text += `  ${i + 1}. ${name}\n`;
     
-    // Цена x количество = сумма (центрировано)
+    // Цена x количество = сумма (с левой стороны, с отступом 2 пробела)
     const priceFormatted = formatNumber(item.price);
     const qtyFormatted = formatNumber(item.quantity);
     const sum = formatNumber(item.price * item.quantity);
-    const calcLine = `${priceFormatted} x ${qtyFormatted} = ${sum}`;
-    text += centerText(calcLine, width) + '\n';
+    const calcLine = `${qtyFormatted} x ${priceFormatted} = ${sum}`;
+    text += `  ${calcLine}\n`;
   });
   
   text += line + '\n';

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import Header from '../../components/Header';
-import { Plus, Package, X, Edit, Trash2, AlertTriangle, DollarSign, QrCode, Download, Image, Upload, Printer, ArrowRightLeft } from 'lucide-react';
+import { Plus, Package, X, Edit, Trash2, AlertTriangle, QrCode, Download, Image, Upload, Printer, ArrowRightLeft } from 'lucide-react';
 import { Product, Warehouse } from '../../types';
 import api from '../../utils/api';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
@@ -912,7 +912,6 @@ export default function Products() {
  { label: tKey('Jami tovarlar'), value: stats.total, icon: Package, color: 'brand', filter: 'all' },
  { label: tKey('Kam qolgan'), value: stats.lowStock, icon: AlertTriangle, color: 'warning', filter: 'low' },
  { label: tKey('Tugagan'), value: stats.outOfStock, icon: X, color: 'danger', filter: 'out' },
- { label: tKey('Jami qiymat'), value: `${formatNumber(stats.totalValue)} ${tKey("so'm")}`, icon: DollarSign, color: 'success', filter: null },
  ];
 
  const getProductImage = useCallback((product: any) => {
