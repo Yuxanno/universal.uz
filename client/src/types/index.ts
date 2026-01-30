@@ -26,6 +26,17 @@ export interface Product {
  image?: string;
  images?: string[];
  minStock?: number;
+ variants?: ProductVariant[];
+}
+
+export interface ProductVariant {
+ _id?: string;
+ name: string;
+ description?: string;
+ price?: number;
+ code?: string;
+ quantity: number;
+ isActive: boolean;
 }
 
 export interface CartItem extends Product {

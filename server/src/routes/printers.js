@@ -233,11 +233,12 @@ function generateReceiptText(receipt, settings = {}) {
       : item.name;
     text += centerText(`${i + 1}. ${name}`, width) + '\n';
     
-    // Количество x цена = сумма (полная ширина, выровнено)
-    const qty = `${item.quantity} x ${formatNumber(item.price)}`;
+    // Цена x количество = сумма (центрировано)
+    const priceFormatted = formatNumber(item.price);
+    const qtyFormatted = formatNumber(item.quantity);
     const sum = formatNumber(item.price * item.quantity);
-    const spaces = Math.max(1, width - qty.length - sum.length);
-    text += centerText(`${qty}${' '.repeat(spaces)}${sum}`, width) + '\n';
+    const calcLine = `${priceFormatted} x ${qtyFormatted} = ${sum}`;
+    text += centerText(calcLine, width) + '\n';
   });
   
   text += line + '\n';

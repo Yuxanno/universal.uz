@@ -457,7 +457,7 @@ export default function Kassa() {
  itemsHtml += `
  <div class="item">
  <div class="item-name">${i + 1}. ${item.name}</div>
- <div class="item-calc">${item.quantity} x ${formatNum(item.price)}<span class="price">${formatNum(item.price * item.quantity)}</span></div>
+ <div class="item-calc">${formatNum(item.price)} x ${formatNum(item.quantity)} = ${formatNum(item.price * item.quantity)}</div>
  </div>
  `;
  });
@@ -539,7 +539,7 @@ body {
 .items { text-align: center; margin: 0 auto; width: 100%; padding: 0; }
 .item { margin-bottom: 0.8mm; text-align: center; }
 .item-name { font-weight: bold; font-size: 13px; text-align: center; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; }
-.item-calc { display: flex; justify-content: center; gap: 2mm; font-size: 12px; text-align: center; font-weight: bold; }
+.item-calc { display: block; text-align: center; font-size: 12px; font-weight: bold; /* Updated format: price x qty = total */ }
 .price { font-weight: bold; }
 .total-box { padding: 0.8mm 0; margin: 0.8mm auto 0.4mm auto; text-align: center; width: 100%; }
 .total-sum { font-size: 14px; font-weight: bold; text-align: center; }
@@ -1356,10 +1356,9 @@ window.onload = function() {
  <div className="space-y-3">
  {printReceipt.items.map((item, i) => (
  <div key={i} className="space-y-1">
- <div className="font-bold text-neutral-900 dark:text-neutral-100">{i + 1}. {item.name}</div>
- <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
- <span>{item.quantity} x {item.price.toLocaleString()}</span>
- <span className="font-bold text-neutral-700 dark:text-neutral-300">{(item.price * item.quantity).toLocaleString()}</span>
+ <div className="font-bold text-neutral-900 dark:text-neutral-100 pl-4">{i + 1}. {item.name}</div>
+ <div className="text-sm text-neutral-700 dark:text-neutral-300 pl-4">
+ <span>{item.price.toLocaleString()} x {item.quantity.toLocaleString()} = {(item.price * item.quantity).toLocaleString()}</span>
  </div>
  </div>
  ))}
@@ -1367,8 +1366,7 @@ window.onload = function() {
  </div>
  
  <div className="border-t-2 border-neutral-900 dark:border-neutral-100 pt-3 mb-3">
- <div className="text-center">
- <span className="text-xl font-black text-neutral-900 dark:text-neutral-100">JAMI: {printReceipt.total.toLocaleString()} so'm</span>
+ <div className="pl-4"><span className="text-xl font-black text-neutral-900 dark:text-neutral-100">JAMI: {printReceipt.total.toLocaleString()} so'm</span>
  </div>
  </div>
  
@@ -1687,3 +1685,7 @@ window.onload = function() {
  </div>
  );
 }
+
+
+
+
