@@ -997,13 +997,21 @@ export default function Products() {
  ? `${printCodePrefix.trim()},${price.toString().replace(/\s/g, '')}` 
  : price.toLocaleString();
  
+ // Avtomatik font size - uzun nomlar uchun kichikroq
+ const productName = uz(printProduct.name);
+ const nameLength = productName.length;
+ let nameFontSize = '11pt';
+ if (nameLength > 40) nameFontSize = '8pt';
+ else if (nameLength > 30) nameFontSize = '9pt';
+ else if (nameLength > 20) nameFontSize = '10pt';
+ 
  const labelsHtml = Array(qty).fill(`
  <div class="label">
  ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
  <div class="content-row">
- <div class="left-section">
- <div class="name">${uz(printProduct.name)}</div>
- <div class="code"><span class="code-label">Kod:</span> <span class="code-number">${printProduct.code}</span></div>
+ <div class="left-section" style="justify-content: space-between; min-height: 18mm;">
+ <div class="name" style="font-size: ${nameFontSize}; margin-bottom: auto; flex: 1;">${productName}</div>
+ <div class="code" style="margin-top: auto;"><span class="code-label">Kod:</span> <span class="code-number">${printProduct.code}</span></div>
  </div>
  <div class="right-section">
  <div class="qr-container">
@@ -1052,24 +1060,24 @@ export default function Products() {
  }
  .content-row {
  display: flex;
- align-items: center;
+ align-items: flex-start;
  justify-content: space-between;
- gap: 2mm;
+ gap: 0.5mm;
  }
  .left-section { 
- flex: 0 0 28mm;
- max-width: 28mm;
+ flex: 1;
  display: flex;
  flex-direction: column;
- justify-content: center;
+ justify-content: flex-start;
  }
  .right-section {
- flex: 0 0 24mm;
+ flex: 0 0 20mm;
+ margin-left: 0;
  }
  .name { 
  font-size: 11pt; 
  font-weight: bold; 
- margin-bottom: 1mm; 
+ margin-bottom: 0.5mm; 
  line-height: 1.1;
  color: #000;
  word-wrap: break-word;
@@ -1091,8 +1099,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 24mm; 
- height: 24mm; 
+ width: 20mm; 
+ height: 20mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
@@ -1260,19 +1268,19 @@ export default function Products() {
  }
  .content-row {
  display: flex;
- align-items: center;
+ align-items: flex-start;
  justify-content: space-between;
- gap: 1.5mm;
+ gap: 0.5mm;
  }
  .left-section { 
- flex: 0 0 28mm;
- max-width: 28mm;
+ flex: 1;
  display: flex;
  flex-direction: column;
- justify-content: center;
+ justify-content: flex-start;
  }
  .right-section {
- flex: 0 0 24mm;
+ flex: 0 0 20mm;
+ margin-left: 0;
  }
  .name { 
  font-size: 11pt; 
@@ -1299,8 +1307,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 24mm; 
- height: 24mm; 
+ width: 20mm; 
+ height: 20mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
