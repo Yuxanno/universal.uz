@@ -7,6 +7,18 @@
    White • Red • Black • Premium • Fast
    ============================================ */
 
+/* PREVENT HORIZONTAL SCROLL ON MOBILE */
+html,
+body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+#root {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
 /* FORCE LIGHT MODE - DISABLE DARK MODE COMPLETELY */
 html,
 html.light,

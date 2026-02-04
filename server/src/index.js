@@ -24,7 +24,10 @@ const { initCustomerBot } = require('./telegram/customerBot');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+app.use(cors({ 
+  origin: (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, ''), 
+  credentials: true 
+}));
 app.use(express.json());
 
 // Serve uploaded files
@@ -37,7 +40,7 @@ const server = app.listen(PORT, () => console.log(`Server running on port ${PORT
 // Socket.IO setup - BEFORE routes
 const io = require('socket.io')(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, ''),
     credentials: true
   }
 });
@@ -69,6 +72,12 @@ app.use('/api/printers', printerRoutes);
 app.use('/api/print', printRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api', printerRoutes); // Also mount at /api for /api/print-label
+
+// Pass socket.io to debts routes
+if (debtRoutes.setSocketIO) {
+  debtRoutes.setSocketIO(io);
+  console.log('✅ Socket.IO connected to debts routes');
+}
 
 // Connect to MongoDB with optimized settings
 const mongooseOptions = {

@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "create-indexes": "node scripts/createIndexes.js"
+    "create-indexes": "node scripts/createIndexes.js",
+    "test-debt-optimization": "node scripts/testDebtOptimization.js",
+    "optimize-debts": "node scripts/createDebtIndexesOptimized.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

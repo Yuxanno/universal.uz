@@ -2,24 +2,47 @@ import { useState, useEffect } from 'react';
 import { X, Banknote, CreditCard, AlertTriangle, User, Calculator } from 'lucide-react';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useLanguage } from '../../context/LanguageContext';
+import api from '../../utils/api';
 
 interface PaymentModalProps {
   total: number;
   customerName?: string;
   customerId?: string;
-  onConfirm: (cashAmount: number, cardAmount: number, debtAmount: number) => void;
+  onConfirm: (cashAmount: number, cardAmount: number, debtAmount: number, debtPaymentCash: number, debtPaymentCard: number) => void;
   onClose: () => void;
 }
 
-export default function PaymentModal({ total, customerName, onConfirm, onClose }: PaymentModalProps) {
+export default function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
   const { t } = useLanguage();
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [debtAmount, setDebtAmount] = useState(0);
+  const [debtPaymentCash, setDebtPaymentCash] = useState('');
+  const [debtPaymentCard, setDebtPaymentCard] = useState('');
+  const [customerTotalDebt, setCustomerTotalDebt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDebtPayment, setShowDebtPayment] = useState(false); // New state for checkbox
   
   // Don't allow debt for "Oddiy mijoz" (regular customer without ID)
   const allowDebt = customerName !== 'Oddiy mijoz' && customerName !== undefined;
+
+  // Fetch customer's total debt when modal opens
+  useEffect(() => {
+    const fetchCustomerDebt = async () => {
+      if (customerId && customerId !== '') {
+        try {
+          // Get customer data directly - it has debt field
+          const response = await api.get(`/customers/${customerId}`);
+          const totalDebt = response.data.debt || 0;
+          setCustomerTotalDebt(totalDebt);
+        } catch (error) {
+          console.error('❌ Error fetching customer debt:', error);
+          setCustomerTotalDebt(0);
+        }
+      }
+    };
+    fetchCustomerDebt();
+  }, [customerId]);
 
   // Auto-calculate debt when cash or card changes
   useEffect(() => {
@@ -59,8 +82,17 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
     
     const cash = parseFloat(cashAmount.replace(/\s/g, '')) || 0;
     const card = parseFloat(cardAmount.replace(/\s/g, '')) || 0;
+    const debtCash = parseFloat(debtPaymentCash.replace(/\s/g, '')) || 0;
+    const debtCard = parseFloat(debtPaymentCard.replace(/\s/g, '')) || 0;
+    const debtPayment = debtCash + debtCard;
     
-    // Prevent overpayment
+    // Check if debt payment exceeds customer's total debt
+    if (debtPayment > customerTotalDebt) {
+      alert(t('Qarz to\'lovi mijozning umumiy qarzidan oshmasligi kerak!'));
+      return;
+    }
+    
+    // Prevent overpayment for current purchase
     if (cash + card > total) {
       alert(t('To\'langan summa jami summadan yuqori bo\'lmasligi kerak!'));
       return;
@@ -79,7 +111,7 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
     
     setIsSubmitting(true);
     try {
-      await onConfirm(cash, card, allowDebt ? debtAmount : 0);
+      await onConfirm(cash, card, allowDebt ? debtAmount : 0, debtCash, debtCard);
     } finally {
       setIsSubmitting(false);
     }
@@ -168,39 +200,100 @@ export default function PaymentModal({ total, customerName, onConfirm, onClose }
               />
             </div>
 
-            {/* Debt Amount (Auto-calculated) */}
+            {/* Debt Amount (Auto-calculated) - Compact */}
             {allowDebt && debtAmount > 0 && (
-              <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30 rounded-2xl p-3 border-2 border-red-200 dark:border-red-800">
-                <div className="flex items-center gap-3 mb-2">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                  <p className="text-sm font-bold text-red-600 dark:text-red-400">{t("Qarz summasi")}</p>
-                </div>
-                <p className="text-xl font-black text-red-700 dark:text-red-300">
-                  {formatNumber(debtAmount)} <span className="text-sm">{t("so'm")}</span>
-                </p>
-                {!customerName && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                    ⚠️ {t("Qarz yaratish uchun mijoz tanlang!")}
+              <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30 rounded-xl p-2.5 border-2 border-red-200 dark:border-red-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <p className="text-xs font-bold text-red-600 dark:text-red-400">{t("Qarz summasi")}</p>
+                  </div>
+                  <p className="text-base font-black text-red-700 dark:text-red-300">
+                    {formatNumber(debtAmount)} <span className="text-xs">{t("so'm")}</span>
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Debt Payment Section - Only show when purchase is fully paid */}
+            {customerId && customerId !== '' && customerTotalDebt > 0 && paidAmount >= total && (
+              <div className="space-y-2">
+                {/* Button to toggle debt payment */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDebtPayment(!showDebtPayment);
+                    if (showDebtPayment) {
+                      setDebtPaymentCash(''); // Clear amounts when closing
+                      setDebtPaymentCard('');
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border-2 ${
+                    showDebtPayment
+                      ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600'
+                      : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700 hover:border-amber-300 dark:hover:border-amber-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                      showDebtPayment 
+                        ? 'bg-amber-500 text-white' 
+                        : 'bg-white dark:bg-neutral-700 border-2 border-amber-300 dark:border-amber-600'
+                    }`}>
+                      {showDebtPayment && (
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">
+                      {t("Qarzdan to'lash")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-black text-amber-700 dark:text-amber-300">
+                      {formatNumber(customerTotalDebt)} {t("so'm")}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Input fields - only show when button is active */}
+                {showDebtPayment && (
+                  <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/30 rounded-xl p-3 border-2 border-amber-200 dark:border-amber-800 animate-fadeIn">
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Cash debt payment */}
+                      <div>
+                        <label className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
+                          <Banknote className="w-3 h-3" />
+                          {t("Naqd")}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 border-2 border-amber-300 dark:border-amber-600 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-bold text-center"
+                          placeholder="0"
+                          value={formatInputNumber(debtPaymentCash)}
+                          onChange={e => setDebtPaymentCash(parseNumber(e.target.value))}
+                          autoFocus
+                        />
+                      </div>
+
+                      {/* Card debt payment */}
+                      <div>
+                        <label className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1 flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" />
+                          {t("Karta")}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 border-2 border-amber-300 dark:border-amber-600 rounded-lg focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-bold text-center"
+                          placeholder="0"
+                          value={formatInputNumber(debtPaymentCard)}
+                          onChange={e => setDebtPaymentCard(parseNumber(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </div>
-            )}
-
-            {/* Warning for overpayment */}
-            {paidAmount > total && (
-              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-3">
-                <p className="text-sm font-semibold text-red-800 dark:text-red-200 text-center">
-                  ⚠️ {t("To'langan summa jami summadan yuqori bo'lmasligi kerak!")}
-                </p>
-              </div>
-            )}
-
-            {/* Warning for regular customer */}
-            {!allowDebt && paidAmount < total && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-3">
-                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 text-center">
-                  ⚠️ {t("Oddiy mijoz uchun to'liq to'lov talab qilinadi!")}
-                </p>
               </div>
             )}
 

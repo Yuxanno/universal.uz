@@ -88,6 +88,7 @@ export interface Debt {
  payments: Payment[];
  receipt?: Receipt; // Link to the sale receipt
  createdAt: string;
+ updatedAt?: string;
 }
 
 export interface Payment {

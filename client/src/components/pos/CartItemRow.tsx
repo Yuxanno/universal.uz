@@ -1,6 +1,7 @@
 import { memo, useCallback } from 'react';
 import { Trash2 } from 'lucide-react';
 import { CartItem } from '../../types';
+import ProductNameDisplay from '../shared/ProductNameDisplay';
 
 interface CartItemRowProps {
  item: CartItem;
@@ -75,9 +76,11 @@ const CartItemRow = memo(({
  const remainingStock = (item.quantity || 0) - item.cartQuantity;
 
  return (
+ <>
+ {/* Desktop: Table Row Layout */}
  <div
  onClick={handleRowClick}
- className={`grid grid-cols-12 gap-3 px-6 py-4 items-center cursor-pointer transition-all ${
+ className={`hidden md:grid grid-cols-12 gap-3 px-6 py-4 items-center cursor-pointer transition-all ${
  isSelected
  ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 shadow-sm'
  : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
@@ -89,7 +92,11 @@ const CartItemRow = memo(({
  </span>
  </div>
  <div className="col-span-2">
- <span className="text-sm font-bold text-slate-900 dark:text-neutral-100">{item.name}</span>
+ <ProductNameDisplay 
+ name={item.name}
+ className="text-sm font-bold text-slate-900 dark:text-neutral-100"
+ hidePrice={true}
+ />
  </div>
  <div className="col-span-1 text-center">
  <span className={`text-sm font-bold ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
@@ -131,6 +138,108 @@ const CartItemRow = memo(({
  </button>
  </div>
  </div>
+
+ {/* Mobile: Card Layout - NO HORIZONTAL SCROLL */}
+ <div
+ onClick={handleRowClick}
+ className={`md:hidden mx-1 my-2 rounded-xl border-2 transition-all shadow-sm overflow-hidden max-w-full ${
+ isSelected
+ ? 'bg-red-50 dark:bg-red-900/20 border-red-500 shadow-md'
+ : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 active:bg-neutral-50 dark:active:bg-neutral-700/50'
+ }`}
+ >
+ {/* Card Header */}
+ <div className="flex items-start justify-between p-3 pb-2 border-b border-neutral-100 dark:border-neutral-700 gap-2">
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center gap-2 mb-1 flex-wrap">
+ <span className="inline-block text-xs font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 rounded whitespace-nowrap">
+ {item.code}
+ </span>
+ <span className={`text-xs font-semibold whitespace-nowrap ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-500 dark:text-neutral-400'}`}>
+ {remainingStock} ta
+ </span>
+ </div>
+ <h3 className="text-sm font-bold text-slate-900 dark:text-neutral-100 leading-tight line-clamp-2 break-words">
+ <ProductNameDisplay 
+ name={item.name}
+ hidePrice={true}
+ />
+ </h3>
+ </div>
+ <button
+ onClick={handleRemoveClick}
+ className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all active:scale-95"
+ >
+ <Trash2 className="w-4 h-4" />
+ </button>
+ </div>
+
+ {/* Card Body */}
+ <div className="p-3 space-y-2">
+ {/* Soni va Narx - Bir qatorda, ko'proq joy bilan */}
+ <div className="flex items-end justify-between gap-4">
+ {/* Quantity Stepper - Kompakt */}
+ <div className="space-y-1">
+ <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 block">Soni:</span>
+ <div className="flex items-center gap-1">
+ <button
+ onClick={(e) => {
+ e.stopPropagation();
+ const newQty = item.cartQuantity - 1;
+ if (newQty <= 0) {
+ onRemove(item._id);
+ } else {
+ onQuantityChange(item._id, newQty);
+ }
+ }}
+ className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold text-lg transition-all active:scale-95 shadow-sm"
+ >
+ <span className="leading-none">−</span>
+ </button>
+ <input
+ type="text"
+ value={item.cartQuantity}
+ onChange={handleQuantityChange}
+ onBlur={handleQuantityBlur}
+ onClick={(e) => e.stopPropagation()}
+ className="w-14 h-9 text-center text-base font-black border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
+ />
+ <button
+ onClick={(e) => {
+ e.stopPropagation();
+ onQuantityChange(item._id, item.cartQuantity + 1);
+ }}
+ className="w-8 h-8 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold text-lg transition-all active:scale-95 shadow-sm"
+ >
+ <span className="leading-none">+</span>
+ </button>
+ </div>
+ </div>
+
+ {/* Price Input */}
+ <div className="flex-1 space-y-1">
+ <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 block">Narx:</span>
+ <input
+ type="text"
+ value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
+ onChange={handlePriceChange}
+ onBlur={handlePriceBlur}
+ onClick={(e) => e.stopPropagation()}
+ className="w-full h-9 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
+ />
+ </div>
+ </div>
+
+ {/* Total - Pastda */}
+ <div className="flex items-center justify-between pt-2 border-t-2 border-neutral-200 dark:border-neutral-700">
+ <span className="text-sm font-bold text-neutral-700 dark:text-neutral-400">JAMI:</span>
+ <span className="text-lg font-black text-slate-900 dark:text-neutral-100">
+ {totalPrice.toLocaleString()} <span className="text-xs">so'm</span>
+ </span>
+ </div>
+ </div>
+ </div>
+ </>
  );
 });
 

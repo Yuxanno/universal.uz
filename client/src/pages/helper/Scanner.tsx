@@ -732,8 +732,8 @@ export default function HelperScanner() {
  {scanning && (
  <div className="fixed inset-0 z-50 bg-black flex flex-col m-0 p-0" style={{ marginTop: 0, paddingTop: 0 }}>
  {/* Header */}
- <div className="relative z-20 bg-gradient-to-b from-black via-black/80 to-transparent">
- <div className="safe-top px-4 py-3 flex items-center justify-between">
+ <div className="relative z-20 bg-gradient-to-b from-black via-black/80 to-transparent pt-2">
+ <div className="px-4 py-4 flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center">
  <QrCode className="w-5 h-5 text-white" />
@@ -745,10 +745,10 @@ export default function HelperScanner() {
  </div>
  <button
  onClick={stopScanner}
- className="w-9 h-9 flex items-center justify-center bg-red-500/90 backdrop-blur-md hover:bg-red-600 text-white rounded-full transition-all shadow-lg hover:scale-110 active:scale-95"
+ className="w-11 h-11 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full transition-all shadow-xl border-2 border-white/30 hover:scale-110 active:scale-95"
  title="Yopish"
  >
- <X className="w-5 h-5" strokeWidth={2.5} />
+ <X className="w-6 h-6" strokeWidth={3} />
  </button>
  </div>
  </div>
