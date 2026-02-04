@@ -101,7 +101,7 @@ router.put('/draft', auth, authorize('helper'), async (req, res) => {
       draft = new Receipt({
         items: [],
         total: 0,
-        status: status || 'archived', // Default to archived (no draft status)
+        status: status || 'draft', // Default to draft (working state)
         createdBy: req.user._id
       });
     }
@@ -185,13 +185,13 @@ router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
 router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { status } = req.query;
-    // Show draft, archived, and pending receipts (all active worker receipts)
+    // Show ONLY draft and pending receipts (NOT archived - those are helper's private)
     const query = { 
-      status: { $in: ['draft', 'archived', 'pending'] },
+      status: { $in: ['draft', 'pending'] },
       // Only show receipts with items (not empty)
       'items.0': { $exists: true }
     };
-    if (status && status !== 'all' && ['draft', 'archived', 'pending'].includes(status)) {
+    if (status && status !== 'all' && ['draft', 'pending'].includes(status)) {
       query.status = status;
     }
     
@@ -581,44 +581,18 @@ router.post('/', auth, async (req, res) => {
       // Create new transaction description
       const transactionDesc = `${dateStr} sanada ${customerName} quyidagi mahsulotlarni sotib oldi: ${itemsDesc}. Jami summa: ${total.toLocaleString('uz-UZ')} so'm. To'langan: ${paymentStr}. Qarzga qolgan: ${debtAmount.toLocaleString('uz-UZ')} so'm.`;
       
-      // Find existing debt for this customer
-      let debt = await Debt.findOne({ 
-        customer: customer, 
+      // Always create a NEW debt for each receipt (don't combine with existing debts)
+      const debt = new Debt({
         type: 'receivable',
-        status: { $in: ['pending', 'overdue'] }
+        customer: customer,
+        amount: debtAmount,
+        paidAmount: 0,
+        status: 'pending',
+        description: transactionDesc,
+        receipt: receipt._id,
+        dueDate: null
       });
-      
-      if (debt) {
-        // Update existing debt
-        debt.amount += debtAmount;
-        
-        // Add new transaction to description
-        if (debt.description) {
-          debt.description += `\n\n${transactionDesc}`;
-        } else {
-          debt.description = transactionDesc;
-        }
-        
-        // Update status if overdue
-        if (debt.dueDate && new Date(debt.dueDate) < new Date()) {
-          debt.status = 'overdue';
-        }
-        
-        await debt.save();
-      } else {
-        // Create new debt
-        debt = new Debt({
-          type: 'receivable',
-          customer: customer,
-          amount: debtAmount,
-          paidAmount: 0,
-          status: 'pending',
-          description: transactionDesc,
-          receipt: receipt._id,
-          dueDate: null
-        });
-        await debt.save();
-      }
+      await debt.save();
       
       // Update customer debt
       await Customer.findByIdAndUpdate(customer, {
@@ -861,6 +835,21 @@ router.delete('/:id', auth, async (req, res) => {
 
     await Receipt.findByIdAndDelete(req.params.id);
     console.log('✅ [DELETE] Receipt deleted successfully');
+    
+    // Emit socket event for real-time updates
+    if (global.io) {
+      console.log('📡 [Socket] Emitting receipt:deleted event:', {
+        receiptId: req.params.id,
+        status: receipt.status,
+        createdBy: receipt.createdBy
+      });
+      global.io.emit('receipt:deleted', {
+        receiptId: req.params.id,
+        status: receipt.status,
+        createdBy: receipt.createdBy
+      });
+    }
+    
     res.json({ message: 'Chek o\'chirildi', deleted: true });
   } catch (error) {
     console.error('❌ [DELETE] Error:', error);

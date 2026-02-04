@@ -7,27 +7,33 @@ import api from '../../utils/api';
 
 interface DebtDetailsModalProps {
   debt: Debt;
+  group?: {
+    customer: any;
+    totalAmount: number;
+    totalPaid: number;
+    remainingAmount: number;
+    debtCount: number;
+    debts: Debt[];
+  };
   onClose: () => void;
   onUpdate: () => void;
+  onAddDebt?: () => void;
 }
-// interface Debt detailsmodalprops {
-//   deb :DebtDetailsModal;
-//   onopen {
-//     (vodi s:)
-//   }
-// }
 
 
 
-export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetailsModalProps) {
+export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAddDebt }: DebtDetailsModalProps) {
   const { t } = useLanguage();
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const remainingAmount = debt.amount - debt.paidAmount;
-  const paymentProgress = (debt.paidAmount / debt.amount) * 100;
+  // Use group data if available, otherwise use single debt data
+  const totalAmount = group ? group.totalAmount : debt.amount;
+  const totalPaid = group ? group.totalPaid : debt.paidAmount;
+  const remainingAmount = group ? group.remainingAmount : (debt.amount - debt.paidAmount);
+  const paymentProgress = (totalPaid / totalAmount) * 100;
 
   // Calculate amounts from different sources
   const manualDebtAmount = (debt as any).receipt ? 0 : debt.amount;
@@ -165,7 +171,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               <div className="bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 rounded-xl p-3 border-2 border-neutral-200 dark:border-neutral-600">
                 <p className="text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1">{t("Jami qarz")}</p>
                 <p className="text-xl font-black text-neutral-900 dark:text-neutral-100">
-                  {formatNumber(debt.amount)}
+                  {formatNumber(totalAmount)}
                 </p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
               </div>
@@ -173,7 +179,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-xl p-3 border-2 border-emerald-200 dark:border-emerald-800">
                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">{t("To'langan")}</p>
                 <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
-                  {formatNumber(debt.paidAmount)}
+                  {formatNumber(totalPaid)}
                 </p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("so'm")}</p>
               </div>
@@ -236,8 +242,97 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               )}
             </div>
 
-            {/* Receipt Info - Show where debt came from */}
-            {(debt as any).receipt ? (
+            {/* All Debts List - Show all debts for this customer */}
+            {group && group.debts && group.debts.length > 0 && (
+              <div>
+                <h4 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  {t("Barcha qarzlar")} ({group.debts.length})
+                </h4>
+                <div className="space-y-2">
+                  {group.debts.map((debtItem: any, index: number) => {
+                    const debtRemaining = debtItem.amount - debtItem.paidAmount;
+                    const isFromReceipt = debtItem.receipt;
+                    
+                    return (
+                      <div 
+                        key={debtItem._id || index} 
+                        className={`rounded-xl p-4 border-2 ${
+                          isFromReceipt 
+                            ? 'bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/30 border-purple-200 dark:border-purple-800'
+                            : 'bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border-blue-200 dark:border-blue-800'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              isFromReceipt ? 'bg-purple-500' : 'bg-blue-500'
+                            }`}>
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className={`text-xs font-semibold mb-1 ${
+                                isFromReceipt 
+                                  ? 'text-purple-600 dark:text-purple-400' 
+                                  : 'text-blue-600 dark:text-blue-400'
+                              }`}>
+                                {isFromReceipt ? '📄 Sotuvdan' : '✍️ Qo\'lda qo\'shilgan'}
+                              </p>
+                              <p className={`text-lg font-black mb-1 ${
+                                isFromReceipt 
+                                  ? 'text-purple-900 dark:text-purple-100' 
+                                  : 'text-blue-900 dark:text-blue-100'
+                              }`}>
+                                {formatNumber(debtItem.amount)} {t("so'm")}
+                              </p>
+                              {debtItem.paidAmount > 0 && (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">
+                                  ✅ To'langan: {formatNumber(debtItem.paidAmount)} {t("so'm")}
+                                </p>
+                              )}
+                              {debtRemaining > 0 && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
+                                  ⏳ Qoldiq: {formatNumber(debtRemaining)} {t("so'm")}
+                                </p>
+                              )}
+                              {debtItem.createdAt && (
+                                <p className={`text-xs mt-1 ${
+                                  isFromReceipt 
+                                    ? 'text-purple-700 dark:text-purple-300' 
+                                    : 'text-blue-700 dark:text-blue-300'
+                                }`}>
+                                  📅 {new Date(debtItem.createdAt).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(debtItem.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              )}
+                              {debtItem.description && (
+                                <div className="mt-2 p-2 bg-white/50 dark:bg-neutral-800/50 rounded-lg">
+                                  <p className="text-xs text-neutral-600 dark:text-neutral-400 break-words whitespace-pre-wrap">
+                                    💬 {debtItem.description}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                            debtItem.status === 'paid' 
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                              : debtItem.status === 'overdue'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                          }`}>
+                            {debtItem.status === 'paid' ? '✅ To\'langan' : 
+                             debtItem.status === 'overdue' ? '⚠️ O\'tgan' : '⏳ Kutilmoqda'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Single Debt Info - Only show if no group */}
+            {!group && ((debt as any).receipt ? (
               <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/30 rounded-xl p-4 border-2 border-purple-200 dark:border-purple-800">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -283,7 +378,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                   </div>
                 </div>
               </div>
-            )}
+            ))}
 
             {/* Description - if receipt exists, show description below receipt */}
             {(debt as any).receipt && (debt as any).description && (
@@ -307,7 +402,7 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               <div>
                 <h4 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  {t("To'lovlar tarixi")}
+                  {t("To'lovlar tarixi")} ({(debt as any).payments.length})
                 </h4>
                 <div className="space-y-2">
                   {(debt as any).payments.map((payment: any, index: number) => (
@@ -330,9 +425,11 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 rounded-lg">
-                          {payment.method === 'card' ? '💳 Karta' : '💵 Naqd'}
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 rounded-lg">
+                            {payment.method === 'card' ? '💳 Karta' : '💵 Naqd'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -340,15 +437,26 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
               </div>
             )}
 
-            {/* Payment Form */}
+            {/* Action Buttons */}
             {debt.status !== 'paid' && !showPaymentForm && (
-              <button
-                onClick={() => setShowPaymentForm(true)}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
-              >
-                <DollarSign className="w-5 h-5" />
-                {t("To'lov qilish")}
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                {onAddDebt && (
+                  <button
+                    onClick={onAddDebt}
+                    className="py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    {t("Qarz qo'shish")}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowPaymentForm(true)}
+                  className={`py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 ${!onAddDebt ? 'col-span-2' : ''}`}
+                >
+                  <DollarSign className="w-5 h-5" />
+                  {t("To'lov qilish")}
+                </button>
+              </div>
             )}
 
             {showPaymentForm && (
@@ -395,9 +503,6 @@ export default function DebtDetailsModal({ debt, onClose, onUpdate }: DebtDetail
                       {formatNumber((parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0))} {t("so'm")}
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 text-center">
-                    {t("Qoldiq")}: {formatNumber(remainingAmount)} {t("so'm")}
-                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-2">

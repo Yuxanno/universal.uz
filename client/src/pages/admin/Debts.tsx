@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { 
-  AlertTriangle, Calendar, User, 
-  Clock, CheckCircle2, AlertCircle, Wallet, ArrowDownLeft, ArrowUpRight, Search, Phone
+  Plus, AlertTriangle, 
+  Clock, AlertCircle, Wallet, ArrowDownLeft, ArrowUpRight, Search,
+  Eye, Trash2
 } from 'lucide-react';
 import { Debt } from '../../types';
 import api from '../../utils/api';
@@ -9,7 +10,10 @@ import { formatNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useDebounce } from '../../hooks/useDebounce';
 import DebtDetailsModal from '../../components/debts/DebtDetailsModal';
+import AddDebtModal from '../../components/debts/AddDebtModal';
+import { getSocket } from '../../utils/socket';
 
 interface GroupedDebt {
   customer: {
@@ -23,10 +27,166 @@ interface GroupedDebt {
   remainingAmount: number;
   debtCount: number;
   debts: Debt[];
+  latestUpdate: string;
   latestDebt: string;
   oldestDueDate: string | null;
   status: 'pending' | 'overdue' | 'paid';
 }
+
+// Memoized row component for better performance
+const DebtRow = memo(({ 
+  group, 
+  onOpenDetails, 
+  onDelete, 
+  isAdmin,
+  t 
+}: { 
+  group: GroupedDebt; 
+  onOpenDetails: (group: GroupedDebt) => void;
+  onDelete: (debtId: string) => void;
+  isAdmin: boolean;
+  t: (key: string) => string;
+}) => {
+  return (
+    <div 
+      className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors"
+    >
+      <div 
+        className="col-span-3 flex items-center gap-3 cursor-pointer"
+        onClick={() => onOpenDetails(group)}
+      >
+        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
+          <span className="font-semibold text-primary-600 dark:text-primary-400">{group.customer.name.charAt(0)}</span>
+        </div>
+        <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{group.customer.name}</span>
+      </div>
+      <div 
+        className="col-span-2 text-neutral-600 dark:text-neutral-400 text-sm cursor-pointer"
+        onClick={() => onOpenDetails(group)}
+      >
+        {group.customer.phone || '-'}
+      </div>
+      <div 
+        className="col-span-2 cursor-pointer"
+        onClick={() => onOpenDetails(group)}
+      >
+        <span className="text-neutral-900 dark:text-neutral-100 font-medium">
+          {formatNumber(group.totalAmount)} {t("so'm")}
+        </span>
+      </div>
+      <div 
+        className="col-span-2 cursor-pointer"
+        onClick={() => onOpenDetails(group)}
+      >
+        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+          {formatNumber(group.totalPaid)} {t("so'm")}
+        </span>
+      </div>
+      <div 
+        className="col-span-2 cursor-pointer"
+        onClick={() => onOpenDetails(group)}
+      >
+        <span className={`font-medium ${group.remainingAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          {formatNumber(group.remainingAmount)} {t("so'm")}
+        </span>
+      </div>
+      <div className="col-span-1 flex items-center justify-center gap-2">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetails(group);
+          }} 
+          className="btn-icon-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+        {isAdmin && group.debts.length === 1 && (
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(group.debts[0]._id);
+            }} 
+            className="btn-icon-sm hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+DebtRow.displayName = 'DebtRow';
+
+// Memoized mobile card component
+const DebtMobileCard = memo(({ 
+  group, 
+  onOpenDetails, 
+  onDelete, 
+  isAdmin,
+  t 
+}: { 
+  group: GroupedDebt; 
+  onOpenDetails: (group: GroupedDebt) => void;
+  onDelete: (debtId: string) => void;
+  isAdmin: boolean;
+  t: (key: string) => string;
+}) => {
+  return (
+    <div className="p-4">
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+          <span className="font-semibold text-primary-600 dark:text-primary-400 text-lg">{group.customer.name.charAt(0)}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-2">
+            <div 
+              onClick={() => onOpenDetails(group)}
+              className="cursor-pointer flex-1"
+            >
+              <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{group.customer.name}</h4>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{group.customer.phone || '-'}</p>
+            </div>
+            {isAdmin && group.debts.length === 1 && (
+              <button 
+                onClick={() => onDelete(group.debts[0]._id)} 
+                className="btn-icon-sm ml-2"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div 
+            onClick={() => onOpenDetails(group)}
+            className="flex gap-2 flex-wrap cursor-pointer"
+          >
+            <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-xl p-2 inline-block">
+              <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                {t("Jami")}: {formatNumber(group.totalAmount)} {t("so'm")}
+              </span>
+            </div>
+            {group.totalPaid > 0 && (
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-2 inline-block">
+                <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  {t("To'langan")}: {formatNumber(group.totalPaid)} {t("so'm")}
+                </span>
+              </div>
+            )}
+            {group.remainingAmount > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-2 inline-block">
+                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                  {t("Qoldiq")}: {formatNumber(group.remainingAmount)} {t("so'm")}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+DebtMobileCard.displayName = 'DebtMobileCard';
 
 export default function Debts() {
   const { t } = useLanguage();
@@ -39,15 +199,56 @@ export default function Debts() {
   });
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDebtForDetails, setSelectedDebtForDetails] = useState<Debt | null>(null);
+  const [selectedGroupForDetails, setSelectedGroupForDetails] = useState<GroupedDebt | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [debtType, setDebtType] = useState<'receivable' | 'payable'>('receivable');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Debounced search for better performance
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
-    fetchGroupedDebts();
-    fetchStats();
+    // Parallel yuklash - tezroq ishlaydi
+    Promise.all([
+      fetchGroupedDebts(),
+      fetchStats()
+    ]);
   }, [debtType]);
+
+  // Socket listener for real-time debt updates
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) {
+      return;
+    }
+
+    const handleDebtUpdated = async () => {
+      await fetchGroupedDebts();
+      await fetchStats();
+    };
+
+    socket.on('debt:updated', handleDebtUpdated);
+
+    return () => {
+      socket.off('debt:updated', handleDebtUpdated);
+    };
+  }, [debtType]);
+
+  // Update selected debt when grouped debts change (for real-time updates in modal)
+  useEffect(() => {
+    if (showDetailsModal && selectedDebtForDetails && selectedGroupForDetails) {
+      const updatedGroup = groupedDebts.find(g => g.customer._id === selectedGroupForDetails.customer._id);
+      if (updatedGroup) {
+        const updatedDebt = updatedGroup.debts.find(d => d._id === selectedDebtForDetails._id);
+        if (updatedDebt) {
+          setSelectedDebtForDetails(updatedDebt);
+          setSelectedGroupForDetails(updatedGroup);
+        }
+      }
+    }
+  }, [groupedDebts, showDetailsModal, selectedDebtForDetails, selectedGroupForDetails]);
 
   const fetchGroupedDebts = async () => {
     try {
@@ -72,44 +273,133 @@ export default function Debts() {
   const handleDetailsModalClose = () => {
     setShowDetailsModal(false);
     setSelectedDebtForDetails(null);
+    setSelectedGroupForDetails(null);
   };
 
-  const handleDetailsModalUpdate = () => {
-    fetchGroupedDebts();
-    fetchStats();
+  const handleDetailsModalUpdate = async () => {
+    await fetchGroupedDebts();
+    await fetchStats();
   };
-
-  const filteredGroupedDebts = groupedDebts.filter(group => {
-    const name = group.customer?.name || '';
-    const phone = group.customer?.phone || '';
-    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      phone.includes(searchQuery);
-    
-    let matchesStatus = true;
-    if (statusFilter === 'today') {
-      matchesStatus = group.debts.some(debt => {
-        if (debt.dueDate) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today.getTime() + 86400000);
-          const dueDate = new Date(debt.dueDate);
-          return dueDate >= today && dueDate < tomorrow && debt.status !== 'paid';
+  
+  // Function to open modal instantly with current data, then refresh in background
+  const openDebtDetailsModal = useCallback((group: GroupedDebt) => {
+    // INSTANT: Open modal with current data immediately
+    if (group.debts.length > 0) {
+      // Find the oldest unpaid debt (same order as payment - oldest first)
+      const oldestUnpaidDebt = group.debts
+        .filter((d: Debt) => d.status !== 'paid')
+        .sort((a: Debt, b: Debt) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+      
+      // If no unpaid debt, show the first debt (newest)
+      const debtToShow = oldestUnpaidDebt || group.debts[0];
+      
+      setSelectedDebtForDetails(debtToShow);
+      setSelectedGroupForDetails(group);
+      setShowDetailsModal(true);
+      
+      // BACKGROUND: Refresh data silently
+      (async () => {
+        try {
+          const updatedGroups = await api.get(`/debts/grouped?type=${debtType}`);
+          const updatedGroup = updatedGroups.data.find((g: GroupedDebt) => g.customer._id === group.customer._id);
+          
+          if (updatedGroup && updatedGroup.debts.length > 0) {
+            const oldestUnpaidDebt = updatedGroup.debts
+              .filter((d: Debt) => d.status !== 'paid')
+              .sort((a: Debt, b: Debt) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+            
+            const debtToShow = oldestUnpaidDebt || updatedGroup.debts[0];
+            
+            // Update modal data silently if still open
+            setSelectedDebtForDetails(debtToShow);
+            setSelectedGroupForDetails(updatedGroup);
+          }
+        } catch (err) {
+          console.error('Background refresh failed:', err);
         }
-        return false;
-      });
-    } else if (statusFilter !== 'all') {
-      matchesStatus = group.status === statusFilter;
+      })();
     }
+  }, [debtType]);
+
+  const handleDeleteDebt = useCallback(async (debtId: string) => {
+    if (!window.confirm(t("Qarzni o'chirmoqchimisiz?"))) return;
     
-    return matchesSearch && matchesStatus;
-  });
+    try {
+      await api.delete(`/debts/${debtId}`);
+      fetchGroupedDebts();
+      fetchStats();
+    } catch (err) {
+      console.error('Error deleting debt:', err);
+      alert(t('Xatolik yuz berdi!'));
+    }
+  }, [t]);
+
+  // Memoized filtered debts with debounced search
+  const filteredGroupedDebts = useMemo(() => {
+    return groupedDebts.filter(group => {
+      const name = group.customer?.name || '';
+      const phone = group.customer?.phone || '';
+      const matchesSearch = name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        phone.includes(debouncedSearchQuery);
+      
+      let matchesStatus = true;
+      if (statusFilter === 'pending') {
+        matchesStatus = group.status === 'pending';
+      } else if (statusFilter === 'overdue') {
+        matchesStatus = group.status === 'overdue';
+      } else if (statusFilter === 'paid') {
+        matchesStatus = group.status === 'paid';
+      } else if (statusFilter === 'today') {
+        matchesStatus = group.debts.some(debt => {
+          if (debt.dueDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today.getTime() + 86400000);
+            const dueDate = new Date(debt.dueDate);
+            return dueDate >= today && dueDate < tomorrow && debt.status !== 'paid';
+          }
+          return false;
+        });
+      }
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [groupedDebts, debouncedSearchQuery, statusFilter]);
 
   const statItems = [
-    { label: t('Kutilmoqda'), value: stats.pending, icon: Clock, color: 'gray', filter: 'pending' },
-    { label: t("Bugun to'lanadigan"), value: stats.today, icon: Calendar, color: 'primary', filter: 'today' },
-    { label: t("To'langan"), value: stats.paid, icon: CheckCircle2, color: 'primary', filter: 'paid' },
-    { label: t("Muddati o'tgan"), value: stats.overdue, icon: AlertCircle, color: 'red', filter: 'overdue' },
-    { label: t('Jami qarz'), value: `${formatNumber(stats.totalAmount)} ${t("so'm")}`, icon: Wallet, color: 'gray', filter: null },
+    { 
+      label: t('Barchasi'), 
+      value: filteredGroupedDebts.length, // Mijozlar soni (grouped)
+      icon: Wallet, 
+      color: 'blue', 
+      filter: 'all',
+      isNumber: true 
+    },
+    { 
+      label: t('Kutilmoqda'), 
+      value: filteredGroupedDebts.filter(g => g.status === 'pending').length, // Pending mijozlar soni
+      icon: Clock, 
+      color: 'amber', 
+      filter: 'pending',
+      isNumber: true 
+    },
+    { 
+      label: t("Muddati o'tgan"), 
+      value: filteredGroupedDebts.filter(g => g.status === 'overdue').length, // Overdue mijozlar soni
+      icon: AlertCircle, 
+      color: 'red', 
+      filter: 'overdue',
+      isNumber: true 
+    },
+    ...(isAdmin ? [{ 
+      label: t('Jami qarz'), 
+      value: formatNumber(stats.totalAmount), 
+      suffix: t("so'm"),
+      icon: Wallet, 
+      color: 'primary', 
+      filter: null,
+      isNumber: false 
+    }] : []),
   ];
 
   return (
@@ -128,6 +418,16 @@ export default function Debts() {
             </p>
           </div>
         </div>
+        
+        {isAdmin && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">{t("Yangi qarz")}</span>
+          </button>
+        )}
       </header>
 
       <div className="p-4 lg:p-6 space-y-6 max-w-[1800px] mx-auto">
@@ -171,183 +471,182 @@ export default function Debts() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+        <div className={`grid gap-4 ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {statItems.map((stat, i) => (
-            <div 
+            <button
               key={i} 
-              onClick={() => stat.filter && setStatusFilter(stat.filter)}
-              className={`relative p-5 bg-white dark:bg-neutral-800 rounded-2xl border-2 transition-all hover:shadow-lg ${
-                stat.filter ? 'cursor-pointer' : ''
+              onClick={() => {
+                if (stat.filter) {
+                  setStatusFilter(statusFilter === stat.filter ? 'all' : stat.filter);
+                }
+              }}
+              disabled={!stat.filter}
+              className={`relative p-6 bg-white dark:bg-neutral-800 rounded-2xl border-2 transition-all hover:shadow-xl text-left ${
+                stat.filter ? 'cursor-pointer' : 'cursor-default'
               } ${
                 statusFilter === stat.filter 
-                  ? 'border-primary-500 shadow-lg scale-105' 
+                  ? 'border-primary-500 shadow-xl scale-[1.02] ring-4 ring-primary-500/20' 
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${
-                  stat.color === 'gray' ? 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800' :
-                  stat.color === 'primary' ? 'from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-900/40' :
-                  'from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-900/40'
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-lg ${
+                  stat.color === 'blue' ? 'from-blue-400 to-blue-600' :
+                  stat.color === 'amber' ? 'from-amber-400 to-amber-600' :
+                  stat.color === 'primary' ? 'from-primary-500 to-primary-700' :
+                  'from-red-500 to-red-700'
                 }`}>
-                  <stat.icon className={`w-6 h-6 ${
-                    stat.color === 'gray' ? 'text-neutral-600 dark:text-neutral-400' :
-                    stat.color === 'primary' ? 'text-primary-600 dark:text-primary-400' :
-                    'text-red-600 dark:text-red-400'
-                  }`} />
+                  <stat.icon className="w-7 h-7 text-white" strokeWidth={2.5} />
                 </div>
+                {statusFilter === stat.filter && (
+                  <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse shadow-lg" />
+                )}
               </div>
-              <p className="text-2xl lg:text-3xl font-black text-neutral-900 dark:text-neutral-100 mb-1">{stat.value}</p>
-              <p className="text-xs lg:text-sm text-neutral-500 dark:text-neutral-400 font-medium">{stat.label}</p>
-              {statusFilter === stat.filter && (
-                <div className="absolute top-2 right-2 w-3 h-3 bg-primary-500 rounded-full animate-pulse" />
-              )}
-            </div>
+              <p className="text-3xl font-black text-neutral-900 dark:text-neutral-100 mb-2 whitespace-nowrap">
+                {stat.value}
+                {stat.suffix && <span className="ml-2">{stat.suffix}</span>}
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 font-semibold">{stat.label}</p>
+            </button>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-neutral-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-700 p-0 overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4" />
-              <p className="text-neutral-500 dark:text-neutral-400">Yuklanmoqda...</p>
-            </div>
-          ) : filteredGroupedDebts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8 text-neutral-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Mijozlar topilmadi</h3>
-              <p className="text-neutral-500 dark:text-neutral-400 text-center max-w-md">
-                {searchQuery || statusFilter !== 'all' ? 'Filtr bo\'yicha mijozlar topilmadi' : 'Hozircha qarzlar yo\'q'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="hidden lg:block">
-                <div className="table-header">
-                  <div className="grid grid-cols-12 gap-4 px-6 py-4">
-                    <span className="table-header-cell col-span-3">{t("Mijoz")}</span>
-                    <span className="table-header-cell col-span-2">{t("Telefon")}</span>
-                    <span className="table-header-cell col-span-2">{t("Jami qarz")}</span>
-                    <span className="table-header-cell col-span-2">{t("To'langan")}</span>
-                    <span className="table-header-cell col-span-2">{t("Qoldiq")}</span>
-                    <span className="table-header-cell col-span-1 text-center">{t("Holat")}</span>
-                  </div>
-                </div>
-                <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
-                  {filteredGroupedDebts.map(group => (
-                    <div 
-                      key={group.customer._id}
-                      className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        if (group.debts.length > 0) {
-                          setSelectedDebtForDetails(group.debts[0]);
-                          setShowDetailsModal(true);
-                        }
-                      }}
-                    >
-                      <div className="col-span-3 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
-                          <span className="font-semibold text-primary-600 dark:text-primary-400">{group.customer.name.charAt(0)}</span>
-                        </div>
-                        <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate">{group.customer.name}</span>
-                      </div>
-                      <div className="col-span-2 text-neutral-600 dark:text-neutral-400 text-sm">
-                        {group.customer.phone || '-'}
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">{formatNumber(group.totalAmount)}</span>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatNumber(group.totalPaid)}</span>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("so'm")}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-semibold text-primary-600 dark:text-primary-400">{formatNumber(group.remainingAmount)}</span>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("so'm")}</p>
-                      </div>
-                      <div className="col-span-1 flex justify-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ${
-                          group.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
-                          group.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                          'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
-                        }`}>
-                          {group.status === 'paid' ? <CheckCircle2 className="w-3 h-3" /> :
-                          group.status === 'overdue' ? <AlertCircle className="w-3 h-3" /> :
-                          <Clock className="w-3 h-3" />}
-                          {group.status === 'paid' ? t("To'langan") :
-                          group.status === 'overdue' ? t("O'tgan") : t('Kutilmoqda')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+        {loading ? (
+          <div className="card p-0 overflow-hidden">
+            {/* Loading skeleton */}
+            <div className="hidden lg:block">
+              <div className="table-header">
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <span className="table-header-cell col-span-3">{t("Mijoz")}</span>
+                  <span className="table-header-cell col-span-2">{t("Telefon")}</span>
+                  <span className="table-header-cell col-span-2">{t("Jami qarz")}</span>
+                  <span className="table-header-cell col-span-2">{t("To'langan")}</span>
+                  <span className="table-header-cell col-span-2">{t("Qoldiq")}</span>
+                  <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
                 </div>
               </div>
-
-              <div className="lg:hidden space-y-3 p-4">
-                {filteredGroupedDebts.map(group => (
-                  <div 
-                    key={group.customer._id}
-                    onClick={() => {
-                      if (group.debts.length > 0) {
-                        setSelectedDebtForDetails(group.debts[0]);
-                        setShowDetailsModal(true);
-                      }
-                    }}
-                    className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 hover:border-primary-500 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-base text-neutral-900 dark:text-neutral-100 mb-1">{group.customer.name}</h4>
-                        {group.customer.phone && (
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {group.customer.phone}
-                          </p>
-                        )}
-                      </div>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                        group.status === 'paid' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' :
-                        group.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                        'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300'
-                      }`}>
-                        {group.status === 'paid' ? t("To'langan") :
-                        group.status === 'overdue' ? t("O'tgan") : t('Kutilmoqda')}
-                      </span>
+              <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="grid grid-cols-12 gap-4 px-6 py-4 items-center animate-pulse">
+                    <div className="col-span-3 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-xl" />
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32" />
                     </div>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-neutral-50 dark:bg-neutral-700/50 rounded-lg p-2">
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">{t("Jami")}</p>
-                        <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(group.totalAmount)}</p>
-                      </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2">
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-0.5">{t("To'langan")}</p>
-                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatNumber(group.totalPaid)}</p>
-                      </div>
-                      <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-2">
-                        <p className="text-xs text-primary-600 dark:text-primary-400 mb-0.5">{t("Qoldiq")}</p>
-                        <p className="text-sm font-bold text-primary-600 dark:text-primary-400">{formatNumber(group.remainingAmount)}</p>
-                      </div>
+                    <div className="col-span-2">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-24" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-28" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-28" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-28" />
+                    </div>
+                    <div className="col-span-1 flex justify-center gap-2">
+                      <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg" />
                     </div>
                   </div>
                 ))}
               </div>
-            </>
-          )}
-        </div>
+            </div>
+            {/* Mobile skeleton */}
+            <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded-xl flex-shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32" />
+                      <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-24" />
+                      <div className="flex gap-2">
+                        <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded-xl w-32" />
+                        <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded-xl w-32" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filteredGroupedDebts.length === 0 ? (
+          <div className="card flex flex-col items-center py-16">
+            <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-neutral-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+              {t("Mijozlar topilmadi")}
+            </h3>
+            <p className="text-neutral-500 dark:text-neutral-400 text-center">
+              {searchQuery || statusFilter !== 'all' ? t('Filtr bo\'yicha mijozlar topilmadi') : t('Hozircha qarzlar yo\'q')}
+            </p>
+          </div>
+        ) : (
+          <div className="card p-0 overflow-hidden">
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <div className="table-header">
+                <div className="grid grid-cols-12 gap-4 px-6 py-4">
+                  <span className="table-header-cell col-span-3">{t("Mijoz")}</span>
+                  <span className="table-header-cell col-span-2">{t("Telefon")}</span>
+                  <span className="table-header-cell col-span-2">{t("Jami qarz")}</span>
+                  <span className="table-header-cell col-span-2">{t("To'langan")}</span>
+                  <span className="table-header-cell col-span-2">{t("Qoldiq")}</span>
+                  <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
+                </div>
+              </div>
+              <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                {filteredGroupedDebts.map(group => (
+                  <DebtRow
+                    key={group.customer._id}
+                    group={group}
+                    onOpenDetails={openDebtDetailsModal}
+                    onDelete={handleDeleteDebt}
+                    isAdmin={isAdmin}
+                    t={t}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
+              {filteredGroupedDebts.map(group => (
+                <DebtMobileCard
+                  key={group.customer._id}
+                  group={group}
+                  onOpenDetails={openDebtDetailsModal}
+                  onDelete={handleDeleteDebt}
+                  isAdmin={isAdmin}
+                  t={t}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {showDetailsModal && selectedDebtForDetails && (
+      {showDetailsModal && selectedDebtForDetails && selectedGroupForDetails && (
         <DebtDetailsModal
           debt={selectedDebtForDetails}
+          group={selectedGroupForDetails}
           onClose={handleDetailsModalClose}
           onUpdate={handleDetailsModalUpdate}
+          onAddDebt={() => {
+            setShowDetailsModal(false);
+            setShowAddModal(true);
+          }}
+        />
+      )}
+
+      {showAddModal && (
+        <AddDebtModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            fetchGroupedDebts();
+            fetchStats();
+          }}
         />
       )}
     </div>

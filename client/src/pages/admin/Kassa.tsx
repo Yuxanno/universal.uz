@@ -16,6 +16,7 @@ import { useProducts } from '../../context/ProductsContext';
 import { useCustomers } from '../../context/CustomersContext';
 import CartItemRow from '../../components/pos/CartItemRow';
 import PaymentModal from '../../components/pos/PaymentModal';
+import ProductNameDisplay from '../../components/shared/ProductNameDisplay';
 import { regionNames } from '../../data/regions';
 import { searchProducts } from '../../utils/productSearch';
 import PhoneInput from '../../components/PhoneInput';
@@ -35,6 +36,8 @@ interface PrintReceipt {
  cashAmount?: number;
  cardAmount?: number;
  debtAmount?: number;
+ customerName?: string;
+ customerTotalDebt?: number;
  date: string;
  receiptNumber: string;
 }
@@ -53,7 +56,29 @@ export default function Kassa() {
  }, [customers]);
  
  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
- const [cart, setCart] = useState<CartItem[]>([]);
+ 
+ // Load cart from localStorage
+ const [cart, setCart] = useState<CartItem[]>(() => {
+ const saved = localStorage.getItem('kassaCart');
+ return saved ? JSON.parse(saved) : [];
+ });
+ 
+ // Load localPrices from localStorage
+ const [localPrices, setLocalPrices] = useState<{[key: string]: string}>(() => {
+ const saved = localStorage.getItem('kassaLocalPrices');
+ return saved ? JSON.parse(saved) : {};
+ });
+ 
+ // Save cart to localStorage when it changes
+ useEffect(() => {
+ localStorage.setItem('kassaCart', JSON.stringify(cart));
+ }, [cart]);
+ 
+ // Save localPrices to localStorage when it changes
+ useEffect(() => {
+ localStorage.setItem('kassaLocalPrices', JSON.stringify(localPrices));
+ }, [localPrices]);
+ 
  const [showPayment, setShowPayment] = useState(false);
  const [showSearch, setShowSearch] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +93,6 @@ export default function Kassa() {
  const [showReceipt, setShowReceipt] = useState(false);
  const [printReceipt, setPrintReceipt] = useState<PrintReceipt | null>(null);
  const [workerReceiptIds, setWorkerReceiptIds] = useState<string[]>([]);
- const [localPrices, setLocalPrices] = useState<{[key: string]: string}>({});
  const [showCustomerModal, setShowCustomerModal] = useState(false);
  const [showCustomerSelect, setShowCustomerSelect] = useState(false);
  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
@@ -78,6 +102,17 @@ export default function Kassa() {
  region: ''
  });
  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+ 
+ // Load price mode from localStorage
+ const [priceMode, setPriceMode] = useState<'retail' | 'wholesale'>(() => {
+ const saved = localStorage.getItem('kassaPriceMode');
+ return (saved === 'wholesale' ? 'wholesale' : 'retail') as 'retail' | 'wholesale';
+ });
+ 
+ // Save price mode to localStorage when it changes
+ useEffect(() => {
+ localStorage.setItem('kassaPriceMode', priceMode);
+ }, [priceMode]);
 
  // Load items from worker (StaffReceipts - "Kassaga yuklash")
  const loadWorkerItems = useCallback(() => {
@@ -217,24 +252,66 @@ export default function Kassa() {
  }, []);
 
  const addToCart = useCallback((product: Product) => {
+ // MongoDB structure:
+ // - costPrice = Tan narxi (240k)
+ // - price = Optom narxi (asosiy narx)
+ // - retailPrice or dona_narx = Dona narxi (300k)
+ const donaPrice = (product as any).retailPrice || (product as any).dona_narx || product.price || 0; // Dona narxi
+ const optomPrice = product.price || 0; // Optom narxi
+ const tanPrice = product.costPrice || 0; // Tan narxi
+ 
  // Optimistic update - darhol UI'da ko'rsatadi
  setCart(prev => {
  const existing = prev.find(p => p._id === product._id);
  if (existing) {
  return prev.map(p => p._id === product._id ? {...p, cartQuantity: p.cartQuantity + 1} : p);
  }
- // Map costPrice to tan_narx for validation
+ 
+ // Map prices correctly
  return [...prev, {
  ...product, 
  cartQuantity: 1,
- tan_narx: product.costPrice || product.tan_narx,
- optom_narx: product.price || product.optom_narx
+ price: donaPrice, // Default: dona narxi
+ dona_narx: donaPrice,
+ optom_narx: optomPrice,
+ tan_narx: tanPrice
  }];
  });
+ 
+ // Set local price to dona price by default
+ setLocalPrices(prev => ({
+ ...prev,
+ [product._id]: donaPrice.toString()
+ }));
+ 
  // Modal'ni darhol yopadi
  setShowSearch(false);
  setSearchQuery('');
  }, []);
+
+ // Toggle between retail and wholesale prices
+ const togglePriceMode = useCallback(() => {
+ setPriceMode(prev => {
+ const newMode = prev === 'retail' ? 'wholesale' : 'retail';
+ 
+ // Update all cart items prices
+ setLocalPrices(prevPrices => {
+ const newPrices: {[key: string]: string} = {};
+ cart.forEach(item => {
+ // MongoDB structure:
+ // - dona_narx/retailPrice = Dona narxi (300k)
+ // - price/optom_narx = Optom narxi (asosiy)
+ const price = newMode === 'retail' 
+ ? ((item as any).dona_narx || (item as any).retailPrice || item.price || 0) // Dona
+ : (item.price || (item as any).optom_narx || 0); // Optom
+ newPrices[item._id] = price.toString();
+ });
+ return newPrices;
+ });
+ 
+ return newMode;
+ });
+ }, [cart]);
 
  const removeFromCart = useCallback((id: string) => {
  setCart(prev => prev.filter(item => item._id !== id));
@@ -336,7 +413,7 @@ export default function Kassa() {
  setShowSearch(false);
  setSearchQuery('');
  setSelectedProducts(new Set());
- toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`);
+ // toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`); // Disabled
  }, [selectedProducts, displayedProducts, showAlert, toast]);
  
  // Calculate total amount
@@ -348,7 +425,7 @@ export default function Kassa() {
  }, 0);
  }, [cart, localPrices]);
 
- const handlePayment = async (cashAmount: number, cardAmount: number, debtAmount: number) => {
+ const handlePayment = async (cashAmount: number, cardAmount: number, debtAmount: number, debtPaymentCash: number = 0, debtPaymentCard: number = 0) => {
  if (cart.length === 0) return;
  
  // Check if debt exists but no customer selected
@@ -381,6 +458,16 @@ export default function Kassa() {
  paymentMethod = 'card';
  }
 
+ // Get customer info for receipt
+ const customer = selectedCustomer && selectedCustomer !== '' 
+ ? customers.find(c => c._id === selectedCustomer)
+ : null;
+ 
+ // Calculate total debt after this sale
+ const customerTotalDebt = customer 
+ ? (customer.debt || 0) + debtAmount 
+ : 0;
+
  const receiptData: PrintReceipt = {
  items: saleItems,
  total: finalTotal,
@@ -388,6 +475,8 @@ export default function Kassa() {
  cashAmount: cashAmount,
  cardAmount: cardAmount,
  debtAmount: debtAmount,
+ customerName: customer?.name,
+ customerTotalDebt: customerTotalDebt > 0 ? customerTotalDebt : undefined,
  date: new Date().toLocaleDateString('en-GB').replace(/\//g, '.') + ' ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
  receiptNumber: Date.now().toString().slice(-8)
  };
@@ -403,6 +492,22 @@ export default function Kassa() {
  isReturn: isReturnMode,
  customer: selectedCustomer && selectedCustomer !== '' ? selectedCustomer : null
  });
+ 
+ // Pay off customer's existing debt if debtPaymentCash or debtPaymentCard > 0
+ const totalDebtPayment = debtPaymentCash + debtPaymentCard;
+ if (totalDebtPayment > 0 && selectedCustomer && selectedCustomer !== '') {
+ try {
+ await api.post('/debts/pay-bulk', {
+ customerId: selectedCustomer,
+ cashAmount: debtPaymentCash,
+ cardAmount: debtPaymentCard,
+ totalAmount: totalDebtPayment
+ });
+ } catch (err) {
+ console.error('Error paying customer debt:', err);
+ showAlert('Qarz to\'lovida xatolik yuz berdi', 'Xatolik', 'danger');
+ }
+ }
  
  // Refresh products to update quantities in real-time
  refreshProducts();
@@ -421,18 +526,21 @@ export default function Kassa() {
  
  setCart([]);
  setLocalPrices({});
+ localStorage.removeItem('kassaCart'); // Clear cart from localStorage
+ localStorage.removeItem('kassaLocalPrices'); // Clear prices from localStorage
  setSelectedCustomer(''); // Reset customer selection
+ setPriceMode('retail'); // Reset to dona narxi
+ localStorage.setItem('kassaPriceMode', 'retail'); // Save to localStorage
  setShowPayment(false);
  setIsReturnMode(false);
  setPrintReceipt(receiptData);
  
- // Auto-print immediately without showing modal
- // Print dialog will open automatically - user just clicks "Print" once
- setTimeout(() => {
- handlePrint(receiptData); // Pass receiptData directly
- }, 100);
+ // Disabled auto-print - show toast instead
+ // setTimeout(() => {
+ //   handlePrint(receiptData);
+ // }, 100);
  
- // Show success message
+ // Show success message with toast
  if (debtAmount > 0) {
  toast.success(`Savdo muvaffaqiyatli! Qarz: ${debtAmount.toLocaleString()} so'm`);
  } else {
@@ -600,6 +708,13 @@ ${receipt.cashAmount && receipt.cashAmount > 0 ? `Naqd: ${formatNum(receipt.cash
 }</div>
 `}
 
+${receipt.customerName && receipt.customerTotalDebt && receipt.customerTotalDebt > 0 ? `
+<div class="line"></div>
+<div class="payment-details" style="color: #d32f2f; font-weight: bold;">
+⚠️ Jami qarz: ${formatNum(receipt.customerTotalDebt)} so'm
+</div>
+` : ''}
+
 <div class="footer">
 Xaridingiz uchun rahmat!<br>Sizga omad tilaymiz!
 </div>
@@ -699,7 +814,7 @@ window.onload = function() {
  };
 
  return (
- <div className={`min-h-screen flex flex-col ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-neutral-50 dark:bg-neutral-900'}`}>
+ <div className={`min-h-screen flex flex-col overflow-x-hidden ${isReturnMode ? 'bg-warning-50 dark:bg-warning-900/10' : 'bg-neutral-50 dark:bg-neutral-900'}`}>
  {/* Alert Component - должен быть поверх всех модальных окон */}
  <div className="relative z-[100]">
  {AlertComponent}
@@ -710,7 +825,7 @@ window.onload = function() {
  
  {/* Header */}
  <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-3 lg:px-6 py-2 lg:py-3 sticky top-0 z-40 shadow-sm">
- <div className="flex items-center justify-between gap-2 lg:gap-4">
+ <div className="flex items-center justify-between gap-2 lg:gap-4 max-w-full overflow-x-hidden">
  <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center flex-shrink-0 ${
  isReturnMode 
@@ -733,18 +848,36 @@ window.onload = function() {
  <span className="text-pink-600 dark:text-pink-400 font-bold">{total.toLocaleString()} {tKey("so'm")}</span>
  </p>
  </div>
+ 
+ {/* Price Mode Toggle */}
+ <button
+ onClick={togglePriceMode}
+ className={`flex items-center gap-1.5 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all hover:scale-105 shadow-sm ${
+ priceMode === 'retail'
+ ? 'bg-blue-500 text-white hover:bg-blue-600'
+ : 'bg-green-500 text-white hover:bg-green-600'
+ }`}
+ title={priceMode === 'retail' ? 'Dona narxida' : 'Optom narxida'}
+ >
+ <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+ </svg>
+ <span className="hidden sm:inline whitespace-nowrap">
+ {priceMode === 'retail' ? 'Dona' : 'Optom'}
+ </span>
+ </button>
  </div>
 
  {/* Customer Select & Saved Receipts */}
- <div className="flex items-center gap-1.5 lg:gap-2 flex-shrink-0">
+ <div className="flex items-center gap-1.5 lg:gap-2 flex-shrink-0 overflow-x-hidden max-w-full">
  {/* Customer Select */}
- <div className="flex items-center gap-1.5 lg:gap-2">
+ <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-shrink">
  <button
  onClick={() => setShowCustomerSelect(true)}
- className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2.5 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-xs lg:text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[120px] lg:min-w-[250px]"
+ className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2.5 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-xs lg:text-sm font-semibold text-neutral-900 hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/10 transition-all min-w-[100px] max-w-[140px] lg:min-w-[250px] lg:max-w-none"
  >
  <User className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-neutral-400 flex-shrink-0" />
- <div className="flex-1 text-left min-w-0">
+ <div className="flex-1 text-left min-w-0 overflow-hidden">
  {selectedCustomer ? (
  <>
  <div className="truncate font-bold leading-tight text-xs lg:text-sm">
@@ -766,7 +899,7 @@ window.onload = function() {
  </button>
  <button
  onClick={() => setShowCustomerModal(true)}
- className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md"
+ className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all hover:scale-105 shadow-md flex-shrink-0"
  title="Yangi mijoz qo'shish"
  >
  <span className="text-lg lg:text-xl font-bold leading-none">+</span>
@@ -775,10 +908,10 @@ window.onload = function() {
 
  <button
  onClick={() => setShowSavedReceipts(true)}
- className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all hover:scale-105" 
+ className="relative flex items-center gap-1.5 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg lg:rounded-xl text-xs lg:text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all hover:scale-105 flex-shrink-0" 
  >
- <Save className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
- <span className="text-neutral-700 dark:text-neutral-300">Saqlangan</span>
+ <Save className="w-4 h-4 text-neutral-600 dark:text-neutral-400 flex-shrink-0" />
+ <span className="text-neutral-700 dark:text-neutral-300 hidden sm:inline whitespace-nowrap">Saqlangan</span>
  {savedReceipts.length > 0 && (
  <span className="absolute -top-1 -right-1 w-5 h-5 bg-danger-500 text-white text-xs rounded-full font-bold flex items-center justify-center">
  {savedReceipts.length}
@@ -790,22 +923,22 @@ window.onload = function() {
  </header>
 
  {/* Main Content */}
- <div className="flex-1 flex overflow-hidden p-3 lg:p-6 pb-28 lg:pb-20">
+ <div className="flex-1 flex overflow-hidden p-3 lg:p-6 pb-28 lg:pb-20 max-w-full">
  {/* Cart Section - Full Width */}
- <div className="flex-1 flex flex-col overflow-hidden">
+ <div className="flex-1 flex flex-col overflow-hidden max-w-full">
  {/* Table */}
- <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm">
- {/* Table Wrapper with Horizontal Scroll */}
- <div className="flex-1 overflow-x-auto overflow-y-auto">
- <div className="min-w-[1000px]">
- {/* Table Header */}
- <div className="grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600">
+ <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm max-w-full">
+ {/* Table Wrapper - No horizontal scroll on mobile */}
+ <div className="flex-1 overflow-y-auto max-w-full md:overflow-x-auto">
+ <div className="md:min-w-[1000px]">
+ {/* Table Header - Hidden on Mobile */}
+ <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600">
  <div className="col-span-1 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("Kod")}</div>
  <div className="col-span-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
- <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("OMBOR")}</div>
+ <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MIQDOR")}</div>
  <div className="col-span-1 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("TAN NARX")}</div>
  <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SONI")}</div>
- <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("NARX")}</div>
+ <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("NARX")}</div>
  <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
  <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("AMAL")}</div>
  </div>
@@ -822,7 +955,7 @@ window.onload = function() {
  </div>
  </div>
  ) : (
- <div className="divide-y divide-neutral-100">
+ <div className="divide-y divide-neutral-100 max-w-full overflow-x-hidden">
  {cart.map((item) => (
  <CartItemRow
  key={item._id}
@@ -846,66 +979,66 @@ window.onload = function() {
  </div>
 
  {/* Bottom Action Bar - Fixed - Responsive to sidebar */}
- <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-white via-slate-50 to-white dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 border-t-2 border-neutral-300 dark:border-neutral-700 shadow-2xl z-20 transition-all duration-300 lg:pl-64">
- <div className="px-3 lg:px-6 py-2 lg:py-3">
+ <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-white via-slate-50 to-white dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 border-t-2 border-neutral-300 dark:border-neutral-700 shadow-2xl z-20 transition-all duration-300 lg:pl-64 max-w-full overflow-x-hidden">
+ <div className="px-3 lg:px-6 py-2 lg:py-3 max-w-full">
  {/* Responsive Layout: 2 rows on mobile, 1 row on desktop */}
- <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-0">
+ <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-0 max-w-full">
  {/* Row 1 on mobile: Action Buttons */}
- <div className="flex items-center gap-2 lg:gap-3 lg:flex-1">
+ <div className="flex items-center gap-2 lg:gap-3 lg:flex-1 max-w-full overflow-x-hidden">
  <button
  onClick={openSearch}
- className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0"
  >
- <Search className="w-5 h-5" strokeWidth={2.5} />
- <span className="hidden sm:inline">Qidirish</span>
+ <Search className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
+ <span className="hidden sm:inline whitespace-nowrap">Qidirish</span>
  </button>
  
  <button
  onClick={toggleReturnMode}
- className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 ${
+ className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0 ${
  isReturnMode
  ? 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'
  : 'bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900'
  }`}
  >
- <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
- <span className="hidden sm:inline">{isReturnMode ? 'Bekor' : 'Qaytarish'}</span>
+ <RotateCcw className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
+ <span className="hidden sm:inline whitespace-nowrap">{isReturnMode ? 'Bekor' : 'Qaytarish'}</span>
  </button>
  
  <button
  onClick={saveReceipt}
- className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0"
  >
- <Save className="w-5 h-5" strokeWidth={2.5} />
- <span className="hidden sm:inline">Saqlash</span>
+ <Save className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
+ <span className="hidden sm:inline whitespace-nowrap">Saqlash</span>
  </button>
  </div>
 
  {/* Row 2 on mobile: Total + Payment */}
- <div className="flex items-center gap-3 lg:gap-4">
+ <div className="flex items-center gap-3 lg:gap-4 max-w-full overflow-x-hidden">
  {/* Total Display - Same height as action buttons */}
- <div className="flex-1 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-lg relative overflow-hidden">
+ <div className="flex-1 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-lg relative overflow-hidden min-w-0">
  {/* Subtle decorative elements */}
  <div className="absolute top-0 right-0 w-12 h-12 bg-blue-200/30 rounded-full -mr-6 -mt-6"></div>
  <div className="absolute bottom-0 left-0 w-10 h-10 bg-blue-200/20 rounded-full -ml-5 -mb-5"></div>
  
- <div className="relative z-10 flex items-center gap-2 lg:gap-3">
+ <div className="relative z-10 flex items-center gap-2 lg:gap-3 min-w-0">
  <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
  <Banknote className="w-4 h-4 lg:w-5 lg:h-5 text-white" strokeWidth={2.5} />
  </div>
- <div className="flex items-baseline gap-1.5 min-w-0">
- <div className="min-w-0">
+ <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
+ <div className="min-w-0 flex-1">
  <p className="text-[9px] lg:text-[10px] font-bold text-slate-700 uppercase tracking-wide leading-tight">
  Jami
  </p>
- <p className="text-base lg:text-lg font-black text-slate-900 whitespace-nowrap leading-tight truncate">
+ <p className="text-base lg:text-lg font-black text-slate-900 leading-tight truncate">
  {total.toLocaleString()}
  <span className="text-xs lg:text-sm ml-1 font-bold text-slate-800">so'm</span>
  </p>
  </div>
  </div>
  {/* Cart count badge */}
- <div className="hidden lg:flex items-center gap-1 px-2 py-0.5 bg-blue-500 rounded-lg ml-1">
+ <div className="hidden lg:flex items-center gap-1 px-2 py-0.5 bg-blue-500 rounded-lg ml-1 flex-shrink-0">
  <Package className="w-3 h-3 text-white" />
  <span className="text-xs font-black text-white">{cart.length}</span>
  </div>
@@ -916,10 +1049,10 @@ window.onload = function() {
  <button
  onClick={() => setShowPayment(true)}
  disabled={cart.length === 0}
- className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 lg:px-8 py-3 lg:py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-base lg:text-lg shadow-lg hover:shadow-xl active:scale-95 relative overflow-hidden group"
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 lg:px-8 py-3 lg:py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-base lg:text-lg shadow-lg hover:shadow-xl active:scale-95 relative overflow-hidden group whitespace-nowrap flex-shrink-0"
  >
  <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
- <CreditCard className="w-5 h-5 lg:w-6 lg:h-6 relative z-10" strokeWidth={2.5} />
+ <CreditCard className="w-5 h-5 lg:w-6 lg:h-6 relative z-10 flex-shrink-0" strokeWidth={2.5} />
  <span className="relative z-10">To'lov</span>
  </button>
  </div>
@@ -941,10 +1074,20 @@ window.onload = function() {
  </div>
  <div>
  <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">
- {selectedProducts.size > 0 ? `${selectedProducts.size} ta tanlandi` : tKey("Mahsulot qidirish")}
+ {selectedProducts.size > 0 ? `${selectedProducts.size} ta tanlandi` : (
+ <>
+ <span className="hidden xs:inline">{tKey("Mahsulot qidirish")}</span>
+ <span className="inline xs:hidden">{tKey("Qidirish")}</span>
+ </>
+ )}
  </h3>
  <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">
- {selectedProducts.size > 0 ? 'Savatga qo\'shish uchun tasdiqlang' : tKey("Nom yoki kod bo'yicha toping")}
+ {selectedProducts.size > 0 ? 'Savatga qo\'shish uchun tasdiqlang' : (
+ <>
+ <span className="hidden xs:inline">{tKey("Nom yoki kod bo'yicha toping")}</span>
+ <span className="inline xs:hidden">{tKey("Nom/kod")}</span>
+ </>
+ )}
  </p>
  </div>
  </div>
@@ -1035,7 +1178,12 @@ window.onload = function() {
  
  {/* Product Info */}
  <div className="flex-1 min-w-0">
- <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1 text-sm">{product.name}</p>
+ <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1 text-sm">
+ <ProductNameDisplay 
+ name={product.name}
+ priceClassName="text-red-600 dark:text-red-400 font-black"
+ />
+ </p>
  <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-1.5">Kod: {product.code}</p>
  <div className="flex items-center gap-2 text-xs">
  <span className="font-bold text-slate-600">Tan:</span>
@@ -1163,13 +1311,19 @@ window.onload = function() {
  {/* Header */}
  <div className="p-6 bg-white dark:bg-neutral-800">
  <div className="flex items-center justify-between mb-4">
- <div className="flex items-center gap-4">
- <div className="w-16 h-16 bg-warning-500 rounded-2xl flex items-center justify-center shadow-lg">
- <RotateCcw className="w-8 h-8 text-white" strokeWidth={2.5} />
+ <div className="flex items-center gap-3 lg:gap-4">
+ <div className="w-12 h-12 lg:w-16 lg:h-16 bg-warning-500 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg">
+ <RotateCcw className="w-6 h-6 lg:w-8 lg:h-8 text-white" strokeWidth={2.5} />
  </div>
  <div>
- <h3 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-1">Qaytarish rejimi</h3>
- <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">Qaytariladigan tovarni tanlang</p>
+ <h3 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-neutral-100 mb-0.5 lg:mb-1">
+ <span className="hidden xs:inline">Qaytarish rejimi</span>
+ <span className="inline xs:hidden">Qaytarish</span>
+ </h3>
+ <p className="text-xs lg:text-sm font-bold text-slate-700 dark:text-neutral-400">
+ <span className="hidden xs:inline">Qaytariladigan tovarni tanlang</span>
+ <span className="inline xs:hidden">Tovarni tanlang</span>
+ </p>
  </div>
  </div>
  <button
@@ -1213,7 +1367,12 @@ window.onload = function() {
  <RotateCcw className="w-8 h-8 text-warning-600" />
  </div>
  <div className="flex-1 min-w-0">
- <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1">{product.name}</p>
+ <p className="font-black text-slate-900 dark:text-neutral-100 truncate mb-1">
+ <ProductNameDisplay 
+ name={product.name}
+ priceClassName="text-red-600 dark:text-red-400 font-black"
+ />
+ </p>
  <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold mb-2">Kod: {product.code}</p>
  <div className="flex items-center gap-2">
  <span className="text-xs font-bold text-slate-600">Tan:</span>

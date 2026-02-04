@@ -12,6 +12,7 @@ import { searchProducts } from '../../utils/productSearch';
 import { initSocket } from '../../utils/socket';
 import { useAuth } from '../../context/AuthContext';
 import ProductVariantsModal from '../../components/ProductVariantsModal';
+import ProductNameDisplay from '../../components/shared/ProductNameDisplay';
 
 const API_URL = 'https://pos.universalbozor.uz';
 
@@ -35,9 +36,9 @@ const ProductRow = memo(({
  return (
  <div 
  id={`product-${product._id}`}
- className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
+ className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
  style={{gridTemplateColumns: selectionMode ? (isCashier ? 'auto auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto auto 80px 1fr 110px 110px 110px 110px 90px 140px') : (isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px')}}
- onClick={() => selectionMode && onToggleSelect(product._id)}
+ onClick={() => selectionMode ? onToggleSelect(product._id) : onEdit(product)}
  >
  {selectionMode && (
  <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
@@ -68,11 +69,15 @@ const ProductRow = memo(({
  </div>
  <div className="min-w-0">
  <p 
- className="font-medium text-neutral-900 dark:text-neutral-100 truncate cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
- onClick={(e) => { e.stopPropagation(); onVariantsClick(product); }}
- title="Mahsulot turlarini ko'rish"
+ className="font-medium text-neutral-900 dark:text-neutral-100 transition-colors group"
+ title="Mahsulotni tahrirlash"
  >
- {uz(product.name)}
+ <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400">
+ <ProductNameDisplay 
+ name={uz(product.name)}
+ priceClassName="text-red-600 dark:text-red-400 font-bold group-hover:text-blue-600 dark:group-hover:text-blue-400"
+ />
+ </span>
  </p>
  </div>
  {!isCashier && (
@@ -137,7 +142,11 @@ const ProductCard = memo(({
  isCashier
 }: any) => {
  return (
- <div id={`product-${product._id}`} className="p-4">
+ <div 
+ id={`product-${product._id}`} 
+ className="p-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors rounded-xl"
+ onClick={() => onEdit(product)}
+ >
  <div className="flex items-start gap-3 mb-3">
  {getProductImage(product) ? (
  <img 
@@ -153,10 +162,14 @@ const ProductCard = memo(({
  )}
  <div className="flex-1 min-w-0">
  <h4 
- className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
- onClick={() => onVariantsClick(product)}
+ className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 transition-colors group"
  >
- {uz(product.name)}
+ <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400">
+ <ProductNameDisplay 
+ name={uz(product.name)}
+ priceClassName="text-red-600 dark:text-red-400 font-bold group-hover:text-blue-600 dark:group-hover:text-blue-400"
+ />
+ </span>
  </h4>
  <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono">Kod: {product.code}</p>
  {!isCashier && (

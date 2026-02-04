@@ -90,8 +90,14 @@ export default function StaffReceipts() {
  fetchData(); // Refresh data when receipt is updated
  };
  
+ const handleReceiptDeleted = (data: any) => {
+ console.log('📡 [StaffReceipts] Receipt deleted via socket:', data);
+ fetchData(); // Refresh data when receipt is deleted
+ };
+ 
  if (socket) {
  socket.on('receipt:updated', handleReceiptUpdate);
+ socket.on('receipt:deleted', handleReceiptDeleted);
  }
  
  const interval = setInterval(fetchData, 5000); // Обновляем каждые 5 секунд
@@ -99,16 +105,17 @@ export default function StaffReceipts() {
  return () => {
  if (socket) {
  socket.off('receipt:updated', handleReceiptUpdate);
+ socket.off('receipt:deleted', handleReceiptDeleted);
  }
  clearInterval(interval);
  };
  }, [fetchData]);
 
  const getWorkerReceipts = (workerId: string) => {
- // Return draft, archived, and pending receipts (all active worker receipts)
+ // Return draft and pending receipts (NOT archived - those are helper's private)
  const filtered = receipts.filter(r => 
  r.createdBy?._id === workerId && 
- (r.status === 'draft' || r.status === 'archived' || r.status === 'pending')
+ (r.status === 'draft' || r.status === 'pending')
  );
  // Remove duplicates by _id (defensive)
  const unique = filtered.filter((r, index, self) => 
@@ -462,68 +469,49 @@ export default function StaffReceipts() {
  <button
  onClick={async () => {
  try {
- // Call backend to mark receipt as completed and update inventory
+ // OPTIMIZED: Backend returns complete receipt with product details
  const response = await api.put(`/receipts/${receipt._id}/load-to-kassa`);
  
- console.log('✅ Receipt loaded to kassa successfully:', response.data);
+ console.log('✅ Receipt loaded to kassa successfully');
  
- // Fetch full product details to get current inventory quantities (OPTIMIZED: single call)
- const productIds = receipt.items.map(item => item.product);
- const productsResponse = await api.post('/products/by-ids', { ids: productIds });
- const productsMap = new Map(productsResponse.data.map((p: any) => [p._id, p]));
- 
- // Load only this receipt to kassa with full product details (NO MORE INDIVIDUAL API CALLS)
- const kassaItems = receipt.items.map((item) => {
- const product: any = productsMap.get(item.product);
- 
- return {
+ // Prepare kassa items from receipt data (already have all info)
+ const kassaItems = receipt.items.map((item) => ({
  _id: item.product,
  name: item.name,
  code: item.code,
  price: item.price,
  cartQuantity: item.quantity,
- quantity: product?.quantity || 0, // Current warehouse quantity from bulk fetch
- costPrice: product?.costPrice || 0,
- tan_narx: product?.costPrice || 0,
+ quantity: 0, // Will be updated in kassa
+ costPrice: 0,
+ tan_narx: 0,
  optom_narx: item.price
- };
- });
+ }));
  
- console.log('📦 Loading single receipt to kassa:', {
+ console.log('📦 Loading to kassa:', {
  receiptId: receipt._id,
- itemsCount: kassaItems.length,
- items: kassaItems,
- customer: receipt.customer
+ itemsCount: kassaItems.length
  });
  
- if (kassaItems.length > 0) {
+ // Save to localStorage
  localStorage.setItem('kassaItems', JSON.stringify(kassaItems));
  localStorage.setItem('kassaReceiptId', receipt._id);
  
- // Save customer info to localStorage
+ // Save customer info
  if (receipt.customer) {
  localStorage.setItem('kassaCustomerId', receipt.customer._id);
- console.log('👤 Customer saved to localStorage:', receipt.customer._id);
  } else {
- // No customer = Oddiy mijoz
  localStorage.setItem('kassaCustomerId', '');
- console.log('👤 No customer (Oddiy mijoz)');
  }
  
- // Dispatch custom event for same-tab updates
+ // Dispatch event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));
  
- // Refresh receipts to remove this one from the list
- await fetchData();
- 
+ // Navigate immediately (don't wait for fetchData)
  navigate('/cashier');
- }
  } catch (err: any) {
  console.error('Error loading to kassa:', err);
  const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';
  alert(errorMsg);
- // Refresh to show current state
- await fetchData();
  }
  }}
  className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors bg-warning-500 hover:bg-warning-600"

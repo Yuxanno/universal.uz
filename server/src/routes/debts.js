@@ -6,6 +6,12 @@ const { getBot } = require('../telegram/bot');
 
 const router = express.Router();
 
+// Get socket.io instance
+let io;
+const setSocketIO = (socketIO) => {
+  io = socketIO;
+};
+
 router.get('/', auth, async (req, res) => {
   try {
     const { status, type } = req.query;
@@ -37,6 +43,17 @@ router.get('/stats', auth, async (req, res) => {
     
     const typeFilter = type ? { type } : {};
 
+    // First, update overdue debts
+    await Debt.updateMany(
+      {
+        ...typeFilter,
+        status: 'pending',
+        dueDate: { $lt: today, $ne: null },
+        $expr: { $lt: ['$paidAmount', '$amount'] }
+      },
+      { $set: { status: 'overdue' } }
+    );
+
     const stats = {
       total: await Debt.countDocuments(typeFilter),
       pending: await Debt.countDocuments({ ...typeFilter, status: 'pending' }),
@@ -55,18 +72,44 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
-// NEW: Get debts grouped by customer
+// NEW: Get debts grouped by customer - OPTIMIZED with latest first
 router.get('/grouped', auth, async (req, res) => {
   try {
     const { type } = req.query;
     const typeFilter = type ? { type } : {};
     
-    // Aggregate debts by customer
+    // First, update overdue debts in background (non-blocking)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Don't await - let it run in background
+    Debt.updateMany(
+      {
+        ...typeFilter,
+        status: 'pending',
+        dueDate: { $lt: today, $ne: null },
+        $expr: { $lt: ['$paidAmount', '$amount'] }
+      },
+      { $set: { status: 'overdue' } }
+    ).catch(err => console.error('Error updating overdue debts:', err));
+    
+    // Optimized aggregation with lookup (single query instead of N+1)
     const groupedDebts = await Debt.aggregate([
       { $match: typeFilter },
+      // Lookup customer data in aggregation pipeline
+      {
+        $lookup: {
+          from: 'customers',
+          localField: 'customer',
+          foreignField: '_id',
+          as: 'customerData'
+        }
+      },
+      { $unwind: { path: '$customerData', preserveNullAndEmptyArrays: true } },
       {
         $group: {
           _id: '$customer',
+          customer: { $first: '$customerData' },
           totalAmount: { $sum: '$amount' },
           totalPaid: { $sum: '$paidAmount' },
           remainingAmount: { $sum: { $subtract: ['$amount', '$paidAmount'] } },
@@ -83,44 +126,66 @@ router.get('/grouped', auth, async (req, res) => {
               receipt: '$receipt',
               payments: '$payments',
               createdAt: '$createdAt',
-              customer: '$customer'
+              updatedAt: '$updatedAt',
+              customer: {
+                _id: '$customerData._id',
+                name: '$customerData.name',
+                phone: '$customerData.phone',
+                address: '$customerData.address'
+              }
             }
           },
+          latestUpdate: { $max: '$updatedAt' }, // Track latest update for sorting
           latestDebt: { $max: '$createdAt' },
           oldestDueDate: { $min: '$dueDate' }
         }
       },
-      { $sort: { remainingAmount: -1 } }
+      // Project to clean up structure
+      {
+        $project: {
+          _id: 0,
+          customer: {
+            _id: '$customer._id',
+            name: '$customer.name',
+            phone: '$customer.phone',
+            address: '$customer.address'
+          },
+          totalAmount: 1,
+          totalPaid: 1,
+          remainingAmount: 1,
+          debtCount: 1,
+          debts: 1,
+          latestUpdate: 1,
+          latestDebt: 1,
+          oldestDueDate: 1
+        }
+      },
+      // Sort by latest update first (most recently changed at top)
+      { $sort: { latestUpdate: -1 } }
     ]);
     
-    // Populate customer details on the group
-    await Customer.populate(groupedDebts, { path: '_id', select: 'name phone address' });
-    
-    // Populate customer details on each debt and receipt details
-    for (const group of groupedDebts) {
-      await Customer.populate(group.debts, { path: 'customer', select: 'name phone address' });
-      await Debt.populate(group.debts, {
-        path: 'receipt',
-        populate: [
-          { path: 'items.product', select: 'name code' },
-          { path: 'createdBy', select: 'name username' }
-        ]
-      });
-    }
-    
     // Transform data for frontend
-    const result = groupedDebts.map(group => ({
-      customer: group._id,
-      totalAmount: group.totalAmount,
-      totalPaid: group.totalPaid,
-      remainingAmount: group.remainingAmount,
-      debtCount: group.debtCount,
-      debts: group.debts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-      latestDebt: group.latestDebt,
-      oldestDueDate: group.oldestDueDate,
-      status: group.remainingAmount === 0 ? 'paid' : 
-              (group.oldestDueDate && new Date(group.oldestDueDate) < new Date()) ? 'overdue' : 'pending'
-    }));
+    const result = groupedDebts.map(group => {
+      // Check if any debt in the group is overdue
+      const hasOverdue = group.debts.some(debt => 
+        debt.status === 'overdue' || 
+        (debt.dueDate && new Date(debt.dueDate) < today && debt.paidAmount < debt.amount)
+      );
+      
+      return {
+        customer: group.customer,
+        totalAmount: group.totalAmount,
+        totalPaid: group.totalPaid,
+        remainingAmount: group.remainingAmount,
+        debtCount: group.debtCount,
+        debts: group.debts.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
+        latestUpdate: group.latestUpdate,
+        latestDebt: group.latestDebt,
+        oldestDueDate: group.oldestDueDate,
+        status: group.remainingAmount === 0 ? 'paid' : 
+                hasOverdue ? 'overdue' : 'pending'
+      };
+    });
     
     res.json(result);
   } catch (error) {
@@ -264,6 +329,105 @@ router.post('/:id/payment', auth, authorize('admin', 'cashier'), async (req, res
   }
 });
 
+// Bulk payment - pay off customer's debts automatically (oldest first - same as manual payment)
+router.post('/pay-bulk', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { customerId, cashAmount, cardAmount, totalAmount } = req.body;
+    
+    if (!customerId || !totalAmount || totalAmount <= 0) {
+      return res.status(400).json({ message: 'Mijoz ID va to\'lov summasi talab qilinadi' });
+    }
+    
+    const cash = cashAmount || 0;
+    const card = cardAmount || 0;
+    
+    const debts = await Debt.find({
+      customer: customerId,
+      type: 'receivable',
+      status: { $ne: 'paid' }
+    }).sort({ createdAt: 1 });
+    
+    if (debts.length === 0) {
+      return res.status(404).json({ message: 'Mijozning qarzi topilmadi' });
+    }
+    
+    let remainingCash = cash;
+    let remainingCard = card;
+    const paidDebts = [];
+    
+    for (const debt of debts) {
+      if (remainingCash <= 0 && remainingCard <= 0) break;
+      
+      const debtRemaining = debt.amount - debt.paidAmount;
+      
+      if (remainingCash > 0) {
+        const cashPayment = Math.min(remainingCash, debtRemaining);
+        
+        debt.payments.push({ 
+          amount: cashPayment, 
+          method: 'cash',
+          source: 'pos'
+        });
+        debt.paidAmount += cashPayment;
+        remainingCash -= cashPayment;
+        
+        paidDebts.push({
+          debtId: debt._id,
+          paidAmount: cashPayment,
+          method: 'cash',
+          remaining: debt.amount - debt.paidAmount
+        });
+      }
+      
+      const stillRemaining = debt.amount - debt.paidAmount;
+      if (stillRemaining > 0 && remainingCard > 0) {
+        const cardPayment = Math.min(remainingCard, stillRemaining);
+        
+        debt.payments.push({ 
+          amount: cardPayment, 
+          method: 'card',
+          source: 'pos'
+        });
+        debt.paidAmount += cardPayment;
+        remainingCard -= cardPayment;
+        
+        paidDebts.push({
+          debtId: debt._id,
+          paidAmount: cardPayment,
+          method: 'card',
+          remaining: debt.amount - debt.paidAmount
+        });
+      }
+      
+      if (debt.paidAmount >= debt.amount) {
+        debt.status = 'paid';
+      }
+      
+      await debt.save();
+    }
+    
+    await Customer.findByIdAndUpdate(customerId, { 
+      $inc: { debt: -totalAmount } 
+    });
+    
+    if (io) {
+      io.emit('debt:updated', { customerId, totalAmount, cashAmount: cash, cardAmount: card, paidDebts });
+    }
+    
+    res.json({
+      success: true,
+      totalPaid: totalAmount,
+      cashPaid: cash,
+      cardPaid: card,
+      paidDebts: paidDebts,
+      message: `${totalAmount.toLocaleString()} so'm qarz to'landi`
+    });
+  } catch (error) {
+    console.error('❌ Error in bulk payment:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { type, customer, creditorName, amount, dueDate, description, collateral } = req.body;
@@ -309,3 +473,4 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
 });
 
 module.exports = router;
+module.exports.setSocketIO = setSocketIO;

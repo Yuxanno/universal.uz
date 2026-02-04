@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, enum: ['cash', 'card'], default: 'cash' },
-  date: { type: Date, default: Date.now }
+  date: { type: Date, default: Date.now },
+  source: { type: String, enum: ['manual', 'pos'], default: 'manual' } // Track where payment came from
 });
 
 const debtSchema = new mongoose.Schema({
@@ -20,5 +21,12 @@ const debtSchema = new mongoose.Schema({
   payments: [paymentSchema],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
+
+// Compound indexes for optimal query performance
+debtSchema.index({ type: 1, status: 1, updatedAt: -1 }); // Main query index
+debtSchema.index({ customer: 1, type: 1, status: 1 }); // Customer lookup
+debtSchema.index({ updatedAt: -1 }); // Latest first sorting
+debtSchema.index({ createdAt: -1 }); // Creation date sorting
+debtSchema.index({ dueDate: 1, status: 1 }); // Due date queries
 
 module.exports = mongoose.model('Debt', debtSchema);
