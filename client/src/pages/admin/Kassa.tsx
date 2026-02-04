@@ -295,7 +295,7 @@ export default function Kassa() {
  const newMode = prev === 'retail' ? 'wholesale' : 'retail';
  
  // Update all cart items prices
- setLocalPrices(prevPrices => {
+ setLocalPrices(() => {
  const newPrices: {[key: string]: string} = {};
  cart.forEach(item => {
  // MongoDB structure:
