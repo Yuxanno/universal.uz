@@ -470,7 +470,7 @@ export default function StaffReceipts() {
  onClick={async () => {
  try {
  // OPTIMIZED: Backend returns complete receipt with product details
- const response = await api.put(`/receipts/${receipt._id}/load-to-kassa`);
+ await api.put(`/receipts/${receipt._id}/load-to-kassa`);
  
  console.log('✅ Receipt loaded to kassa successfully');
  
