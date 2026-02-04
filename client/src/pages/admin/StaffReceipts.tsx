@@ -6,6 +6,7 @@ import { socket } from '../../utils/socket';
 import { formatNumber } from '../../utils/format';
 import { useAlert } from '../../hooks/useAlert';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface WorkerItem {
  product: string;
@@ -41,6 +42,7 @@ interface Worker {
 export default function StaffReceipts() {
  const { t } = useLanguage();
  const { AlertComponent } = useAlert();
+ const { user } = useAuth();
  const navigate = useNavigate();
  const [workers, setWorkers] = useState<Worker[]>([]);
  const [receipts, setReceipts] = useState<WorkerReceipt[]>([]);
@@ -506,8 +508,9 @@ export default function StaffReceipts() {
  // Dispatch event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));
  
- // Navigate immediately (don't wait for fetchData)
- navigate('/cashier');
+ // Navigate based on user role
+ const targetPath = user?.role === 'cashier' ? '/cashier' : '/admin/kassa';
+ navigate(targetPath);
  } catch (err: any) {
  console.error('Error loading to kassa:', err);
  const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';
