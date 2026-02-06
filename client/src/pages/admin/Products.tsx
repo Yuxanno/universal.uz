@@ -94,7 +94,7 @@ const ProductRow = memo(({
  </div>
  )}
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'costPrice'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'costPrice'); }}
  className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
  title="Tan narxini o'zgartirish"
  >
@@ -102,7 +102,7 @@ const ProductRow = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'costPrice', editingValue)}
@@ -117,7 +117,7 @@ const ProductRow = memo(({
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'price'); }}
  className="text-right cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg px-2 py-1 transition-all"
  title="Optom narxini o'zgartirish"
  >
@@ -125,7 +125,7 @@ const ProductRow = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left font-semibold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-2 py-1 focus:outline-none focus:border-red-500 text-red-700 dark:text-red-300"
+ className="w-full text-left font-semibold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-2 py-1 focus:outline-none focus:ring-0 text-red-700 dark:text-red-300"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
@@ -136,11 +136,11 @@ const ProductRow = memo(({
  onClick={(e) => e.stopPropagation()}
  />
  ) : (
- <p className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm text-red-500 dark:text-red-400">so'm</span></p>
+ <p className="font-semibold !text-red-600 dark:!text-red-400 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm !text-red-600 dark:!text-red-400">so'm</span></p>
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'dona_narx'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'dona_narx'); }}
  className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
  title="Dona narxini o'zgartirish"
  >
@@ -148,7 +148,7 @@ const ProductRow = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'dona_narx', editingValue)}
@@ -163,7 +163,7 @@ const ProductRow = memo(({
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'quantity'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'quantity'); }}
  className="text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
  title="Miqdorni o'zgartirish"
  >
@@ -171,7 +171,7 @@ const ProductRow = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'quantity', editingValue)}
@@ -272,7 +272,7 @@ const ProductCard = memo(({
  </div>
  <div className="grid grid-cols-4 gap-2 mb-3">
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'costPrice'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'costPrice'); }}
  className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
  >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tan narxi</p>
@@ -280,7 +280,7 @@ const ProductCard = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'costPrice', editingValue)}
@@ -295,7 +295,7 @@ const ProductCard = memo(({
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'price'); }}
  className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
  >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Optom</p>
@@ -303,7 +303,7 @@ const ProductCard = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left text-sm font-bold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-1 py-0.5 focus:outline-none focus:border-red-500 text-red-700 dark:text-red-300"
+ className="w-full text-left text-sm font-bold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-1 py-0.5 focus:outline-none focus:ring-0 text-red-700 dark:text-red-300"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
@@ -318,7 +318,7 @@ const ProductCard = memo(({
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'dona_narx'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'dona_narx'); }}
  className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
  >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Dona</p>
@@ -326,7 +326,7 @@ const ProductCard = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'dona_narx', editingValue)}
@@ -341,7 +341,7 @@ const ProductCard = memo(({
  )}
  </div>
  <div 
- onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'quantity'); }}
+ onClick={(e) => { e.stopPropagation(); onEditPrice(product, 'quantity'); }}
  className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
  >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Miqdor</p>
@@ -349,7 +349,7 @@ const ProductCard = memo(({
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:ring-0"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'quantity', editingValue)}
@@ -867,6 +867,51 @@ export default function Products() {
  }, [fetchProducts]);
 
  const startInlineEdit = useCallback((product: Product, field: 'costPrice' | 'price' | 'dona_narx' | 'quantity') => {
+ // Agar boshqa cell tahrirlanyotgan bo'lsa, avval uni saqlaymiz
+ if (editingCell && editingValue !== '' && (editingCell.productId !== product._id || editingCell.field !== field)) {
+ const numValue = Number(editingValue.replace(/\s/g, ''));
+ if (!isNaN(numValue) && numValue >= 0) {
+ // Eski qiymatni saqlab qolamiz
+ const oldProduct = products.find(p => p._id === editingCell.productId);
+ if (oldProduct) {
+ const oldValue = oldProduct[editingCell.field as keyof Product];
+ 
+ // Set flag to prevent socket refresh
+ isInlineEditingRef.current = true;
+ 
+ // Optimistic update
+ setProducts(prevProducts => 
+ prevProducts.map(p => 
+ p._id === editingCell.productId 
+ ? { ...p, [editingCell.field]: numValue }
+ : p
+ )
+ );
+ 
+ // Backend ga yuborish
+ const updateData: any = {};
+ updateData[editingCell.field] = numValue;
+ 
+ api.put(`/products/${editingCell.productId}`, updateData).catch((err: any) => {
+ showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
+ // Rollback
+ setProducts(prevProducts => 
+ prevProducts.map(p => 
+ p._id === editingCell.productId 
+ ? { ...p, [editingCell.field]: oldValue }
+ : p
+ )
+ );
+ }).finally(() => {
+ // Clear flag after a short delay
+ setTimeout(() => {
+ isInlineEditingRef.current = false;
+ }, 1000);
+ });
+ }
+ }
+ }
+ 
  // Set current value
  let currentValue = '';
  if (field === 'quantity') {
@@ -887,7 +932,7 @@ export default function Products() {
  editInputRef.current?.focus();
  editInputRef.current?.select();
  }, 0);
- }, []);
+ }, [editingCell, editingValue, products, showAlert]);
 
  const saveInlineEdit = useCallback(async (productId: string, field: string, value: string) => {
  const numValue = Number(value.replace(/\s/g, ''));
@@ -1352,10 +1397,11 @@ export default function Products() {
  display: flex;
  flex-direction: column;
  justify-content: flex-start;
+ max-width: 35mm;
  }
  .right-section {
  flex: 0 0 20mm;
- margin-left: 0;
+ margin-left: -2mm;
  }
  .name { 
  font-size: 11pt; 
@@ -1560,10 +1606,11 @@ export default function Products() {
  display: flex;
  flex-direction: column;
  justify-content: flex-start;
+ max-width: 35mm;
  }
  .right-section {
  flex: 0 0 20mm;
- margin-left: 0;
+ margin-left: -2mm;
  }
  .name { 
  font-size: 11pt; 
