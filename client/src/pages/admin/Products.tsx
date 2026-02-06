@@ -118,14 +118,14 @@ const ProductRow = memo(({
  </div>
  <div 
  onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
- className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
+ className="text-right cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg px-2 py-1 transition-all"
  title="Optom narxini o'zgartirish"
  >
  {editingCell?.productId === product._id && editingCell?.field === 'price' ? (
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ className="w-full text-left font-semibold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-2 py-1 focus:outline-none focus:border-red-500 text-red-700 dark:text-red-300"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
@@ -136,7 +136,7 @@ const ProductRow = memo(({
  onClick={(e) => e.stopPropagation()}
  />
  ) : (
- <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
+ <p className="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm text-red-500 dark:text-red-400">so'm</span></p>
  )}
  </div>
  <div 
@@ -296,14 +296,14 @@ const ProductCard = memo(({
  </div>
  <div 
  onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
- className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+ className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
  >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Optom</p>
  {editingCell?.productId === product._id && editingCell?.field === 'price' ? (
  <input
  ref={editInputRef}
  type="text"
- className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ className="w-full text-left text-sm font-bold bg-red-50 dark:bg-red-900/30 border border-red-400 dark:border-red-500 rounded px-1 py-0.5 focus:outline-none focus:border-red-500 text-red-700 dark:text-red-300"
  value={formatInputNumber(editingValue)}
  onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
  onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
@@ -314,7 +314,7 @@ const ProductCard = memo(({
  onClick={(e) => e.stopPropagation()}
  />
  ) : (
- <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
+ <p className="text-sm font-bold text-red-600 dark:text-red-400">{formatNumber(product.price)}</p>
  )}
  </div>
  <div 
