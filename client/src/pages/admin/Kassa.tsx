@@ -535,10 +535,10 @@ export default function Kassa() {
  setIsReturnMode(false);
  setPrintReceipt(receiptData);
  
- // Disabled auto-print - show toast instead
- // setTimeout(() => {
- //   handlePrint(receiptData);
- // }, 100);
+ // Auto-print receipt
+ setTimeout(() => {
+ handlePrint(receiptData);
+ }, 100);
  
  // Show success message with toast
  if (debtAmount > 0) {
