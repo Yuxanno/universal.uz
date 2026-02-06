@@ -24,20 +24,28 @@ const ProductRow = memo(({
  onPrint, 
  onEdit, 
  onDelete,
+ onEditPrice,
+ onVariantsClick,
  getProductImage,
  uz,
  formatNumber,
  isCashier,
  selectionMode,
  isSelected,
- onToggleSelect
+ onToggleSelect,
+ editingCell,
+ editingValue,
+ onEditingValueChange,
+ onSaveEdit,
+ onCancelEdit,
+ editInputRef
 }: any) => {
  return (
  <div 
  id={`product-${product._id}`}
- className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
+ className={`grid gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
  style={{gridTemplateColumns: selectionMode ? (isCashier ? 'auto auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto auto 80px 1fr 110px 110px 110px 110px 90px 140px') : (isCashier ? 'auto 80px 1fr 110px 110px 110px 90px 140px' : 'auto 80px 1fr 110px 110px 110px 110px 90px 140px')}}
- onClick={() => selectionMode ? onToggleSelect(product._id) : onEdit(product)}
+ onClick={() => selectionMode && onToggleSelect(product._id)}
  >
  {selectionMode && (
  <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
@@ -66,17 +74,16 @@ const ProductRow = memo(({
  <div>
  <span className="font-mono text-sm bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded-lg">{product.code}</span>
  </div>
- <div className="min-w-0">
- <p 
- className="font-medium text-neutral-900 dark:text-neutral-100 transition-colors group"
- title="Mahsulotni tahrirlash"
+ <div 
+ className="min-w-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+ onClick={(e) => { e.stopPropagation(); onVariantsClick(product); }}
+ title="Variant qo'shish"
  >
- <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400">
+ <p className="font-medium text-neutral-900 dark:text-neutral-100">
  <ProductNameDisplay 
  name={uz(product.name)}
- priceClassName="text-red-600 dark:text-red-400 font-bold group-hover:text-blue-600 dark:group-hover:text-blue-400"
+ priceClassName="text-red-600 dark:text-red-400 font-bold"
  />
- </span>
  </p>
  </div>
  {!isCashier && (
@@ -86,20 +93,100 @@ const ProductRow = memo(({
  </span>
  </div>
  )}
- <div className="text-right">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'costPrice'); }}
+ className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
+ title="Tan narxini o'zgartirish"
+ >
+ {editingCell?.productId === product._id && editingCell?.field === 'costPrice' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'costPrice', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'costPrice', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.costPrice || 0)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
+ )}
  </div>
- <div className="text-right">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
+ className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
+ title="Optom narxini o'zgartirish"
+ >
+ {editingCell?.productId === product._id && editingCell?.field === 'price' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'price', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.price)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
+ )}
  </div>
- <div className="text-right">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'dona_narx'); }}
+ className="text-right cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
+ title="Dona narxini o'zgartirish"
+ >
+ {editingCell?.productId === product._id && editingCell?.field === 'dona_narx' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'dona_narx', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'dona_narx', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="font-semibold text-neutral-900 dark:text-neutral-100 whitespace-nowrap">{formatNumber(product.dona_narx || 0)} <span className="text-sm text-neutral-500 dark:text-neutral-400">so'm</span></p>
+ )}
  </div>
- <div className="text-center">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'quantity'); }}
+ className="text-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg px-2 py-1 transition-all"
+ title="Miqdorni o'zgartirish"
+ >
+ {editingCell?.productId === product._id && editingCell?.field === 'quantity' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'quantity', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'quantity', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <span className={`font-semibold ${
  product.quantity === 0 ? 'text-red-600 dark:text-red-400' :
  product.quantity <= (product.minStock || 5) ? 'text-red-600 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'
  }`}>{product.quantity}</span>
+ )}
  </div>
  <div className="flex items-center justify-center gap-2">
  {!isCashier && (
@@ -134,16 +221,23 @@ const ProductCard = memo(({
  onPrint, 
  onEdit, 
  onDelete,
+ onEditPrice,
+ onVariantsClick,
  getProductImage,
  uz,
  formatNumber,
- isCashier
+ isCashier,
+ editingCell,
+ editingValue,
+ onEditingValueChange,
+ onSaveEdit,
+ onCancelEdit,
+ editInputRef
 }: any) => {
  return (
  <div 
  id={`product-${product._id}`} 
- className="p-4 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors rounded-xl"
- onClick={() => onEdit(product)}
+ className="p-4 rounded-xl"
  >
  <div className="flex items-start gap-3 mb-3">
  {getProductImage(product) ? (
@@ -160,14 +254,13 @@ const ProductCard = memo(({
  )}
  <div className="flex-1 min-w-0">
  <h4 
- className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 transition-colors group"
+ className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+ onClick={(e) => { e.stopPropagation(); onVariantsClick(product); }}
  >
- <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400">
  <ProductNameDisplay 
  name={uz(product.name)}
- priceClassName="text-red-600 dark:text-red-400 font-bold group-hover:text-blue-600 dark:group-hover:text-blue-400"
+ priceClassName="text-red-600 dark:text-red-400 font-bold"
  />
- </span>
  </h4>
  <p className="text-sm text-neutral-500 dark:text-neutral-400 font-mono">Kod: {product.code}</p>
  {!isCashier && (
@@ -178,43 +271,119 @@ const ProductCard = memo(({
  </div>
  </div>
  <div className="grid grid-cols-4 gap-2 mb-3">
- <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'costPrice'); }}
+ className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+ >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Tan narxi</p>
+ {editingCell?.productId === product._id && editingCell?.field === 'costPrice' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'costPrice', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'costPrice', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber((product as any).costPrice || 0)}</p>
+ )}
  </div>
- <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'price'); }}
+ className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+ >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Optom</p>
+ {editingCell?.productId === product._id && editingCell?.field === 'price' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'price', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'price', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber(product.price)}</p>
+ )}
  </div>
- <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'dona_narx'); }}
+ className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+ >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Dona</p>
+ {editingCell?.productId === product._id && editingCell?.field === 'dona_narx' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'dona_narx', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'dona_narx', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatNumber((product as any).dona_narx || 0)}</p>
+ )}
  </div>
- <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2">
+ <div 
+ onClick={(e) => { e.stopPropagation(); !editingCell && onEditPrice(product, 'quantity'); }}
+ className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+ >
  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Miqdor</p>
+ {editingCell?.productId === product._id && editingCell?.field === 'quantity' ? (
+ <input
+ ref={editInputRef}
+ type="text"
+ className="w-full text-left text-sm font-bold bg-blue-50 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-500 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
+ value={formatInputNumber(editingValue)}
+ onChange={(e) => onEditingValueChange(parseNumber(e.target.value))}
+ onBlur={() => onSaveEdit(product._id, 'quantity', editingValue)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') onSaveEdit(product._id, 'quantity', editingValue);
+ if (e.key === 'Escape') onCancelEdit();
+ }}
+ onClick={(e) => e.stopPropagation()}
+ />
+ ) : (
  <p className={`text-sm font-bold ${
  product.quantity === 0 ? 'text-red-600 dark:text-red-400' :
  product.quantity <= (product.minStock || 5) ? 'text-red-600 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'
  }`}>{product.quantity}</p>
+ )}
  </div>
  </div>
  <div className="flex gap-2">
  {!isCashier && (
- <button onClick={() => onTransfer(product)} className="flex-1 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-all font-medium text-sm">
+ <button onClick={(e) => { e.stopPropagation(); onTransfer(product); }} className="flex-1 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition-all font-medium text-sm">
  <ArrowRightLeft className="w-4 h-4 inline mr-1" />
  Transfer
  </button>
  )}
- <button onClick={() => onQR(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onQR(product); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
  <QrCode className="w-4 h-4" />
  </button>
- <button onClick={() => onPrint(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onPrint(product); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-all">
  <Printer className="w-4 h-4" />
  </button>
- <button onClick={() => onEdit(product)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onEdit(product); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-all">
  <Edit className="w-4 h-4" />
  </button>
- <button onClick={() => onDelete(product._id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all">
+ <button onClick={(e) => { e.stopPropagation(); onDelete(product._id); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all">
  <Trash2 className="w-4 h-4" />
  </button>
  </div>
@@ -287,6 +456,14 @@ export default function Products() {
  const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
  const [bulkPrintQuantity, setBulkPrintQuantity] = useState('1');
 
+ // Inline editing state
+ const [editingCell, setEditingCell] = useState<{productId: string, field: string} | null>(null);
+ const [editingValue, setEditingValue] = useState('');
+ const editInputRef = useRef<HTMLInputElement>(null);
+ 
+ // Flag to prevent socket refresh during inline edit
+ const isInlineEditingRef = useRef(false);
+
  // Prevent double fetch with ref
  const hasFetchedRef = useRef(false);
 
@@ -315,14 +492,26 @@ export default function Products() {
  const socket = initSocket();
 
  const handleInventoryUpdate = () => {
- console.log('📦 [Admin Products] Inventory update received, refreshing...');
+ // Ignore socket updates during inline editing
+ if (isInlineEditingRef.current) {
+ console.log('⏭️ [Admin Products] Skipping refresh - inline editing in progress');
+ return;
+ }
+ 
+ console.log('� [Admin Products] Inventory update received, refreshing...');
  // Reset fetch ref to allow refresh
  hasFetchedRef.current = false;
  fetchProducts();
  };
 
  const handleCacheCleared = () => {
- console.log('🗑️  [Admin Products] Cache cleared, refreshing...');
+ // Ignore socket updates during inline editing
+ if (isInlineEditingRef.current) {
+ console.log('⏭️ [Admin Products] Skipping refresh - inline editing in progress');
+ return;
+ }
+ 
+ console.log('�️  [Admin Products] Cache cleared, refreshing...');
  // Reset fetch ref to allow refresh
  hasFetchedRef.current = false;
  fetchProducts();
@@ -676,6 +865,89 @@ export default function Products() {
  hasFetchedRef.current = false;
  fetchProducts();
  }, [fetchProducts]);
+
+ const startInlineEdit = useCallback((product: Product, field: 'costPrice' | 'price' | 'dona_narx' | 'quantity') => {
+ // Set current value
+ let currentValue = '';
+ if (field === 'quantity') {
+ currentValue = String(product.quantity);
+ } else if (field === 'costPrice') {
+ currentValue = String((product as any).costPrice || 0);
+ } else if (field === 'price') {
+ currentValue = String(product.price);
+ } else if (field === 'dona_narx') {
+ currentValue = String((product as any).dona_narx || 0);
+ }
+ 
+ setEditingCell({ productId: product._id, field });
+ setEditingValue(currentValue);
+ 
+ // Focus input after render
+ setTimeout(() => {
+ editInputRef.current?.focus();
+ editInputRef.current?.select();
+ }, 0);
+ }, []);
+
+ const saveInlineEdit = useCallback(async (productId: string, field: string, value: string) => {
+ const numValue = Number(value.replace(/\s/g, ''));
+ if (isNaN(numValue) || numValue < 0) {
+ showAlert('Noto\'g\'ri qiymat', 'Xatolik', 'danger');
+ setEditingCell(null);
+ return;
+ }
+ 
+ // Eski qiymatni saqlab qolamiz (rollback uchun)
+ const oldProduct = products.find(p => p._id === productId);
+ if (!oldProduct) return;
+ 
+ const oldValue = oldProduct[field as keyof Product];
+ 
+ // Set flag to prevent socket refresh
+ isInlineEditingRef.current = true;
+ 
+ // OPTIMISTIC UPDATE - darhol UI ni yangilaymiz
+ setProducts(prevProducts => 
+ prevProducts.map(p => 
+ p._id === productId 
+ ? { ...p, [field]: numValue }
+ : p
+ )
+ );
+ setEditingCell(null);
+ 
+ // Keyin backend ga yuboramiz
+ try {
+ const updateData: any = {};
+ updateData[field] = numValue;
+ 
+ await api.put(`/products/${productId}`, updateData);
+ // Muvaffaqiyatli - UI allaqachon yangilangan
+ console.log('✅ [Inline Edit] Successfully updated');
+ } catch (err: any) {
+ // Xato bo'lsa - faqat o'sha mahsulotni eski qiymatga qaytaramiz
+ showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
+ 
+ // Rollback - faqat o'sha mahsulotni qaytaramiz, sahifa o'z joyida qoladi
+ setProducts(prevProducts => 
+ prevProducts.map(p => 
+ p._id === productId 
+ ? { ...p, [field]: oldValue }
+ : p
+ )
+ );
+ } finally {
+ // Clear flag after a short delay to allow socket event to pass
+ setTimeout(() => {
+ isInlineEditingRef.current = false;
+ }, 1000);
+ }
+ }, [showAlert, products]);
+
+ const cancelInlineEdit = useCallback(() => {
+ setEditingCell(null);
+ setEditingValue('');
+ }, []);
 
  const handleDelete = useCallback(async (id: string) => {
  const confirmed = await showConfirm(tKey("Tovarni o'chirishni tasdiqlaysizmi?"), tKey("O'chirish"));
@@ -1411,11 +1683,13 @@ ${allLabelsHtml}
  return matchesStock;
  });
  
- // Reset to page 1 when filter changes
- setCurrentPage(1);
- 
  return filtered;
  }, [products, debouncedSearchQuery, stockFilter]);
+
+ // Reset to page 1 only when search or filter changes (not when products update)
+ useEffect(() => {
+ setCurrentPage(1);
+ }, [debouncedSearchQuery, stockFilter]);
 
  // Scroll to product after edit/add
  useEffect(() => {
@@ -1628,6 +1902,7 @@ ${allLabelsHtml}
  onPrint={openPrintModal}
  onEdit={openEditModal}
  onDelete={handleDelete}
+ onEditPrice={startInlineEdit}
  onVariantsClick={handleVariantsClick}
  getProductImage={getProductImage}
  uz={uz}
@@ -1636,6 +1911,12 @@ ${allLabelsHtml}
  selectionMode={selectionMode}
  isSelected={selectedProducts.includes(product._id)}
  onToggleSelect={toggleProductSelection}
+ editingCell={editingCell}
+ editingValue={editingValue}
+ onEditingValueChange={setEditingValue}
+ onSaveEdit={saveInlineEdit}
+ onCancelEdit={cancelInlineEdit}
+ editInputRef={editInputRef}
  />
  ))}
  </div>
@@ -1652,11 +1933,18 @@ ${allLabelsHtml}
  onPrint={openPrintModal}
  onEdit={openEditModal}
  onDelete={handleDelete}
+ onEditPrice={startInlineEdit}
  onVariantsClick={handleVariantsClick}
  getProductImage={getProductImage}
  uz={uz}
  formatNumber={formatNumber}
  isCashier={isCashier}
+ editingCell={editingCell}
+ editingValue={editingValue}
+ onEditingValueChange={setEditingValue}
+ onSaveEdit={saveInlineEdit}
+ onCancelEdit={cancelInlineEdit}
+ editInputRef={editInputRef}
  />
  ))}
  
