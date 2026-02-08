@@ -17,11 +17,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
- const token = localStorage.getItem('token');
+ // Avval sessionStorage dan tekshir (admin uchun)
+ let token = sessionStorage.getItem('token');
+ 
+ // Agar sessionStorage da yo'q bo'lsa, localStorage dan tekshir (kassir/helper uchun)
+ if (!token) {
+ token = localStorage.getItem('token');
+ }
+ 
  if (token) {
  api.get('/auth/me')
  .then(res => setUser(res.data))
- .catch(() => localStorage.removeItem('token'))
+ .catch(() => {
+ sessionStorage.removeItem('token');
+ localStorage.removeItem('token');
+ })
  .finally(() => setLoading(false));
  } else {
  setLoading(false);
@@ -30,12 +40,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
  const login = useCallback(async (phone: string, password: string) => {
  const res = await api.post('/auth/login', { phone, password });
+ 
+ // Admin uchun token saqlanmasin (har safar login qilsin)
+ // Kassir va helper uchun token saqlansin (1 marta login)
+ if (res.data.user.role === 'admin') {
+ // Admin uchun faqat sessionStorage (browser yopilganda o'chadi)
+ sessionStorage.setItem('token', res.data.token);
+ } else {
+ // Kassir va helper uchun localStorage (saqlanib qoladi)
  localStorage.setItem('token', res.data.token);
+ }
+ 
  setUser(res.data.user);
  return res.data.user; // Return user data for immediate redirect
  }, []);
 
  const logout = useCallback(() => {
+ sessionStorage.removeItem('token');
  localStorage.removeItem('token');
  setUser(null);
  }, []);
