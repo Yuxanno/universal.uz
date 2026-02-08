@@ -1400,7 +1400,7 @@ export default function Products() {
  max-width: 35mm;
  }
  .right-section {
- flex: 0 0 20mm;
+ flex: 0 0 18mm;
  margin-left: -4mm;
  }
  .name { 
@@ -1428,8 +1428,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 20mm; 
- height: 20mm; 
+ width: 18mm; 
+ height: 18mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
@@ -1609,7 +1609,7 @@ export default function Products() {
  max-width: 35mm;
  }
  .right-section {
- flex: 0 0 20mm;
+ flex: 0 0 18mm;
  margin-left: -4mm;
  }
  .name { 
@@ -1637,8 +1637,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 20mm; 
- height: 20mm; 
+ width: 18mm; 
+ height: 18mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
@@ -2630,6 +2630,7 @@ ${allLabelsHtml}
  </div>
  );
 }
+
 
 
 
