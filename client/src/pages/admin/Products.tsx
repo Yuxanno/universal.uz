@@ -963,10 +963,17 @@ export default function Products() {
  
  // Keyin backend ga yuboramiz
  try {
+ // Barcha fieldlar uchun Product API ishlatamiz
  const updateData: any = {};
  updateData[field] = numValue;
  
+ // Agar miqdor o'zgartirilsa, warehouse ham yuborish kerak
+ if (field === 'quantity' && mainWarehouse) {
+ updateData.warehouse = mainWarehouse._id;
+ }
+ 
  await api.put(`/products/${productId}`, updateData);
+ 
  // Muvaffaqiyatli - UI allaqachon yangilangan
  console.log('✅ [Inline Edit] Successfully updated');
  } catch (err: any) {
@@ -987,7 +994,7 @@ export default function Products() {
  isInlineEditingRef.current = false;
  }, 1000);
  }
- }, [showAlert, products]);
+ }, [showAlert, products, mainWarehouse]);
 
  const cancelInlineEdit = useCallback(() => {
  setEditingCell(null);
@@ -1336,12 +1343,12 @@ export default function Products() {
  const labelsHtml = Array(qty).fill(`
  <div class="label">
  ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice} so'm</div></div>` : ''}
- <div class="content-row" style="gap: 0mm;">
- <div class="left-section" style="justify-content: space-between; min-height: 18mm; max-width: 33mm;">
+ <div class="content-row">
+ <div class="left-section" style="justify-content: space-between; min-height: 18mm;">
  <div class="name" style="font-size: ${nameFontSize}; margin-bottom: auto; flex: 1;">${productName}</div>
  <div class="code" style="margin-top: auto;"><span class="code-label">Kod:</span> <span class="code-number">${printProduct.code}</span></div>
  </div>
- <div class="right-section" style="margin-left: -5mm;">
+ <div class="right-section">
  <div class="qr-container">
  <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR" />
  </div>
@@ -1400,8 +1407,9 @@ export default function Products() {
  max-width: 35mm;
  }
  .right-section {
- flex: 0 0 18mm;
+ flex: 0 0 20mm;
  margin-left: -4mm;
+ margin-right: 2mm;
  }
  .name { 
  font-size: 11pt; 
@@ -1428,8 +1436,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 18mm; 
- height: 18mm; 
+ width: 20mm; 
+ height: 20mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
@@ -1542,12 +1550,12 @@ export default function Products() {
  const labelsHtml = Array(qty).fill(`
  <div class="label">
  ${showPriceOnLabel ? `<div class="price-row"><div class="price">${displayPrice}</div></div>` : ''}
- <div class="content-row" style="gap: 0mm;">
- <div class="left-section" style="max-width: 33mm;">
+ <div class="content-row">
+ <div class="left-section">
  <div class="name">${uz(product.name)}</div>
  <div class="code"><span class="code-label">Kod:</span> <span class="code-number">${product.code}</span></div>
  </div>
- <div class="right-section" style="margin-left: -5mm;">
+ <div class="right-section">
  <div class="qr-container">
  <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR" />
  </div>
@@ -1599,7 +1607,7 @@ export default function Products() {
  display: flex;
  align-items: flex-start;
  justify-content: space-between;
- gap: 0mm;
+ gap: 0.5mm;
  }
  .left-section { 
  flex: 1;
@@ -1609,8 +1617,9 @@ export default function Products() {
  max-width: 35mm;
  }
  .right-section {
- flex: 0 0 18mm;
+ flex: 0 0 20mm;
  margin-left: -4mm;
+ margin-right: 2mm;
  }
  .name { 
  font-size: 11pt; 
@@ -1637,8 +1646,8 @@ export default function Products() {
  font-weight: 900;
  }
  .qr-container { 
- width: 18mm; 
- height: 18mm; 
+ width: 20mm; 
+ height: 20mm; 
  flex-shrink: 0;
  display: flex;
  align-items: center;
@@ -2630,7 +2639,6 @@ ${allLabelsHtml}
  </div>
  );
 }
-
 
 
 
