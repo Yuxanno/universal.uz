@@ -12,27 +12,74 @@ interface CartItemWithOriginalPrice extends CartItem {
  originalPrice?: number;
 }
 
+// SENIOR SOLUTION: LocalStorage keys for persistence
+const STORAGE_KEYS = {
+ CART: 'helper_cart',
+ CUSTOMER: 'helper_customer',
+ DRAFT_ID: 'helper_draft_id',
+ RECEIPT_STATUS: 'helper_receipt_status'
+};
+
 export default function HelperScanner() {
  const { showAlert, AlertComponent } = useAlert();
  const toast = useToast();
  const [scanning, setScanning] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
- const [cart, setCart] = useState<CartItemWithOriginalPrice[]>([]);
+ 
+ // SENIOR SOLUTION: Load cart from localStorage on init
+ const [cart, setCart] = useState<CartItemWithOriginalPrice[]>(() => {
+ try {
+ const saved = localStorage.getItem(STORAGE_KEYS.CART);
+ return saved ? JSON.parse(saved) : [];
+ } catch (err) {
+ console.error('Error loading cart from localStorage:', err);
+ return [];
+ }
+ });
+ 
  const [products, setProducts] = useState<Product[]>([]);
  const [searchResults, setSearchResults] = useState<Product[]>([]);
  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
  const [sending, setSending] = useState(false);
  const [syncing, setSyncing] = useState(false);
- const [receiptStatus, setReceiptStatus] = useState<'draft' | 'pending'>('draft');
+ 
+ // SENIOR SOLUTION: Load receipt status from localStorage
+ const [receiptStatus, setReceiptStatus] = useState<'draft' | 'pending'>(() => {
+ try {
+ const saved = localStorage.getItem(STORAGE_KEYS.RECEIPT_STATUS);
+ return (saved as 'draft' | 'pending') || 'draft';
+ } catch (err) {
+ return 'draft';
+ }
+ });
+ 
  const [lastSyncedCart, setLastSyncedCart] = useState<string>('');
  void lastSyncedCart; // Used for cart sync tracking
- const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+ 
+ // SENIOR SOLUTION: Load draft ID from localStorage
+ const [currentDraftId, setCurrentDraftId] = useState<string | null>(() => {
+ try {
+ return localStorage.getItem(STORAGE_KEYS.DRAFT_ID);
+ } catch (err) {
+ return null;
+ }
+ });
+ 
  const [showArchive, setShowArchive] = useState(false);
  const [archivedReceipts, setArchivedReceipts] = useState<any[]>([]);
  const [expandedArchiveId, setExpandedArchiveId] = useState<string | null>(null);
  const [showCustomerModal, setShowCustomerModal] = useState(false);
  const [sendToArchive, setSendToArchive] = useState(false);
- const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null); // null = mijoz tanlanmagan
+ 
+ // SENIOR SOLUTION: Load selected customer from localStorage
+ const [selectedCustomer, setSelectedCustomer] = useState<string | null>(() => {
+ try {
+ return localStorage.getItem(STORAGE_KEYS.CUSTOMER);
+ } catch (err) {
+ return null;
+ }
+ });
+ 
  const [customers, setCustomers] = useState<any[]>([]);
  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
  const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -46,6 +93,50 @@ export default function HelperScanner() {
  const lastScannedCode = useRef<string | null>(null);
  const lastScanTime = useRef<number>(0);
  const SCAN_COOLDOWN_MS = 1500; // 1.5 seconds cooldown between same product scans
+ 
+ // SENIOR SOLUTION: Save cart to localStorage whenever it changes
+ useEffect(() => {
+ try {
+ localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+ } catch (err) {
+ console.error('Error saving cart to localStorage:', err);
+ }
+ }, [cart]);
+ 
+ // SENIOR SOLUTION: Save selected customer to localStorage
+ useEffect(() => {
+ try {
+ if (selectedCustomer) {
+ localStorage.setItem(STORAGE_KEYS.CUSTOMER, selectedCustomer);
+ } else {
+ localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
+ }
+ } catch (err) {
+ console.error('Error saving customer to localStorage:', err);
+ }
+ }, [selectedCustomer]);
+ 
+ // SENIOR SOLUTION: Save draft ID to localStorage
+ useEffect(() => {
+ try {
+ if (currentDraftId) {
+ localStorage.setItem(STORAGE_KEYS.DRAFT_ID, currentDraftId);
+ } else {
+ localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
+ }
+ } catch (err) {
+ console.error('Error saving draft ID to localStorage:', err);
+ }
+ }, [currentDraftId]);
+ 
+ // SENIOR SOLUTION: Save receipt status to localStorage
+ useEffect(() => {
+ try {
+ localStorage.setItem(STORAGE_KEYS.RECEIPT_STATUS, receiptStatus);
+ } catch (err) {
+ console.error('Error saving receipt status to localStorage:', err);
+ }
+ }, [receiptStatus]);
 
  useEffect(() => {
  const init = async () => {
@@ -456,6 +547,11 @@ export default function HelperScanner() {
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
  isFirstLoad.current = true; // Reset to first load for next cart
+ // SENIOR SOLUTION: Clear localStorage after successful send
+ localStorage.removeItem(STORAGE_KEYS.CART);
+ localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
+ localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
+ localStorage.setItem(STORAGE_KEYS.RECEIPT_STATUS, 'draft');
  } catch (err: any) {
  console.error('Error sending receipt:', err);
  showAlert(err.response?.data?.message || 'Xatolik yuz berdi', 'Xatolik', 'danger');
@@ -512,6 +608,11 @@ export default function HelperScanner() {
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
  isFirstLoad.current = true; // Reset to first load for next cart
+ // SENIOR SOLUTION: Clear localStorage after successful send
+ localStorage.removeItem(STORAGE_KEYS.CART);
+ localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
+ localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
+ localStorage.setItem(STORAGE_KEYS.RECEIPT_STATUS, 'draft');
  loadArchive();
  } catch (err: any) {
  console.error('Error sending receipt:', err);
@@ -554,6 +655,11 @@ export default function HelperScanner() {
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
  isFirstLoad.current = true; // Reset to first load for next cart
+ // SENIOR SOLUTION: Clear localStorage after successful send
+ localStorage.removeItem(STORAGE_KEYS.CART);
+ localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
+ localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
+ localStorage.setItem(STORAGE_KEYS.RECEIPT_STATUS, 'draft');
  if (sendToArchive) {
  loadArchive(); // Reload archive only if saved to archive
  }

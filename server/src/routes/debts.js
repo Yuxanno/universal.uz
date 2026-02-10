@@ -93,9 +93,16 @@ router.get('/grouped', auth, async (req, res) => {
       { $set: { status: 'overdue' } }
     ).catch(err => console.error('Error updating overdue debts:', err));
     
-    // Optimized aggregation with lookup (single query instead of N+1)
+    // CRITICAL FIX: Only show debts that have remaining amount > 0
+    // This filters out fully paid debts from the list
     const groupedDebts = await Debt.aggregate([
-      { $match: typeFilter },
+      { 
+        $match: { 
+          ...typeFilter,
+          // Only include debts where remaining amount > 0
+          $expr: { $gt: [{ $subtract: ['$amount', '$paidAmount'] }, 0] }
+        } 
+      },
       // Lookup customer data in aggregation pipeline
       {
         $lookup: {
@@ -165,27 +172,33 @@ router.get('/grouped', auth, async (req, res) => {
     ]);
     
     // Transform data for frontend
-    const result = groupedDebts.map(group => {
-      // Check if any debt in the group is overdue
-      const hasOverdue = group.debts.some(debt => 
-        debt.status === 'overdue' || 
-        (debt.dueDate && new Date(debt.dueDate) < today && debt.paidAmount < debt.amount)
-      );
-      
-      return {
-        customer: group.customer,
-        totalAmount: group.totalAmount,
-        totalPaid: group.totalPaid,
-        remainingAmount: group.remainingAmount,
-        debtCount: group.debtCount,
-        debts: group.debts.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
-        latestUpdate: group.latestUpdate,
-        latestDebt: group.latestDebt,
-        oldestDueDate: group.oldestDueDate,
-        status: group.remainingAmount === 0 ? 'paid' : 
-                hasOverdue ? 'overdue' : 'pending'
-      };
-    });
+    const result = groupedDebts
+      .filter(group => group.customer && group.customer._id) // Filter out groups without customer
+      .map(group => {
+        // Check if any debt in the group is blacklisted
+        const hasBlacklist = group.debts.some(debt => debt.status === 'blacklist');
+        
+        // Check if any debt in the group is overdue
+        const hasOverdue = group.debts.some(debt => 
+          debt.status === 'overdue' || 
+          (debt.dueDate && new Date(debt.dueDate) < today && debt.paidAmount < debt.amount)
+        );
+        
+        return {
+          customer: group.customer,
+          totalAmount: group.totalAmount,
+          totalPaid: group.totalPaid,
+          remainingAmount: group.remainingAmount,
+          debtCount: group.debtCount,
+          debts: group.debts.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
+          latestUpdate: group.latestUpdate,
+          latestDebt: group.latestDebt,
+          oldestDueDate: group.oldestDueDate,
+          status: group.remainingAmount === 0 ? 'paid' : 
+                  hasBlacklist ? 'blacklist' :
+                  hasOverdue ? 'overdue' : 'pending'
+        };
+      });
     
     res.json(result);
   } catch (error) {
@@ -198,6 +211,8 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { type, customer, creditorName, amount, dueDate, description, collateral } = req.body;
     
+    console.log('📥 Creating debt:', { type, customer, creditorName, amount });
+    
     const debtData = {
       type: type || 'receivable',
       amount,
@@ -208,10 +223,21 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
     };
     
     if (type === 'payable') {
-      // Own debt - I owe someone
-      debtData.creditorName = creditorName;
+      // Own debt - I owe someone (customer represents the creditor)
+      if (customer) {
+        console.log('💰 Payable debt with customer:', customer);
+        debtData.customer = customer;
+        // Update customer debt for payable type (negative debt means we owe them)
+        await Customer.findByIdAndUpdate(customer, { $inc: { debt: -amount } });
+      } else if (creditorName) {
+        console.log('💰 Payable debt with creditorName:', creditorName);
+        debtData.creditorName = creditorName;
+      } else {
+        console.log('❌ Payable debt without customer or creditorName!');
+      }
     } else {
       // Customer debt - they owe me
+      console.log('💰 Receivable debt with customer:', customer);
       debtData.customer = customer;
       await Customer.findByIdAndUpdate(customer, { $inc: { debt: amount } });
     }
@@ -219,8 +245,11 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
     const debt = new Debt(debtData);
     await debt.save();
     
+    console.log('✅ Debt created:', debt._id);
+    
     res.status(201).json(debt);
   } catch (error) {
+    console.error('❌ Error creating debt:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });
@@ -324,6 +353,32 @@ router.post('/:id/payment', auth, authorize('admin', 'cashier'), async (req, res
     }
     
     res.json(debt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Toggle blacklist status
+router.put('/:id/blacklist', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { blacklist } = req.body;
+    const debt = await Debt.findById(req.params.id);
+    if (!debt) return res.status(404).json({ message: 'Qarz topilmadi' });
+    
+    // Update all debts for this customer
+    if (debt.customer) {
+      await Debt.updateMany(
+        { customer: debt.customer, type: 'receivable' },
+        { $set: { status: blacklist ? 'blacklist' : 'pending' } }
+      );
+    }
+    
+    // Emit socket event for real-time update
+    if (io) {
+      io.emit('debt:updated', { customerId: debt.customer });
+    }
+    
+    res.json({ message: blacklist ? 'Mijoz qora ro\'yxatga qo\'shildi' : 'Mijoz qora ro\'yxatdan chiqarildi' });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
@@ -464,8 +519,27 @@ router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
 
 router.delete('/:id', auth, authorize('admin'), async (req, res) => {
   try {
-    const debt = await Debt.findByIdAndDelete(req.params.id);
+    const debt = await Debt.findById(req.params.id);
     if (!debt) return res.status(404).json({ message: 'Qarz topilmadi' });
+    
+    // Update customer debt if this is a receivable debt
+    if (debt.type === 'receivable' && debt.customer) {
+      const remainingDebt = debt.amount - debt.paidAmount;
+      if (remainingDebt > 0) {
+        await Customer.findByIdAndUpdate(debt.customer, { 
+          $inc: { debt: -remainingDebt } 
+        });
+      }
+    }
+    
+    // Delete the debt
+    await Debt.findByIdAndDelete(req.params.id);
+    
+    // Emit socket event for real-time update
+    if (io) {
+      io.emit('debt:updated', { customerId: debt.customer });
+    }
+    
     res.json({ message: 'Qarz o\'chirildi' });
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });

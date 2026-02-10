@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import { Plus, Users, X, Edit, Trash2, MapPin, ChevronDown, Package } from 'lucide-react';
 import { Customer } from '../../types';
@@ -13,7 +13,7 @@ import api from '../../utils/api';
 export default function Customers() {
  const { t } = useLanguage();
  const { showConfirm, AlertComponent } = useAlert();
- const { customers, loading, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
+ const { customers, loading, addCustomer, updateCustomer, deleteCustomer, fetchCustomers } = useCustomers();
  const [showModal, setShowModal] = useState(false);
  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
  const [searchQuery, setSearchQuery] = useState('');
@@ -23,13 +23,23 @@ export default function Customers() {
  const [showRegionFilter, setShowRegionFilter] = useState(false);
  const [showDetailsModal, setShowDetailsModal] = useState(false);
  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+ // SENIOR SOLUTION: Inline error messages for form fields
+ const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
+
+ // Fetch customers when component mounts
+ useEffect(() => {
+ fetchCustomers();
+ }, [fetchCustomers]);
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
+ // Clear previous errors
+ setFormErrors({});
+ 
  try {
  const data = {
- name: formData.name,
- phone: formData.phone,
+ name: formData.name.trim(),
+ phone: formData.phone.trim(),
  address: formData.region && formData.district ? `${formData.region}, ${formData.district}` : ''
  };
  if (editingCustomer) {
@@ -38,7 +48,21 @@ export default function Customers() {
  await addCustomer(data);
  }
  closeModal();
- } catch (err) { console.error(err); }
+ } catch (err: any) {
+ console.error('Error submitting customer:', err);
+ // SENIOR SOLUTION: Show inline error messages below inputs
+ const errorMessage = err.response?.data?.message || 'Xatolik yuz berdi';
+ const errorField = err.response?.data?.field;
+ 
+ if (errorField === 'name') {
+ setFormErrors({ name: errorMessage });
+ } else if (errorField === 'phone') {
+ setFormErrors({ phone: errorMessage });
+ } else {
+ // Generic error - show as alert
+ showConfirm(errorMessage, 'Xatolik', 'danger');
+ }
+ }
  };
 
  const handleDelete = async (id: string) => {
@@ -79,6 +103,7 @@ export default function Customers() {
  setShowModal(false);
  setEditingCustomer(null);
  setFormData({ name: '', phone: '+998', region: '', district: '' });
+ setFormErrors({}); // Clear errors when closing modal
  };
 
  const filteredCustomers = customers.filter(c => {
@@ -350,16 +375,46 @@ export default function Customers() {
  <form onSubmit={handleSubmit} className="p-6 space-y-5">
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Ism")}</label>
- <input className="input" placeholder={t("Mijoz ismi")} value={formData.name}
- onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+ <input 
+ className={`input ${formErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}`}
+ placeholder={t("Mijoz ismi")} 
+ value={formData.name}
+ onChange={e => {
+ setFormData({ ...formData, name: e.target.value });
+ // Clear error when user starts typing
+ if (formErrors.name) setFormErrors({ ...formErrors, name: undefined });
+ }} 
+ required 
+ />
+ {formErrors.name && (
+ <p className="text-red-600 text-sm mt-1.5 flex items-center gap-1.5 animate-slideDown">
+ <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+ <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+ </svg>
+ {formErrors.name}
+ </p>
+ )}
  </div>
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Telefon")}</label>
  <PhoneInput
  value={formData.phone}
- onChange={(phone) => setFormData({ ...formData, phone })}
+ onChange={(phone) => {
+ setFormData({ ...formData, phone });
+ // Clear error when user starts typing
+ if (formErrors.phone) setFormErrors({ ...formErrors, phone: undefined });
+ }}
  required
+ className={formErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}
  />
+ {formErrors.phone && (
+ <p className="text-red-600 text-sm mt-1.5 flex items-center gap-1.5 animate-slideDown">
+ <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+ <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+ </svg>
+ {formErrors.phone}
+ </p>
+ )}
  </div>
  <div>
  <label className="text-sm font-bold text-surface-700 dark:text-surface-300 mb-2 block">{t("Viloyat")}</label>

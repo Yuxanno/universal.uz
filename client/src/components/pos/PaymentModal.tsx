@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Banknote, CreditCard, AlertTriangle, User, Calculator } from 'lucide-react';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useLanguage } from '../../context/LanguageContext';
@@ -22,9 +22,21 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
   const [customerTotalDebt, setCustomerTotalDebt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDebtPayment, setShowDebtPayment] = useState(false); // New state for checkbox
+  const [isBlacklisted, setIsBlacklisted] = useState(false); // Check if customer is blacklisted
+  
+  // SENIOR SOLUTION: Auto focus cash input
+  const cashInputRef = useRef<HTMLInputElement>(null);
   
   // Don't allow debt for "Oddiy mijoz" (regular customer without ID)
   const allowDebt = customerName !== 'Oddiy mijoz' && customerName !== undefined;
+  
+  // SENIOR SOLUTION: Focus cash input when modal opens
+  useEffect(() => {
+    setTimeout(() => {
+      cashInputRef.current?.focus();
+      cashInputRef.current?.select();
+    }, 100);
+  }, []);
 
   // Fetch customer's total debt when modal opens
   useEffect(() => {
@@ -35,9 +47,19 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
           const response = await api.get(`/customers/${customerId}`);
           const totalDebt = response.data.debt || 0;
           setCustomerTotalDebt(totalDebt);
+          
+          // Check if customer is blacklisted
+          const debtsResponse = await api.get(`/debts/grouped?type=receivable`);
+          const customerGroup = debtsResponse.data.find((g: any) => g.customer._id === customerId);
+          if (customerGroup && customerGroup.status === 'blacklist') {
+            setIsBlacklisted(true);
+          } else {
+            setIsBlacklisted(false);
+          }
         } catch (error) {
           console.error('❌ Error fetching customer debt:', error);
           setCustomerTotalDebt(0);
+          setIsBlacklisted(false);
         }
       }
     };
@@ -85,6 +107,12 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
     const debtCash = parseFloat(debtPaymentCash.replace(/\s/g, '')) || 0;
     const debtCard = parseFloat(debtPaymentCard.replace(/\s/g, '')) || 0;
     const debtPayment = debtCash + debtCard;
+    
+    // CRITICAL: Check if customer is blacklisted and trying to create debt
+    if (isBlacklisted && debtAmount > 0) {
+      alert(t('⚠️ Bu mijoz qora ro\'yxatda! Qarzga sotish mumkin emas!'));
+      return;
+    }
     
     // Check if debt payment exceeds customer's total debt
     if (debtPayment > customerTotalDebt) {
@@ -177,6 +205,7 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
                 {t("Naqd pul")}
               </label>
               <input
+                ref={cashInputRef}
                 type="text"
                 className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
                 placeholder="0"
@@ -202,16 +231,39 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
 
             {/* Debt Amount (Auto-calculated) - Compact */}
             {allowDebt && debtAmount > 0 && (
-              <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30 rounded-xl p-2.5 border-2 border-red-200 dark:border-red-800">
-                <div className="flex items-center justify-between">
+              <div className={`rounded-xl p-3 border-2 ${
+                isBlacklisted 
+                  ? 'bg-gradient-to-r from-gray-700 to-gray-900 border-gray-800'
+                  : 'bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/30 border-red-200 dark:border-red-800'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    <p className="text-xs font-bold text-red-600 dark:text-red-400">{t("Qarz summasi")}</p>
+                    <AlertTriangle 
+                      className={`w-5 h-5 ${isBlacklisted ? 'text-white' : 'text-red-600 dark:text-red-400'}`}
+                      style={isBlacklisted ? { color: '#ffffff' } : undefined}
+                    />
+                    <p 
+                      className={`text-sm font-bold ${isBlacklisted ? 'text-white' : 'text-red-600 dark:text-red-400'}`}
+                      style={isBlacklisted ? { color: '#ffffff' } : undefined}
+                    >
+                      {isBlacklisted ? t("⚠️ QORA RO'YXAT") : t("Qarz summasi")}
+                    </p>
                   </div>
-                  <p className="text-base font-black text-red-700 dark:text-red-300">
-                    {formatNumber(debtAmount)} <span className="text-xs">{t("so'm")}</span>
+                  <p 
+                    className={`text-lg font-black ${isBlacklisted ? 'text-white' : 'text-red-700 dark:text-red-300'}`}
+                    style={isBlacklisted ? { color: '#ffffff' } : undefined}
+                  >
+                    {formatNumber(debtAmount)} <span className="text-sm" style={isBlacklisted ? { color: '#ffffff' } : undefined}>{t("so'm")}</span>
                   </p>
                 </div>
+                {isBlacklisted && (
+                  <p 
+                    className="text-sm font-semibold text-center"
+                    style={{ color: '#ffffff' }}
+                  >
+                    {t("Bu mijozga qarzga sotish taqiqlangan!")}
+                  </p>
+                )}
               </div>
             )}
 
@@ -342,7 +394,7 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
                 e.preventDefault();
                 handleSubmit(e);
               }}
-              disabled={isSubmitting || (allowDebt && debtAmount > 0 && !customerName) || (!allowDebt && paidAmount < total)}
+              disabled={isSubmitting || (allowDebt && debtAmount > 0 && !customerName) || (!allowDebt && paidAmount < total) || (isBlacklisted && debtAmount > 0)}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? t("Yuklanmoqda...") : t("To'lash")}

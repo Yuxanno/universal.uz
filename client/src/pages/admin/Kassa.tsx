@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
  Search, RotateCcw, Save, CreditCard, Trash2, X, 
@@ -48,12 +48,20 @@ export default function Kassa() {
  const { showAlert, AlertComponent } = useAlert();
  const toast = useToast();
  const { displayedProducts, loading, refreshProducts } = useProducts();
- const { customers, addCustomer } = useCustomers();
+ const { customers, addCustomer, fetchCustomers } = useCustomers();
  
  // Debug: Log customers
  useEffect(() => {
  console.log('👥 Customers loaded:', customers.length, customers);
  }, [customers]);
+ 
+ // SENIOR SOLUTION: Fetch customers when component mounts
+ useEffect(() => {
+ if (customers.length === 0) {
+ console.log('📥 Fetching customers on Kassa mount...');
+ fetchCustomers();
+ }
+ }, [customers.length, fetchCustomers]);
  
  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
  
@@ -102,6 +110,12 @@ export default function Kassa() {
  region: ''
  });
  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+ 
+ // SENIOR SOLUTION: Inline quantity input for selected product
+ const [quantityInputProduct, setQuantityInputProduct] = useState<Product | null>(null);
+ const [quantityInputValue, setQuantityInputValue] = useState('1');
+ const quantityInputRef = useRef<HTMLInputElement>(null);
+ const searchInputRef = useRef<HTMLInputElement>(null);
  
  // Load price mode from localStorage
  const [priceMode, setPriceMode] = useState<'retail' | 'wholesale'>(() => {
@@ -370,18 +384,72 @@ export default function Kassa() {
  setShowSearch(true);
  }, [displayedProducts]);
  
- // Toggle product selection
- const toggleProductSelection = useCallback((productId: string) => {
- setSelectedProducts(prev => {
- const newSet = new Set(prev);
- if (newSet.has(productId)) {
- newSet.delete(productId);
- } else {
- newSet.add(productId);
- }
- return newSet;
- });
+ // Toggle product selection - SENIOR SOLUTION: Show inline quantity input
+ const toggleProductSelection = useCallback((product: Product) => {
+ // Show quantity input for this product
+ setQuantityInputProduct(product);
+ setQuantityInputValue('1');
  }, []);
+ 
+ // SENIOR SOLUTION: Add product with quantity
+ const addProductWithQuantity = useCallback(() => {
+ if (!quantityInputProduct) return;
+ 
+ const quantity = parseInt(quantityInputValue) || 1;
+ if (quantity < 1) {
+ showAlert('Miqdor 1 dan kam bo\'lmasligi kerak', 'Xatolik', 'danger');
+ return;
+ }
+ 
+ setCart(prev => {
+ const newCart = [...prev];
+ const existing = newCart.find(p => p._id === quantityInputProduct._id);
+ if (existing) {
+ existing.cartQuantity += quantity;
+ } else {
+ // Use priceMode to determine which price to use
+ const selectedPrice = priceMode === 'retail' 
+ ? (quantityInputProduct.dona_narx || quantityInputProduct.price) // Dona narx
+ : quantityInputProduct.price; // Optom narx
+ 
+ newCart.push({
+ ...quantityInputProduct,
+ cartQuantity: quantity,
+ tan_narx: quantityInputProduct.costPrice || quantityInputProduct.tan_narx,
+ optom_narx: quantityInputProduct.price || quantityInputProduct.optom_narx,
+ dona_narx: quantityInputProduct.dona_narx || quantityInputProduct.price
+ });
+ 
+ // Set local price based on priceMode
+ setLocalPrices(prev => ({
+ ...prev,
+ [quantityInputProduct._id]: selectedPrice.toString()
+ }));
+ }
+ return newCart;
+ });
+ 
+ // Reset and focus search input
+ setQuantityInputProduct(null);
+ setQuantityInputValue('1');
+ 
+ // Focus search input after adding
+ setTimeout(() => {
+ searchInputRef.current?.focus();
+ }, 100);
+ 
+ toast.success('Savatga qo\'shildi', quantityInputProduct.name);
+ }, [quantityInputProduct, quantityInputValue, priceMode, showAlert, toast]);
+ 
+ // Focus quantity input when product is selected
+ useEffect(() => {
+ if (quantityInputProduct && quantityInputRef.current) {
+ setTimeout(() => {
+ quantityInputRef.current?.focus();
+ quantityInputRef.current?.select();
+ }, 100);
+ }
+ }, [quantityInputProduct]);
  
  // Add all selected products to cart
  const addSelectedToCart = useCallback(() => {
@@ -399,12 +467,24 @@ export default function Kassa() {
  if (existing) {
  existing.cartQuantity += 1;
  } else {
+ // SENIOR SOLUTION: Use priceMode to determine which price to use
+ const selectedPrice = priceMode === 'retail' 
+ ? (product.dona_narx || product.price) // Dona narx
+ : product.price; // Optom narx
+ 
  newCart.push({
  ...product,
  cartQuantity: 1,
  tan_narx: product.costPrice || product.tan_narx,
- optom_narx: product.price || product.optom_narx
+ optom_narx: product.price || product.optom_narx,
+ dona_narx: product.dona_narx || product.price
  });
+ 
+ // Set local price based on priceMode
+ setLocalPrices(prev => ({
+ ...prev,
+ [product._id]: selectedPrice.toString()
+ }));
  }
  });
  return newCart;
@@ -414,7 +494,7 @@ export default function Kassa() {
  setSearchQuery('');
  setSelectedProducts(new Set());
  // toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`); // Disabled
- }, [selectedProducts, displayedProducts, showAlert, toast]);
+ }, [selectedProducts, displayedProducts, showAlert, priceMode]);
  
  // Calculate total amount
  const totalAmount = useMemo(() => {
@@ -923,8 +1003,8 @@ window.onload = function() {
  </header>
 
  {/* Main Content */}
- <div className="flex-1 flex overflow-hidden p-3 lg:p-6 pb-28 lg:pb-20 max-w-full">
- {/* Cart Section - Full Width */}
+ <div className="flex-1 flex overflow-hidden p-3 lg:p-6 pb-28 lg:pb-20 max-w-full gap-4">
+ {/* Cart Section - Left Side */}
  <div className="flex-1 flex flex-col overflow-hidden max-w-full">
  {/* Table */}
  <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm max-w-full">
@@ -974,6 +1054,150 @@ window.onload = function() {
  )}
  </div>
  </div>
+ </div>
+ </div>
+ 
+ {/* Search Panel - RIGHT SIDE (Desktop Only) */}
+ <div className="hidden lg:flex flex-col w-[450px] bg-white dark:bg-neutral-800 rounded-2xl border-2 border-red-200 dark:border-neutral-700 overflow-hidden shadow-lg">
+ {/* Header */}
+ <div className="p-6 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+ <div className="flex items-center gap-4 mb-4">
+ <div className="w-14 h-14 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+ <Search className="w-7 h-7 text-white" strokeWidth={2.5} />
+ </div>
+ <div className="flex-1">
+ <h3 className="text-xl font-black text-slate-900 dark:text-neutral-100">
+ {tKey("Mahsulot qidirish")}
+ </h3>
+ <p className="text-sm font-bold text-slate-700 dark:text-neutral-400">
+ {tKey("Bosing va miqdorni kiriting")}
+ </p>
+ </div>
+ </div>
+ <div className="relative flex items-center">
+ <Search className="absolute left-4 w-5 h-5 text-slate-500 pointer-events-none" />
+ <input
+ ref={searchInputRef}
+ type="text"
+ placeholder={tKey("Mahsulot nomi yoki kodi...")}
+ value={searchQuery}
+ onChange={e => handleSearch(e.target.value)}
+ className="w-full pl-12 pr-4 py-3 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-red-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
+ />
+ </div>
+ </div>
+ {/* Results */}
+ <div className="flex-1 overflow-auto p-4 bg-white dark:bg-neutral-800">
+ {loading ? (
+ <div className="flex flex-col items-center justify-center py-12">
+ <div className="w-12 h-12 border-4 border-red-200 border-t-red-500 rounded-full animate-spin mb-4"></div>
+ <p className="text-sm font-semibold text-slate-600">Qidirilmoqda...</p>
+ </div>
+ ) : searchResults.length === 0 ? (
+ <div className="flex flex-col items-center justify-center py-12">
+ <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
+ <Package className="w-10 h-10 text-red-500" />
+ </div>
+ <p className="text-lg font-bold text-slate-900 dark:text-neutral-100">{tKey("Mahsulot topilmadi")}</p>
+ <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400 mt-1">{tKey("Boshqa nom yoki kod bilan qidiring")}</p>
+ </div>
+ ) : (
+ <div className="space-y-3">
+ {searchResults.map(product => {
+ const isExpanded = quantityInputProduct?._id === product._id;
+ return (
+ <div
+ key={product._id}
+ className={`relative flex flex-col gap-3 p-3 rounded-xl transition-all border-2 ${
+ isExpanded
+ ? 'bg-green-50 dark:bg-green-900/30 border-green-500 shadow-lg'
+ : 'bg-white dark:bg-red-900/20 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 hover:border-red-400 hover:shadow-lg cursor-pointer'
+ }`}
+ onClick={() => !isExpanded && toggleProductSelection(product)}
+ >
+ {/* Product Info Row */}
+ <div className="flex items-center gap-3">
+ {/* Product Icon */}
+ <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform flex-shrink-0 ${
+ isExpanded
+ ? 'bg-green-200 dark:bg-green-800/50 scale-105'
+ : 'bg-red-100 dark:bg-red-900/30'
+ }`}>
+ <Package className={`w-6 h-6 ${isExpanded ? 'text-green-700' : 'text-red-600 dark:text-red-400'}`} />
+ </div>
+ 
+ {/* Product Info */}
+ <div className="flex-1 min-w-0">
+ <p className="font-black text-slate-900 dark:text-neutral-100 truncate text-sm">
+ <ProductNameDisplay 
+ name={product.name}
+ priceClassName={isExpanded ? "text-green-600 dark:text-green-400 font-black" : "text-red-600 dark:text-red-400 font-black"}
+ />
+ </p>
+ <p className="text-xs text-slate-600 dark:text-neutral-400 font-bold">Kod: {product.code}</p>
+ <div className="flex items-center gap-2 text-xs mt-1">
+ <span className="font-bold text-slate-600">Tan:</span>
+ <span className="font-bold text-slate-700 dark:text-neutral-400">
+ {((product as any).costPrice || 0).toLocaleString()}
+ </span>
+ <span className="font-bold text-slate-600">•</span>
+ <span className={`font-black ${isExpanded ? 'text-green-600' : 'text-red-600 dark:text-red-400'}`}>
+ {product.price.toLocaleString()}
+ </span>
+ </div>
+ </div>
+ 
+ {/* Right side: Quantity input or close button */}
+ {isExpanded ? (
+ <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+ <input
+ ref={quantityInputRef}
+ type="number"
+ min="1"
+ value={quantityInputValue}
+ onChange={(e) => setQuantityInputValue(e.target.value)}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') {
+ e.preventDefault();
+ addProductWithQuantity();
+ }
+ if (e.key === 'Escape') {
+ setQuantityInputProduct(null);
+ setQuantityInputValue('1');
+ }
+ }}
+ className="w-16 px-2 py-1.5 text-base font-black text-center bg-white dark:bg-neutral-700 border-2 border-green-400 dark:border-green-600 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 text-slate-900 dark:text-neutral-100 transition-all"
+ placeholder="1"
+ autoFocus
+ />
+ <button
+ onClick={addProductWithQuantity}
+ className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full transition-all shadow-lg hover:shadow-xl flex items-center justify-center flex-shrink-0"
+ title="Savatga qo'shish"
+ >
+ <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+ </svg>
+ </button>
+ </div>
+ ) : (
+ <button
+ onClick={(e) => {
+ e.stopPropagation();
+ setQuantityInputProduct(null);
+ setQuantityInputValue('1');
+ }}
+ className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex-shrink-0 opacity-0"
+ >
+ <X className="w-5 h-5 text-slate-600 dark:text-neutral-400" />
+ </button>
+ )}
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ )}
  </div>
  </div>
  </div>
@@ -1060,11 +1284,11 @@ window.onload = function() {
  </div>
  </div>
 
- {/* Search Modal */}
+ {/* Search Modal - MOBILE ONLY (RIGHT SIDE) */}
  {showSearch && (
- <div className="fixed inset-0 z-50 flex items-start lg:items-center justify-center pt-4 lg:pt-0 px-4">
+ <div className="lg:hidden fixed inset-0 z-50 flex items-stretch justify-end">
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowSearch(false)} />
- <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-red-200">
+ <div className="bg-white dark:bg-neutral-800 w-full max-w-md shadow-2xl relative z-10 overflow-hidden flex flex-col animate-slide-in-right border-l-2 border-red-200">
  {/* Header */}
  <div className="p-6 bg-white dark:bg-neutral-800">
  <div className="flex items-center justify-between mb-4">
@@ -1303,11 +1527,11 @@ window.onload = function() {
  />
  )}
 
- {/* Return Search Modal */}
+ {/* Return Search Modal - RIGHT SIDE */}
  {showReturnSearch && (
- <div className="fixed inset-0 z-50 flex items-start lg:items-center justify-center pt-4 lg:pt-0 px-4">
+ <div className="fixed inset-0 z-50 flex items-stretch justify-end">
  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => { setShowReturnSearch(false); if (cart.length === 0) setIsReturnMode(false); }} />
- <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-warning-200">
+ <div className="bg-white dark:bg-neutral-800 w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden flex flex-col animate-slide-in-right border-l-2 border-warning-200">
  {/* Header */}
  <div className="p-6 bg-white dark:bg-neutral-800">
  <div className="flex items-center justify-between mb-4">

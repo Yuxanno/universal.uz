@@ -1,15 +1,25 @@
-import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import Sidebar, { adminMenuItems } from '../components/Sidebar';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function AdminLayout() {
- const [collapsed, setCollapsed] = useState(false);
+ const location = useLocation();
+ // SENIOR SOLUTION: Auto-collapse sidebar on Kassa page
+ const isKassaPage = location.pathname === '/admin/kassa';
+ const [collapsed, setCollapsed] = useState(isKassaPage);
  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
  const { user, logout } = useAuth();
  const { script, setScript, t } = useLanguage();
+ 
+ // SENIOR SOLUTION: Auto-collapse sidebar when navigating to Kassa
+ useEffect(() => {
+ if (isKassaPage) {
+ setCollapsed(true);
+ }
+ }, [isKassaPage]);
 
  return (
  <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">

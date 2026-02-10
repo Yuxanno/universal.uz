@@ -131,6 +131,28 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
+    const { name, phone } = req.body;
+    
+    // Check if customer with same name already exists
+    const existingByName = await Customer.findOne({ 
+      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } 
+    });
+    if (existingByName) {
+      return res.status(400).json({ 
+        message: 'Bu ismdagi mijoz allaqachon mavjud',
+        field: 'name'
+      });
+    }
+    
+    // Check if customer with same phone already exists
+    const existingByPhone = await Customer.findOne({ phone: phone.trim() });
+    if (existingByPhone) {
+      return res.status(400).json({ 
+        message: 'Bu telefon raqamli mijoz allaqachon mavjud',
+        field: 'phone'
+      });
+    }
+    
     const customer = new Customer({ ...req.body, createdBy: req.user._id });
     await customer.save();
     res.status(201).json(customer);
@@ -141,7 +163,38 @@ router.post('/', auth, authorize('admin', 'cashier'), async (req, res) => {
 
 router.put('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
-    const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { name, phone } = req.body;
+    const customerId = req.params.id;
+    
+    // SENIOR SOLUTION: Check for duplicates when updating (excluding current customer)
+    if (name) {
+      const existingByName = await Customer.findOne({ 
+        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+        _id: { $ne: customerId } // Exclude current customer
+      });
+      if (existingByName) {
+        return res.status(400).json({ 
+          message: 'Bu ismdagi mijoz allaqachon mavjud',
+          field: 'name'
+        });
+      }
+    }
+    
+    // Check if customer with same phone already exists (excluding current customer)
+    if (phone) {
+      const existingByPhone = await Customer.findOne({ 
+        phone: phone.trim(),
+        _id: { $ne: customerId } // Exclude current customer
+      });
+      if (existingByPhone) {
+        return res.status(400).json({ 
+          message: 'Bu telefon raqamli mijoz allaqachon mavjud',
+          field: 'phone'
+        });
+      }
+    }
+    
+    const customer = await Customer.findByIdAndUpdate(customerId, req.body, { new: true });
     if (!customer) return res.status(404).json({ message: 'Mijoz topilmadi' });
     res.json(customer);
   } catch (error) {

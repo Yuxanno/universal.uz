@@ -11,6 +11,8 @@ import { useAlert } from '../../hooks/useAlert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/ToastContainer';
 import DebtDetailsModal from '../../components/debts/DebtDetailsModal';
 import AddDebtModal from '../../components/debts/AddDebtModal';
 import { getSocket } from '../../utils/socket';
@@ -47,6 +49,10 @@ const DebtRow = memo(({
   isAdmin: boolean;
   t: (key: string) => string;
 }) => {
+  if (!group.customer || !group.customer.name) {
+    return null;
+  }
+
   return (
     <div 
       className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors"
@@ -132,6 +138,10 @@ const DebtMobileCard = memo(({
   isAdmin: boolean;
   t: (key: string) => string;
 }) => {
+  if (!group.customer || !group.customer.name) {
+    return null;
+  }
+
   return (
     <div className="p-4">
       <div className="flex items-start gap-3">
@@ -193,6 +203,7 @@ export default function Debts() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { AlertComponent } = useAlert();
+  const { toasts, success, error, removeToast } = useToast();
   const [groupedDebts, setGroupedDebts] = useState<GroupedDebt[]>([]);
   const [stats, setStats] = useState({
     total: 0, pending: 0, today: 0, overdue: 0, paid: 0, totalAmount: 0
@@ -201,6 +212,7 @@ export default function Debts() {
   const [selectedDebtForDetails, setSelectedDebtForDetails] = useState<Debt | null>(null);
   const [selectedGroupForDetails, setSelectedGroupForDetails] = useState<GroupedDebt | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [debtType, setDebtType] = useState<'receivable' | 'payable'>('receivable');
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,7 +221,20 @@ export default function Debts() {
   // Debounced search for better performance
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
+  // Memoized debt type change handler
+  const handleDebtTypeChange = useCallback((newType: 'receivable' | 'payable') => {
+    if (newType !== debtType) {
+      setDebtType(newType);
+      setStatusFilter('all');
+      setSearchQuery('');
+    }
+  }, [debtType]);
+
   useEffect(() => {
+    // Reset state when debtType changes to prevent stale data
+    setGroupedDebts([]);
+    setLoading(true);
+    
     // Parallel yuklash - tezroq ishlaydi
     Promise.all([
       fetchGroupedDebts(),
@@ -264,6 +289,7 @@ export default function Debts() {
   const fetchStats = async () => {
     try {
       const res = await api.get(`/debts/stats?type=${debtType}`);
+      console.log(`📊 Stats for ${debtType}:`, res.data);
       setStats(res.data);
     } catch (err) { 
       console.error('Error fetching stats:', err); 
@@ -322,29 +348,59 @@ export default function Debts() {
   }, [debtType]);
 
   const handleDeleteDebt = useCallback(async (debtId: string) => {
-    if (!window.confirm(t("Qarzni o'chirmoqchimisiz?"))) return;
+    if (!window.confirm(t("Qarzni o'chirmoqchimisiz? Bu amal qaytarilmaydi!"))) return;
     
     try {
       await api.delete(`/debts/${debtId}`);
-      fetchGroupedDebts();
-      fetchStats();
+      await fetchGroupedDebts();
+      await fetchStats();
+      success(t("Qarz o'chirildi"));
     } catch (err) {
       console.error('Error deleting debt:', err);
-      alert(t('Xatolik yuz berdi!'));
+      error(t('Xatolik yuz berdi!'));
     }
-  }, [t]);
+  }, [t, success, error]);
+
+  const handleToggleBlacklist = useCallback(async (group: GroupedDebt) => {
+    const isCurrentlyBlacklisted = group.status === 'blacklist';
+    const confirmMessage = isCurrentlyBlacklisted 
+      ? t("Mijozni qora ro'yxatdan chiqarmoqchimisiz?")
+      : t("Mijozni qora ro'yxatga qo'shmoqchimisiz? Qora ro'yxatdagi mijozlarga qarzga sotish mumkin emas!");
+    
+    if (!window.confirm(confirmMessage)) return;
+    
+    try {
+      // Use the first debt ID to toggle blacklist for all customer debts
+      if (group.debts.length > 0) {
+        await api.put(`/debts/${group.debts[0]._id}/blacklist`, {
+          blacklist: !isCurrentlyBlacklisted
+        });
+        await fetchGroupedDebts();
+        await fetchStats();
+        success(isCurrentlyBlacklisted ? t("Qora ro'yxatdan chiqarildi") : t("Qora ro'yxatga qo'shildi"));
+      }
+    } catch (err) {
+      console.error('Error toggling blacklist:', err);
+      error(t('Xatolik yuz berdi!'));
+    }
+  }, [t, success, error]);
 
   // Memoized filtered debts with debounced search
   const filteredGroupedDebts = useMemo(() => {
     return groupedDebts.filter(group => {
-      const name = group.customer?.name || '';
-      const phone = group.customer?.phone || '';
+      // Skip groups without customer data
+      if (!group.customer || !group.customer.name) {
+        return false;
+      }
+      
+      const name = group.customer.name || '';
+      const phone = group.customer.phone || '';
       const matchesSearch = name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         phone.includes(debouncedSearchQuery);
       
       let matchesStatus = true;
-      if (statusFilter === 'pending') {
-        matchesStatus = group.status === 'pending';
+      if (statusFilter === 'blacklist') {
+        matchesStatus = group.status === 'blacklist';
       } else if (statusFilter === 'overdue') {
         matchesStatus = group.status === 'overdue';
       } else if (statusFilter === 'paid') {
@@ -376,11 +432,11 @@ export default function Debts() {
       isNumber: true 
     },
     { 
-      label: t('Kutilmoqda'), 
-      value: filteredGroupedDebts.filter(g => g.status === 'pending').length, // Pending mijozlar soni
-      icon: Clock, 
-      color: 'amber', 
-      filter: 'pending',
+      label: t('Qora ro\'yxat'), 
+      value: filteredGroupedDebts.filter(g => g.status === 'blacklist').length, // Blacklist mijozlar soni
+      icon: AlertTriangle, 
+      color: 'black', 
+      filter: 'blacklist',
       isNumber: true 
     },
     { 
@@ -405,6 +461,7 @@ export default function Debts() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 pb-20 lg:pb-0">
       {AlertComponent}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       
       <header className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 lg:px-6 h-16 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
@@ -435,7 +492,7 @@ export default function Debts() {
           {isAdmin && (
             <div className="inline-flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl shadow-sm">
               <button
-                onClick={() => { setDebtType('receivable'); setStatusFilter('all'); }}
+                onClick={() => handleDebtTypeChange('receivable')}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
                   debtType === 'receivable' 
                     ? 'bg-white dark:bg-neutral-700 text-primary-600 dark:text-primary-400 shadow-md scale-105' 
@@ -446,7 +503,7 @@ export default function Debts() {
                 {t("Menga qarzdor")}
               </button>
               <button
-                onClick={() => { setDebtType('payable'); setStatusFilter('all'); }}
+                onClick={() => handleDebtTypeChange('payable')}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all ${
                   debtType === 'payable' 
                     ? 'bg-white dark:bg-neutral-700 text-red-600 dark:text-red-400 shadow-md scale-105' 
@@ -492,7 +549,7 @@ export default function Debts() {
               <div className="flex items-center justify-between mb-4">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-lg ${
                   stat.color === 'blue' ? 'from-blue-400 to-blue-600' :
-                  stat.color === 'amber' ? 'from-amber-400 to-amber-600' :
+                  stat.color === 'black' ? 'from-gray-700 to-gray-900' :
                   stat.color === 'primary' ? 'from-primary-500 to-primary-700' :
                   'from-red-500 to-red-700'
                 }`}>
@@ -599,7 +656,7 @@ export default function Debts() {
               <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
                 {filteredGroupedDebts.map(group => (
                   <DebtRow
-                    key={group.customer._id}
+                    key={group.customer?._id || Math.random()}
                     group={group}
                     onOpenDetails={openDebtDetailsModal}
                     onDelete={handleDeleteDebt}
@@ -614,7 +671,7 @@ export default function Debts() {
             <div className="lg:hidden divide-y divide-neutral-100 dark:divide-neutral-700">
               {filteredGroupedDebts.map(group => (
                 <DebtMobileCard
-                  key={group.customer._id}
+                  key={group.customer?._id || Math.random()}
                   group={group}
                   onOpenDetails={openDebtDetailsModal}
                   onDelete={handleDeleteDebt}
@@ -634,6 +691,7 @@ export default function Debts() {
           onClose={handleDetailsModalClose}
           onUpdate={handleDetailsModalUpdate}
           onAddDebt={() => {
+            setSelectedCustomerId(selectedGroupForDetails.customer._id);
             setShowDetailsModal(false);
             setShowAddModal(true);
           }}
@@ -642,7 +700,12 @@ export default function Debts() {
 
       {showAddModal && (
         <AddDebtModal
-          onClose={() => setShowAddModal(false)}
+          customerId={selectedCustomerId}
+          debtType={debtType}
+          onClose={() => {
+            setShowAddModal(false);
+            setSelectedCustomerId(undefined);
+          }}
           onSuccess={() => {
             fetchGroupedDebts();
             fetchStats();
