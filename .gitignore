@@ -1,48 +1,60 @@
 # Dependencies
 node_modules/
+*/node_modules/
 
-# Environment files - MAXFIY MA'LUMOTLAR!
+# Environment variables
 .env
 .env.local
-.env.development
-.env.production
-.env.test
+.env.*.local
 server/.env
 client/.env
-
-# Build outputs
-dist/
-build/
 
 # Logs
 logs/
 *.log
 npm-debug.log*
-
-# IDE
-.vscode/
-.idea/
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Cache
-.cache/
-.npm/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Uploads
+uploads/
+server/uploads/
+
+# Testing
+coverage/
+.nyc_output/
 
 # Temporary files
-server/temp/
+tmp/
+temp/
 *.tmp
-*.temp
 
-# Telegram data files
-server/.telegram_chat_id
-server/.telegram_chat_ids
-server/.telegram_customers.json
-server/.telegram_users.json
+# PM2
+.pm2/
+ecosystem.config.js
 
-# Database backups
-*.sql
-*.dump
-backup/
+# Database
+*.db
+*.sqlite
+
+# Misc
+.cache/
+.parcel-cache/
