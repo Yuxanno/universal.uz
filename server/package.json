@@ -4,21 +4,29 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
+    "dev:v2": "nodemon src/index.v2.js",
     "start": "node src/index.js",
+    "start:v2": "node src/index.v2.js",
     "create-indexes": "node scripts/createIndexes.js",
     "test-debt-optimization": "node scripts/testDebtOptimization.js",
     "optimize-debts": "node scripts/createDebtIndexesOptimized.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "escpos": "^3.0.0-alpha.6",
     "escpos-usb": "^3.0.0-alpha.4",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.0.3",
+    "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "node-cron": "^3.0.3",
     "node-telegram-bot-api": "^0.66.0",
@@ -26,9 +34,15 @@
     "pdf-to-printer": "^5.6.1",
     "puppeteer": "^24.34.0",
     "qrcode": "^1.5.4",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.2.2"
   }
 }
