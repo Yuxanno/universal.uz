@@ -28,6 +28,7 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBlacklisting, setIsBlacklisting] = useState(false);
 
   // Use group data if available, otherwise use single debt data
   const totalAmount = group ? group.totalAmount : debt.amount;
@@ -80,6 +81,30 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
     }
   };
 
+  const handleToggleBlacklist = async () => {
+    if (isBlacklisting) return;
+    
+    const isCurrentlyBlacklisted = debt.status === 'blacklist';
+    const confirmMessage = isCurrentlyBlacklisted 
+      ? t("Mijozni qora ro'yxatdan chiqarmoqchimisiz?")
+      : t("Mijozni qora ro'yxatga qo'shmoqchimisiz? Qora ro'yxatdagi mijozlarga qarzga sotish mumkin emas!");
+    
+    if (!window.confirm(confirmMessage)) return;
+    
+    setIsBlacklisting(true);
+    try {
+      await api.put(`/debts/${debt._id}/blacklist`, {
+        blacklist: !isCurrentlyBlacklisted
+      });
+      onUpdate();
+    } catch (err) {
+      console.error('Error toggling blacklist:', err);
+      alert(t('Xatolik yuz berdi!'));
+    } finally {
+      setIsBlacklisting(false);
+    }
+  };
+
   const getDebtorName = () => {
     if (debt.customer?.name) return debt.customer.name;
     if ((debt as any).creditorName) return (debt as any).creditorName;
@@ -109,6 +134,7 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
 
   const getStatusText = () => {
     if (debt.status === 'paid') return t("To'langan");
+    if (debt.status === 'blacklist') return t("Qora ro'yxat");
     if (debt.status === 'overdue') return t("Muddati o'tgan");
     return t('Kutilmoqda');
   };
@@ -193,22 +219,6 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
               </div>
             </div>
 
-            {/* Progress Bar */}
-            {debt.status !== 'paid' && (
-              <div className="bg-neutral-50 dark:bg-neutral-700 rounded-xl p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{t("To'lov jarayoni")}</span>
-                  <span className="text-xs font-black text-neutral-900 dark:text-neutral-100">{paymentProgress.toFixed(1)}%</span>
-                </div>
-                <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-600 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500"
-                    style={{ width: `${paymentProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Additional Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Due Date */}
@@ -245,6 +255,117 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
             {/* All Debts List - Show all debts for this customer */}
             {group && group.debts && group.debts.length > 0 && (
               <div>
+                {/* Action Buttons - Before "Barcha qarzlar" */}
+                {debt.status !== 'paid' && !showPaymentForm && (
+                  <div className="flex gap-2 mb-3">
+                    {onAddDebt && (
+                      <button
+                        onClick={onAddDebt}
+                        className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                        {t("Qarz qo'shish")}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowPaymentForm(true)}
+                      className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      {t("To'lov qilish")}
+                    </button>
+                    {/* Blacklist Toggle Button - Icon Only with WHITE icon */}
+                    <button
+                      onClick={handleToggleBlacklist}
+                      disabled={isBlacklisting}
+                      className={`py-3 px-4 rounded-xl transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center ${
+                        debt.status === 'blacklist'
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+                          : 'bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black'
+                      } disabled:opacity-50`}
+                      title={isBlacklisting 
+                        ? t("Yuklanmoqda...") 
+                        : debt.status === 'blacklist' 
+                          ? t("Qora ro'yxatdan chiqarish") 
+                          : t("Qora ro'yxatga qo'shish")
+                      }
+                    >
+                      <AlertTriangle className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                )}
+                
+                {/* Payment Form - Right after buttons */}
+                {showPaymentForm && (
+                  <form onSubmit={handlePayment} className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-2xl p-5 border-2 border-emerald-200 dark:border-emerald-800 space-y-4 mb-3 animate-slideDown">
+                    <h4 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5" />
+                      {t("To'lov qilish")}
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block flex items-center gap-2">
+                          <Banknote className="w-4 h-4" />
+                          {t("Naqd")}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
+                          placeholder="0"
+                          value={formatInputNumber(cashAmount)}
+                          onChange={e => setCashAmount(parseNumber(e.target.value))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          {t("Karta")}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
+                          placeholder="0"
+                          value={formatInputNumber(cardAmount)}
+                          onChange={e => setCardAmount(parseNumber(e.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-neutral-700 rounded-xl p-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{t("Jami to'lov")}:</span>
+                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                          {formatNumber((parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0))} {t("so'm")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPaymentForm(false);
+                          setCashAmount('');
+                          setCardAmount('');
+                        }}
+                        disabled={isSubmitting}
+                        className="flex-1 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95 disabled:opacity-50"
+                      >
+                        {t("Bekor qilish")}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50"
+                      >
+                        {isSubmitting ? t("Yuklanmoqda...") : t("Tasdiqlash")}
+                      </button>
+                    </div>
+                  </form>
+                )}
+                
                 <h4 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   {t("Barcha qarzlar")} ({group.debts.length})
@@ -435,98 +556,6 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* Action Buttons */}
-            {debt.status !== 'paid' && !showPaymentForm && (
-              <div className="grid grid-cols-2 gap-3">
-                {onAddDebt && (
-                  <button
-                    onClick={onAddDebt}
-                    className="py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <DollarSign className="w-5 h-5" />
-                    {t("Qarz qo'shish")}
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowPaymentForm(true)}
-                  className={`py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 ${!onAddDebt ? 'col-span-2' : ''}`}
-                >
-                  <DollarSign className="w-5 h-5" />
-                  {t("To'lov qilish")}
-                </button>
-              </div>
-            )}
-
-            {showPaymentForm && (
-              <form onSubmit={handlePayment} className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/30 rounded-2xl p-5 border-2 border-emerald-200 dark:border-emerald-800 space-y-4">
-                <h4 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  {t("To'lov qilish")}
-                </h4>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mb-2 block flex items-center gap-2">
-                      <Banknote className="w-4 h-4" />
-                      {t("Naqd")}
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-lg font-bold text-center"
-                      placeholder="0"
-                      value={formatInputNumber(cashAmount)}
-                      onChange={e => setCashAmount(parseNumber(e.target.value))}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-2 block flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      {t("Karta")}
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-blue-300 dark:border-blue-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all text-lg font-bold text-center"
-                      placeholder="0"
-                      value={formatInputNumber(cardAmount)}
-                      onChange={e => setCardAmount(parseNumber(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-neutral-700 rounded-xl p-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{t("Jami to'lov")}:</span>
-                    <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                      {formatNumber((parseFloat(cashAmount.replace(/\s/g, '')) || 0) + (parseFloat(cardAmount.replace(/\s/g, '')) || 0))} {t("so'm")}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPaymentForm(false);
-                      setCashAmount('');
-                      setCardAmount('');
-                    }}
-                    disabled={isSubmitting}
-                    className="flex-1 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all font-bold active:scale-95 disabled:opacity-50"
-                  >
-                    {t("Bekor qilish")}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50"
-                  >
-                    {isSubmitting ? t("Yuklanmoqda...") : t("Tasdiqlash")}
-                  </button>
-                </div>
-              </form>
             )}
           </div>
         </div>

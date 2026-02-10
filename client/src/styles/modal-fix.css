@@ -52,6 +52,16 @@ div[class*="fixed"][class*="z-"] .bg-gradient-to-br *,
   color: #000000 !important; /* white */
 }
 
+/* EXCEPTION: Qora ro'yxat ogohlantirishi - OQ MATN */
+div[class*="fixed"][class*="z-"] .from-gray-700 *,
+div[class*="fixed"][class*="z-"] .to-gray-900 *,
+.modal .from-gray-700 *,
+.modal .to-gray-900 *,
+[class*="from-gray-700"][class*="to-gray-900"] *,
+.bg-gradient-to-r.from-gray-700.to-gray-900 * {
+  color: #ffffff !important; /* white for blacklist warning */
+}
+
 /* Tugmalar o'z ranglarini saqlaydi */
 div[class*="fixed"][class*="z-"] button,
 .modal button {

@@ -145,7 +145,7 @@ export default function PhoneInput({
   };
 
   return (
-    <div className={`relative flex items-center ${className}`}>
+    <div className="relative flex items-center">
       <Phone className="absolute left-4 w-5 h-5 text-neutral-400 pointer-events-none" />
       <input
         ref={inputRef}
@@ -157,7 +157,7 @@ export default function PhoneInput({
         placeholder={placeholder}
         required={required}
         disabled={disabled}
-        className="input pl-12"
+        className={`input pl-12 ${className}`}
       />
     </div>
   );

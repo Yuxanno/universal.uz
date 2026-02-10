@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, DollarSign, Calendar, FileText, Package, User, Phone, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, DollarSign, Calendar, FileText, User, Phone, Search } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useCustomers } from '../../context/CustomersContext';
 import { formatInputNumber, parseNumber } from '../../utils/format';
@@ -9,14 +9,41 @@ interface AddDebtModalProps {
   onClose: () => void;
   onSuccess: () => void;
   customerId?: string;
+  debtType?: 'receivable' | 'payable';
 }
 
-export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebtModalProps) {
+export default function AddDebtModal({ onClose, onSuccess, customerId, debtType = 'receivable' }: AddDebtModalProps) {
   const { t } = useLanguage();
-  const { customers } = useCustomers();
+  const { customers, fetchCustomers } = useCustomers();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCustomerSearch, setShowCustomerSearch] = useState(!customerId);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
+  
+  // SENIOR SOLUTION: Fetch customers when modal opens
+  useEffect(() => {
+    if (customers.length === 0) {
+      console.log('📥 Fetching customers in AddDebtModal...');
+      fetchCustomers();
+    }
+  }, [customers.length, fetchCustomers]);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowCustomerSearch(false);
+      }
+    };
+
+    if (showCustomerSearch) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCustomerSearch]);
   
   const [formData, setFormData] = useState({
     customer: customerId || '',
@@ -49,8 +76,8 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
 
     setIsSubmitting(true);
     try {
-      await api.post('/debts', {
-        type: 'receivable',
+      console.log('🔍 Submitting debt:', {
+        type: debtType,
         customer: formData.customer,
         amount: parseFloat(formData.amount.replace(/\s/g, '')),
         dueDate: formData.dueDate || null,
@@ -58,10 +85,21 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
         collateral: formData.collateral
       });
       
+      const response = await api.post('/debts', {
+        type: debtType,
+        customer: formData.customer,
+        amount: parseFloat(formData.amount.replace(/\s/g, '')),
+        dueDate: formData.dueDate || null,
+        description: formData.description,
+        collateral: formData.collateral
+      });
+      
+      console.log('✅ Debt created:', response.data);
+      
       onSuccess();
       onClose();
     } catch (err: any) {
-      console.error('Error adding debt:', err);
+      console.error('❌ Error adding debt:', err);
       alert(err.response?.data?.message || t('Xatolik yuz berdi!'));
     } finally {
       setIsSubmitting(false);
@@ -69,9 +107,11 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
   };
 
   const handleCustomerSelect = (customerId: string) => {
+    console.log('👤 Customer selected:', customerId);
     setFormData({ ...formData, customer: customerId });
     const customer = customers.find(c => c._id === customerId);
     if (customer) {
+      console.log('👤 Customer found:', customer.name, customer.phone);
       setCustomerSearchQuery(`${customer.name} - ${customer.phone}`);
     }
     setShowCustomerSearch(false);
@@ -104,42 +144,14 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
         {/* Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Customer Selection */}
-          <div>
-            <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
-              <User className="w-4 h-4" />
-              {t("Mijoz")} *
-            </label>
-            
-            {selectedCustomer ? (
-              <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border-2 border-primary-200 dark:border-primary-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-primary-900 dark:text-primary-100">{selectedCustomer.name}</p>
-                    {selectedCustomer.phone && (
-                      <p className="text-sm text-primary-600 dark:text-primary-400 flex items-center gap-1 mt-1">
-                        <Phone className="w-3 h-3" />
-                        {selectedCustomer.phone}
-                      </p>
-                    )}
-                  </div>
-                  {!customerId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, customer: '' });
-                        setCustomerSearchQuery('');
-                        setShowCustomerSearch(true);
-                      }}
-                      className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-                    >
-                      {t("O'zgartirish")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          {!customerId && (
+            <div>
+              <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
+                <User className="w-4 h-4" />
+                {t("Mijoz")} *
+              </label>
+              <div className="relative" ref={searchRef}>
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 pointer-events-none" />
                 <input
                   type="text"
                   value={customerSearchQuery}
@@ -148,30 +160,95 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
                     setShowCustomerSearch(true);
                   }}
                   onFocus={() => setShowCustomerSearch(true)}
-                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 transition-all"
-                  placeholder={t("Mijoz nomi yoki telefon...")}
+                  className="w-full pl-12 pr-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all"
+                  placeholder={t("Mijoz qidirish...")}
+                  required={!formData.customer}
                 />
                 
-                {showCustomerSearch && customerSearchQuery && filteredCustomers.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl shadow-xl max-h-60 overflow-y-auto z-10">
-                    {filteredCustomers.map(customer => (
-                      <button
-                        key={customer._id}
-                        type="button"
-                        onClick={() => handleCustomerSelect(customer._id)}
-                        className="w-full px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors border-b border-neutral-100 dark:border-neutral-600 last:border-0"
-                      >
-                        <p className="font-semibold text-neutral-900 dark:text-neutral-100">{customer.name}</p>
-                        {customer.phone && (
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400">{customer.phone}</p>
-                        )}
-                      </button>
-                    ))}
+                {showCustomerSearch && (
+                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-600 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="p-4 text-center text-neutral-500 dark:text-neutral-400">
+                        {t("Mijoz topilmadi")}
+                      </div>
+                    ) : (
+                      filteredCustomers.map(customer => (
+                        <button
+                          key={customer._id}
+                          type="button"
+                          onClick={() => handleCustomerSelect(customer._id)}
+                          className="w-full px-4 py-3 text-left hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors flex items-center gap-3 border-b border-neutral-200 dark:border-neutral-600 last:border-0"
+                        >
+                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span className="font-semibold text-primary-600 dark:text-primary-400">{customer.name.charAt(0)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{customer.name}</p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">{customer.phone}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Customer Info - Read Only (when customerId is provided) */}
+          {customerId && selectedCustomer && (
+            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border-2 border-primary-200 dark:border-primary-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">{t("Mijoz")}</p>
+                  <p className="font-bold text-primary-900 dark:text-primary-100">{selectedCustomer.name}</p>
+                  {selectedCustomer.phone && (
+                    <p className="text-sm text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      {selectedCustomer.phone}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Customer Display (when selected from search) */}
+          {!customerId && formData.customer && selectedCustomer && (
+            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border-2 border-primary-200 dark:border-primary-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary-500 rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">{t("Tanlangan mijoz")}</p>
+                    <p className="font-bold text-primary-900 dark:text-primary-100">{selectedCustomer.name}</p>
+                    {selectedCustomer.phone && (
+                      <p className="text-sm text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {selectedCustomer.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, customer: '' });
+                    setCustomerSearchQuery('');
+                    setShowCustomerSearch(true);
+                  }}
+                  className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                >
+                  {t("O'zgartirish")}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Amount */}
           <div>
@@ -215,21 +292,6 @@ export default function AddDebtModal({ onClose, onSuccess, customerId }: AddDebt
               className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all resize-none"
               rows={3}
               placeholder={t("Qarz haqida qo'shimcha ma'lumot...")}
-            />
-          </div>
-
-          {/* Collateral */}
-          <div>
-            <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2 flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              {t("Zalog")} ({t("ixtiyoriy")})
-            </label>
-            <input
-              type="text"
-              value={formData.collateral}
-              onChange={(e) => setFormData({ ...formData, collateral: e.target.value })}
-              className="w-full px-4 py-3 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-2 border-neutral-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all"
-              placeholder={t("Masalan: Telefon, Guvohnoma...")}
             />
           </div>
         </form>

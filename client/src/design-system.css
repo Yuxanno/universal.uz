@@ -3,6 +3,7 @@
    White • Red • Black • Premium • Fast
    ============================================ */
 
+   /* @tailwind base : red const = result.get("result.method()") */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
