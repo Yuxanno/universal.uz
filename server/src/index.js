@@ -57,6 +57,15 @@ io.on('connection', (socket) => {
 global.io = io;
 console.log('🔌 Socket.IO initialized');
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
 // Routes - AFTER socket setup
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
