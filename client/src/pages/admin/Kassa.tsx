@@ -532,6 +532,49 @@ export default function Kassa() {
  // toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`); // Disabled
  }, [selectedProducts, displayedProducts, showAlert, priceMode]);
  
+ // Load purchase to cart (Tarix modal)
+ const loadPurchaseToCart = useCallback((receipt: any) => {
+ // Load receipt items to cart
+ const items = receipt.items.map((item: any) => {
+ // Find product from displayedProducts to get full info
+ const product = displayedProducts.find(p => p._id === item.product);
+ 
+ return {
+ _id: item.product,
+ name: item.name,
+ code: item.code,
+ price: item.price,
+ cartQuantity: item.quantity,
+ quantity: product?.quantity || 0, // Current stock quantity
+ costPrice: product?.costPrice || 0,
+ tan_narx: product?.costPrice || 0,
+ optom_narx: product?.price || item.price,
+ dona_narx: item.price,
+ warehouse: product?.warehouse || '',
+ _warehouseName: product?._warehouseName || ''
+ };
+ });
+ 
+ setCart(items);
+ 
+ // Set local prices
+ const prices: {[key: string]: string} = {};
+ items.forEach((item: any) => {
+ prices[item._id] = item.price.toString();
+ });
+ setLocalPrices(prices);
+ 
+ // Set customer if exists
+ if (receipt.customer?._id) {
+ setSelectedCustomer(receipt.customer._id);
+ }
+ 
+ // Close modal
+ setShowPurchaseHistory(false);
+ 
+ toast.success('Xarid kassaga yuklandi', `${items.length} ta mahsulot`);
+ }, [displayedProducts, toast]);
+ 
  // Open purchase history (Tarix)
  const openPurchaseHistory = useCallback(async () => {
  // Modalni darhol ochish - tezroq UI
@@ -1762,8 +1805,11 @@ window.onload = function() {
  const isExpanded = selectedReceipt?._id === receipt._id;
  return (
  <div key={receipt._id} className="bg-white dark:bg-neutral-800 border-2 rounded-2xl overflow-hidden transition-all hover:shadow-md border-neutral-200 dark:border-neutral-600 hover:border-indigo-400">
- {/* Main Card */}
- <div className="p-4">
+ {/* Main Card - Clickable to load to cart */}
+ <div 
+ className="p-4 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-colors"
+ onClick={() => loadPurchaseToCart(receipt)}
+ >
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3 flex-1 min-w-0">
  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/30">
@@ -1789,7 +1835,10 @@ window.onload = function() {
  </div>
  </div>
  <button 
- onClick={() => setSelectedReceipt(isExpanded ? null : receipt)}
+ onClick={(e) => {
+ e.stopPropagation(); // Prevent card click
+ setSelectedReceipt(isExpanded ? null : receipt);
+ }}
  className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ml-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
  >
  <svg className={`w-5 h-5 text-neutral-600 dark:text-neutral-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1803,7 +1852,7 @@ window.onload = function() {
  {isExpanded && (
  <div className="border-t border-neutral-200 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-700/50 p-4 animate-fadeIn">
  {/* Products List */}
- <div className="space-y-2">
+ <div className="space-y-2 mb-4">
  <h4 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-3">Mahsulotlar ro'yxati</h4>
  {receipt.items.map((item: any, index: number) => (
  <div key={index} className="bg-white dark:bg-neutral-700 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
@@ -1831,6 +1880,17 @@ window.onload = function() {
  </div>
  ))}
  </div>
+ 
+ {/* Load to Cart Button */}
+ <button
+ onClick={() => loadPurchaseToCart(receipt)}
+ className="w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center gap-2"
+ >
+ <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+ </svg>
+ Kassaga yuklash
+ </button>
  </div>
  )}
  </div>
