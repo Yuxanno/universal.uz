@@ -525,6 +525,23 @@ export default function HelperScanner() {
  // Convert 'REGULAR_CUSTOMER' to null for backend
  const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
  
+ // YANGI: Avval arxivga saqlash (kassaga yuborilgan deb)
+ const archiveResponse = await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: customerValue,
+ draftId: currentDraftId,
+ status: 'sent_to_kassa' // YANGI STATUS: Kassaga yuborilgan
+ });
+ 
+ console.log('✅ Saved with sent_to_kassa status:', archiveResponse.data._id);
+ 
+ // YANGI: Keyin kassaga yuklash uchun pending receipt yaratish
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -533,21 +550,21 @@ export default function HelperScanner() {
  price: item.price || 0,
  quantity: item.cartQuantity
  })),
- customer: customerValue, // null for regular customer, ID for specific customer
- draftId: currentDraftId,
- status: 'pending' // TUZATILDI: Kassaga yuborish uchun 'pending' status
+ customer: customerValue,
+ draftId: null, // Yangi receipt yaratish
+ status: 'pending' // Kassaga yuborish
  });
+ 
+ console.log('✅ Sent to kassa (pending)');
  
  showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
- // RESET selectedCustomer for next NEW receipt
- setSelectedCustomer(null); // Reset - keyingi xarid uchun qayta so'raladi
+ setSelectedCustomer(null);
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
- isFirstLoad.current = true; // Reset to first load for next cart
- // SENIOR SOLUTION: Clear localStorage after successful send
+ isFirstLoad.current = true;
  localStorage.removeItem(STORAGE_KEYS.CART);
  localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
  localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
@@ -632,7 +649,8 @@ export default function HelperScanner() {
  // Convert 'REGULAR_CUSTOMER' to null for backend
  const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
  
- // Update draft with customer info and set status
+ if (sendToArchive) {
+ // Faqat arxivga saqlash
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -641,27 +659,59 @@ export default function HelperScanner() {
  price: item.price || 0,
  quantity: item.cartQuantity
  })),
- customer: customerValue, // null for regular customer, ID for specific customer
+ customer: customerValue,
  draftId: currentDraftId,
- status: sendToArchive ? 'archived' : 'pending' // TUZATILDI: Kassaga yuborish uchun 'pending', arxivga saqlash uchun 'archived'
+ status: 'archived'
+ });
+ showAlert("Chek arxivga saqlandi!", 'Muvaffaqiyat', 'success');
+ } else {
+ // Kassaga yuborish: avval sent_to_kassa, keyin pending
+ const archiveResponse = await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: customerValue,
+ draftId: currentDraftId,
+ status: 'sent_to_kassa' // YANGI STATUS
  });
  
- showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ console.log('✅ Saved with sent_to_kassa status:', archiveResponse.data._id);
+ 
+ // Keyin kassaga yuborish
+ await api.put('/receipts/draft', {
+ items: cart.map(item => ({
+ product: item._id,
+ name: item.name,
+ code: item.code,
+ price: item.price || 0,
+ quantity: item.cartQuantity
+ })),
+ customer: customerValue,
+ draftId: null, // Yangi receipt
+ status: 'pending'
+ });
+ 
+ console.log('✅ Sent to kassa (pending)');
+ showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ }
+ 
  setCart([]);
  setReceiptStatus('draft');
- // RESET selectedCustomer for next NEW receipt
- setSelectedCustomer(null); // Reset - keyingi xarid uchun qayta so'raladi
+ setSelectedCustomer(null);
  setLastSyncedCart('');
  setCurrentDraftId(null);
  hasLocalChanges.current = false;
- isFirstLoad.current = true; // Reset to first load for next cart
- // SENIOR SOLUTION: Clear localStorage after successful send
+ isFirstLoad.current = true;
  localStorage.removeItem(STORAGE_KEYS.CART);
  localStorage.removeItem(STORAGE_KEYS.CUSTOMER);
  localStorage.removeItem(STORAGE_KEYS.DRAFT_ID);
  localStorage.setItem(STORAGE_KEYS.RECEIPT_STATUS, 'draft');
  if (sendToArchive) {
- loadArchive(); // Reload archive only if saved to archive
+ loadArchive();
  }
  } catch (err: any) {
  console.error('Error sending receipt:', err);
@@ -1359,6 +1409,7 @@ export default function HelperScanner() {
  const customerName = receipt.customer?.name || 'Oddiy mijoz';
  const isPending = receipt.status === 'pending';
  const isArchived = receipt.status === 'archived';
+ const isSentToKassa = receipt.status === 'sent_to_kassa'; // YANGI
  
  return (
  <div 
@@ -1366,6 +1417,8 @@ export default function HelperScanner() {
  className={`bg-white border-2 rounded-2xl overflow-hidden transition-all hover:shadow-md ${
  isPending 
  ? 'border-red-300 hover:border-red-400' 
+ : isSentToKassa
+ ? 'border-green-300 hover:border-green-400'
  : 'border-neutral-200 hover:border-blue-400'
  }`}
  >
@@ -1373,15 +1426,15 @@ export default function HelperScanner() {
  <div
  onClick={() => handleLoadFromArchive(receipt)}
  className={`p-4 cursor-pointer transition-all ${
- isPending ? 'hover:bg-red-50' : 'hover:bg-blue-50'
+ isPending ? 'hover:bg-red-50' : isSentToKassa ? 'hover:bg-green-50' : 'hover:bg-blue-50'
  }`}
  >
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3 flex-1 min-w-0">
  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
- isPending ? 'bg-red-100' : 'bg-blue-100'
+ isPending ? 'bg-red-100' : isSentToKassa ? 'bg-green-100' : 'bg-blue-100'
  }`}>
- <ShoppingCart className={`w-5 h-5 ${isPending ? 'text-red-600' : 'text-blue-600'}`} />
+ <ShoppingCart className={`w-5 h-5 ${isPending ? 'text-red-600' : isSentToKassa ? 'text-green-600' : 'text-blue-600'}`} />
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2">
@@ -1391,7 +1444,12 @@ export default function HelperScanner() {
  Kassada
  </span>
  )}
- {isArchived && (
+ {isSentToKassa && (
+ <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full whitespace-nowrap">
+ Kassaga yuborilgan
+ </span>
+ )}
+ {isArchived && !isSentToKassa && (
  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full whitespace-nowrap">
  Arxiv
  </span>
@@ -1410,7 +1468,7 @@ export default function HelperScanner() {
  setExpandedArchiveId(isExpanded ? null : receipt._id);
  }}
  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ml-2 ${
- isPending ? 'hover:bg-red-100' : 'hover:bg-blue-100'
+ isPending ? 'hover:bg-red-100' : isSentToKassa ? 'hover:bg-green-100' : 'hover:bg-blue-100'
  }`}
  >
  <svg 
