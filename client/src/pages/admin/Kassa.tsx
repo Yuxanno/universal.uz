@@ -77,6 +77,12 @@ export default function Kassa() {
  return saved ? JSON.parse(saved) : {};
  });
  
+ // Load localNames from localStorage - for edited product names
+ const [localNames, setLocalNames] = useState<{[key: string]: string}>(() => {
+ const saved = localStorage.getItem('kassaLocalNames');
+ return saved ? JSON.parse(saved) : {};
+ });
+ 
  // Save cart to localStorage when it changes
  useEffect(() => {
  localStorage.setItem('kassaCart', JSON.stringify(cart));
@@ -86,6 +92,11 @@ export default function Kassa() {
  useEffect(() => {
  localStorage.setItem('kassaLocalPrices', JSON.stringify(localPrices));
  }, [localPrices]);
+ 
+ // Save localNames to localStorage when it changes
+ useEffect(() => {
+ localStorage.setItem('kassaLocalNames', JSON.stringify(localNames));
+ }, [localNames]);
  
  const [showPayment, setShowPayment] = useState(false);
  const [showSearch, setShowSearch] = useState(false);
@@ -390,6 +401,13 @@ export default function Kassa() {
  }));
  }, []);
 
+ const handleNameChange = useCallback((id: string, name: string) => {
+ setLocalNames(prev => ({
+ ...prev,
+ [id]: name
+ }));
+ }, []);
+
  // Simplified search handler - just updates query
  const handleSearch = useCallback((query: string) => {
  setSearchQuery(query);
@@ -669,9 +687,11 @@ export default function Kassa() {
  const saleItems = cart.map(item => {
  const localPrice = localPrices[item._id];
  const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
+ const localName = localNames[item._id];
+ const name = localName !== undefined ? localName : item.name;
  return {
  product: item._id,
- name: item.name,
+ name: name,
  code: item.code,
  price: price,
  quantity: item.cartQuantity
@@ -1194,9 +1214,11 @@ window.onload = function() {
  key={item._id}
  item={item}
  localPrice={localPrices[item._id]}
+ localName={localNames[item._id]}
  isSelected={selectedCartItemId === item._id}
  onQuantityChange={handleQuantityChange}
  onPriceChange={handlePriceChange}
+ onNameChange={handleNameChange}
  onRemove={removeFromCart}
  onClick={handleCartItemClick}
  showAlert={showAlert}

@@ -6,9 +6,11 @@ import ProductNameDisplay from '../shared/ProductNameDisplay';
 interface CartItemRowProps {
  item: CartItem;
  localPrice: string | undefined;
+ localName: string | undefined;
  isSelected: boolean;
  onQuantityChange: (id: string, quantity: number) => void;
  onPriceChange: (id: string, price: string) => void;
+ onNameChange: (id: string, name: string) => void;
  onRemove: (id: string) => void;
  onClick: (id: string) => void;
  showAlert?: (message: string, title: string, type: 'success' | 'danger' | 'warning') => void;
@@ -18,14 +20,31 @@ interface CartItemRowProps {
 const CartItemRow = memo(({
  item,
  localPrice,
+ localName,
  isSelected,
  onQuantityChange,
  onPriceChange,
+ onNameChange,
  onRemove,
  onClick,
  showToast
 }: CartItemRowProps) => {
- const [showFullName, setShowFullName] = useState(false);
+ const [editingName, setEditingName] = useState(false);
+ const [tempName, setTempName] = useState('');
+ 
+ const handleNameDoubleClick = useCallback((e: React.MouseEvent) => {
+ e.stopPropagation();
+ const currentName = localName !== undefined ? localName : item.name;
+ setTempName(currentName);
+ setEditingName(true);
+ }, [localName, item.name]);
+ 
+ const handleNameBlur = useCallback(() => {
+ if (tempName.trim()) {
+ onNameChange(item._id, tempName.trim());
+ }
+ setEditingName(false);
+ }, [tempName, item._id, onNameChange]);
  
  const handleQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
  const val = e.target.value;
@@ -83,7 +102,9 @@ const CartItemRow = memo(({
  {/* Desktop: Table Row Layout */}
  <div
  onClick={handleRowClick}
- className={`hidden md:grid grid-cols-12 px-4 py-3 items-center cursor-pointer transition-all ${
+ className={`hidden md:grid px-4 py-3 items-center cursor-pointer transition-all ${
+ editingName ? 'grid-cols-1' : 'grid-cols-12'
+ } ${
  isInsufficientStock
  ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-red-600 shadow-md'
  : isSelected
@@ -92,15 +113,40 @@ const CartItemRow = memo(({
  }`}
  style={{ gap: '0.5rem' }}
  >
+ {editingName ? (
+ <input
+ type="text"
+ value={tempName}
+ onChange={(e) => setTempName(e.target.value)}
+ onBlur={handleNameBlur}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') {
+ e.currentTarget.blur();
+ }
+ if (e.key === 'Escape') {
+ setEditingName(false);
+ setTempName('');
+ }
+ }}
+ onClick={(e) => e.stopPropagation()}
+ className="w-full px-3 py-2 text-sm font-bold border-2 border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-neutral-700 text-slate-900 dark:text-neutral-100"
+ autoFocus
+ />
+ ) : (
+ <>
  <div className="col-span-1">
  <span className="text-xs font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 rounded">
  {item.code}
  </span>
  </div>
  <div className="col-span-2 min-w-0">
- <div className="text-xs font-bold text-slate-900 dark:text-neutral-100 break-words leading-tight">
+ <div 
+ className="text-xs font-bold text-slate-900 dark:text-neutral-100 break-words leading-tight cursor-pointer hover:text-blue-600 transition-colors select-none"
+ onDoubleClick={handleNameDoubleClick}
+ title="Nomni tahrirlash uchun ikki marta bosing"
+ >
  <ProductNameDisplay 
- name={item.name}
+ name={localName !== undefined ? localName : item.name}
  hidePrice={true}
  />
  </div>
@@ -151,6 +197,8 @@ const CartItemRow = memo(({
  <Trash2 className="w-4 h-4" />
  </button>
  </div>
+ </>
+ )}
  </div>
 
  {/* Mobile: Card Layout - NO HORIZONTAL SCROLL */}
