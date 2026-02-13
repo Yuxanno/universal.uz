@@ -18,6 +18,7 @@ const receiptSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected', 'completed', 'archived'], default: 'completed' },
   isReturn: { type: Boolean, default: false },
+  description: { type: String }, // Description for return records (customer name + date + total)
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   metadata: {
@@ -25,5 +26,10 @@ const receiptSchema = new mongoose.Schema({
     syncedAt: { type: Date }
   }
 }, { timestamps: true });
+
+// Performance indexes for fast queries
+receiptSchema.index({ status: 1, isReturn: 1, createdAt: -1 }); // For history queries
+receiptSchema.index({ createdAt: -1 }); // For sorting by date
+receiptSchema.index({ customer: 1, createdAt: -1 }); // For customer history
 
 module.exports = mongoose.model('Receipt', receiptSchema);

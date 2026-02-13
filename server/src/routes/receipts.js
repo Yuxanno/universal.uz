@@ -9,9 +9,14 @@ const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, startDate, endDate } = req.query;
+    const { status, startDate, endDate, isReturn, limit } = req.query;
     const query = {};
     if (status && status !== 'all') query.status = status;
+    
+    // Filter by isReturn
+    if (isReturn !== undefined) {
+      query.isReturn = isReturn === 'true' || isReturn === true;
+    }
     
     // Date filter for today's sales
     if (startDate && endDate) {
@@ -21,11 +26,16 @@ router.get('/', auth, async (req, res) => {
       };
     }
     
+    // Parse limit (default 50 for performance)
+    const limitNum = limit ? parseInt(limit) : 50;
+    
     const receipts = await Receipt.find(query)
-      .populate('createdBy', 'name role')
-      .populate('processedBy', 'name')
-      .populate('customer', 'name phone')
-      .sort({ createdAt: -1 });
+      .populate('customer', 'name') // Only name, not phone
+      .select('items total paymentMethod customer createdAt status isReturn') // Only needed fields
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .lean(); // Use lean() for faster queries
+    
     res.json(receipts);
   } catch (error) {
     res.status(500).json({ message: 'Server xatosi', error: error.message });
@@ -488,7 +498,7 @@ router.post('/bulk', auth, authorize('admin', 'cashier'), async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { items, total, paymentMethod, customer, isReturn, cashAmount, cardAmount, debtAmount } = req.body;
+    const { items, total, paymentMethod, customer, isReturn, cashAmount, cardAmount, debtAmount, description } = req.body;
     const isHelper = req.user.role === 'helper';
     
     // Check stock availability before sale (not for returns)
@@ -516,6 +526,7 @@ router.post('/', auth, async (req, res) => {
       customer,
       status: isHelper ? 'pending' : 'completed',
       isReturn: isReturn || false,
+      description: description || null, // Add description field
       createdBy: req.user._id
     });
     

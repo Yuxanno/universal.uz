@@ -74,6 +74,7 @@ const CartItemRow = memo(({
  const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
  const totalPrice = price * item.cartQuantity;
  const remainingStock = (item.quantity || 0) - item.cartQuantity;
+ const isInsufficientStock = remainingStock < 0;
 
  return (
  <>
@@ -81,7 +82,9 @@ const CartItemRow = memo(({
  <div
  onClick={handleRowClick}
  className={`hidden md:grid grid-cols-12 gap-3 px-6 py-4 items-center cursor-pointer transition-all ${
- isSelected
+ isInsufficientStock
+ ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-red-600 shadow-md'
+ : isSelected
  ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 shadow-sm'
  : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
  }`}
@@ -91,17 +94,24 @@ const CartItemRow = memo(({
  {item.code}
  </span>
  </div>
- <div className="col-span-2">
+ <div className="col-span-2 min-w-0">
  <ProductNameDisplay 
  name={item.name}
- className="text-sm font-bold text-slate-900 dark:text-neutral-100"
+ className="text-sm font-bold text-slate-900 dark:text-neutral-100 break-words"
  hidePrice={true}
  />
  </div>
  <div className="col-span-1 text-center">
- <span className={`text-sm font-bold ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
+ <div className="flex flex-col items-center gap-1">
+ <span className={`text-sm font-bold ${isInsufficientStock ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
  {remainingStock} ta
  </span>
+ {isInsufficientStock && (
+ <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded">
+ Yetmaydi!
+ </span>
+ )}
+ </div>
  </div>
  <div className="col-span-1 text-right">
  <span className="text-sm font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>
@@ -143,7 +153,9 @@ const CartItemRow = memo(({
  <div
  onClick={handleRowClick}
  className={`md:hidden mx-1 my-2 rounded-xl border-2 transition-all shadow-sm overflow-hidden max-w-full ${
- isSelected
+ isInsufficientStock
+ ? 'bg-red-100 dark:bg-red-900/30 border-red-600 shadow-md'
+ : isSelected
  ? 'bg-red-50 dark:bg-red-900/20 border-red-500 shadow-md'
  : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 active:bg-neutral-50 dark:active:bg-neutral-700/50'
  }`}
@@ -155,9 +167,14 @@ const CartItemRow = memo(({
  <span className="inline-block text-xs font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 rounded whitespace-nowrap">
  {item.code}
  </span>
- <span className={`text-xs font-semibold whitespace-nowrap ${remainingStock < 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-500 dark:text-neutral-400'}`}>
- {remainingStock} ta
+ <span className={`text-xs font-semibold whitespace-nowrap ${isInsufficientStock ? 'text-red-600 dark:text-red-400 font-black' : 'text-neutral-500 dark:text-neutral-400'}`}>
+ {remainingStock} ta {isInsufficientStock && '⚠️'}
  </span>
+ {isInsufficientStock && (
+ <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-200 dark:bg-red-900/50 px-2 py-0.5 rounded whitespace-nowrap">
+ Yetmaydi!
+ </span>
+ )}
  </div>
  <h3 className="text-sm font-bold text-slate-900 dark:text-neutral-100 leading-tight line-clamp-2 break-words">
  <ProductNameDisplay 

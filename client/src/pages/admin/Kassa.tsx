@@ -110,6 +110,10 @@ export default function Kassa() {
  region: ''
  });
  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+ const [showPurchaseHistory, setShowPurchaseHistory] = useState(false); // Tarix modal
+ const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]); // Xaridlar tarixi
+ const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null); // Tanlangan xarid batafsil
+ const [isLoadingHistory, setIsLoadingHistory] = useState(false); // Loading holati
  
  // SENIOR SOLUTION: Inline quantity input for selected product
  const [quantityInputProduct, setQuantityInputProduct] = useState<Product | null>(null);
@@ -274,6 +278,22 @@ export default function Kassa() {
  const optomPrice = product.price || 0; // Optom narxi
  const tanPrice = product.costPrice || 0; // Tan narxi
  
+ // Check if product quantity is low - show toast instead of modal
+ const minStockThreshold = product.minStock || 5;
+ if (product.quantity <= minStockThreshold && product.quantity > 0) {
+ toast.warning(
+ `⚠️ Kam qoldiq: ${product.quantity} dona`,
+ product.name,
+ 5000
+ );
+ } else if (product.quantity === 0) {
+ toast.error(
+ '❌ Mahsulot tugagan!',
+ product.name,
+ 5000
+ );
+ }
+ 
  // Optimistic update - darhol UI'da ko'rsatadi
  setCart(prev => {
  const existing = prev.find(p => p._id === product._id);
@@ -301,7 +321,7 @@ export default function Kassa() {
  // Modal'ni darhol yopadi
  setShowSearch(false);
  setSearchQuery('');
- }, []);
+ }, [toast]);
 
  // Toggle between retail and wholesale prices
  const togglePriceMode = useCallback(() => {
@@ -352,7 +372,6 @@ export default function Kassa() {
  const handleReturnSearch = useCallback((query: string) => {
  setReturnSearchQuery(query);
  if (query.length > 0) {
- // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
  const results = searchProducts(displayedProducts, query).slice(0, 50);
  setSearchResults(results);
  } else {
@@ -362,13 +381,14 @@ export default function Kassa() {
 
  const toggleReturnMode = useCallback(() => {
  if (!isReturnMode) {
+ // Qaytarish rejimiga o'tish - savatni tozalamaymiz
  setCart([]);
  setIsReturnMode(true);
  setSearchResults(displayedProducts.slice(0, 50));
  setShowReturnSearch(true);
  } else {
+ // Qaytarish rejimidan chiqish
  setIsReturnMode(false);
- setCart([]);
  }
  }, [isReturnMode, displayedProducts]);
 
@@ -397,8 +417,24 @@ export default function Kassa() {
  
  const quantity = parseInt(quantityInputValue) || 1;
  if (quantity < 1) {
- showAlert('Miqdor 1 dan kam bo\'lmasligi kerak', 'Xatolik', 'danger');
+ toast.error('Miqdor 1 dan kam bo\'lmasligi kerak', 'Xatolik');
  return;
+ }
+ 
+ // Check if product quantity is low - show toast instead of modal
+ const minStockThreshold = quantityInputProduct.minStock || 5;
+ if (quantityInputProduct.quantity <= minStockThreshold && quantityInputProduct.quantity > 0) {
+ toast.warning(
+ `⚠️ Kam qoldiq: ${quantityInputProduct.quantity} dona`,
+ quantityInputProduct.name,
+ 5000
+ );
+ } else if (quantityInputProduct.quantity === 0) {
+ toast.error(
+ '❌ Mahsulot tugagan!',
+ quantityInputProduct.name,
+ 5000
+ );
  }
  
  setCart(prev => {
@@ -439,7 +475,7 @@ export default function Kassa() {
  }, 100);
  
  toast.success('Savatga qo\'shildi', quantityInputProduct.name);
- }, [quantityInputProduct, quantityInputValue, priceMode, showAlert, toast]);
+ }, [quantityInputProduct, quantityInputValue, priceMode, toast]);
  
  // Focus quantity input when product is selected
  useEffect(() => {
@@ -496,6 +532,26 @@ export default function Kassa() {
  // toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`); // Disabled
  }, [selectedProducts, displayedProducts, showAlert, priceMode]);
  
+ // Open purchase history (Tarix)
+ const openPurchaseHistory = useCallback(async () => {
+ // Modalni darhol ochish - tezroq UI
+ setShowPurchaseHistory(true);
+ setIsLoadingHistory(true); // Loading boshlanishi
+ setPurchaseHistory([]); // Bo'sh array
+ 
+ try {
+ const response = await api.get('/receipts?status=completed&isReturn=false&limit=50');
+ setPurchaseHistory(response.data);
+ console.log('📋 Xaridlar tarixi yuklandi:', response.data);
+ } catch (err) {
+ console.error('❌ Xaridlar tarixini yuklashda xatolik:', err);
+ setShowPurchaseHistory(false); // Xatolik bo'lsa modalni yopish
+ showAlert('Xaridlar tarixini yuklashda xatolik', 'Xatolik', 'danger');
+ } finally {
+ setIsLoadingHistory(false); // Loading tugashi
+ }
+ }, [showAlert]);
+ 
  // Calculate total amount
  const totalAmount = useMemo(() => {
  return cart.reduce((sum, item) => {
@@ -504,6 +560,15 @@ export default function Kassa() {
  return sum + (price * item.cartQuantity);
  }, 0);
  }, [cart, localPrices]);
+ 
+ // Check if any product has insufficient stock
+ const hasInsufficientStock = useMemo(() => {
+ return cart.some(item => {
+ const product = displayedProducts.find(p => p._id === item._id);
+ if (!product) return false;
+ return item.cartQuantity > product.quantity;
+ });
+ }, [cart, displayedProducts]);
 
  const handlePayment = async (cashAmount: number, cardAmount: number, debtAmount: number, debtPaymentCash: number = 0, debtPaymentCard: number = 0) => {
  if (cart.length === 0) return;
@@ -512,6 +577,24 @@ export default function Kassa() {
  if (debtAmount > 0 && (!selectedCustomer || selectedCustomer === '')) {
  showAlert('Qarz yaratish uchun mijoz tanlang!', 'Xatolik', 'danger');
  return;
+ }
+ 
+ // YANGI: Check if any product in cart has insufficient stock
+ for (const item of cart) {
+ const product = displayedProducts.find(p => p._id === item._id);
+ if (product) {
+ const availableQuantity = product.quantity;
+ const requestedQuantity = item.cartQuantity;
+ 
+ if (requestedQuantity > availableQuantity) {
+ showAlert(
+ `Yetarli tovar yo'q: ${item.name}. Mavjud: ${availableQuantity}, So'ralgan: ${requestedQuantity}`,
+ 'Xatolik',
+ 'danger'
+ );
+ return; // Stop payment process
+ }
+ }
  }
  
  const saleItems = cart.map(item => {
@@ -562,6 +645,7 @@ export default function Kassa() {
  };
 
  try {
+ // Create main sale receipt
  await api.post('/receipts', {
  items: saleItems,
  total: finalTotal,
@@ -1210,14 +1294,6 @@ window.onload = function() {
  {/* Row 1 on mobile: Action Buttons */}
  <div className="flex items-center gap-2 lg:gap-3 lg:flex-1 max-w-full overflow-x-hidden">
  <button
- onClick={openSearch}
- className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0"
- >
- <Search className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
- <span className="hidden sm:inline whitespace-nowrap">Qidirish</span>
- </button>
- 
- <button
  onClick={toggleReturnMode}
  className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0 ${
  isReturnMode
@@ -1227,6 +1303,17 @@ window.onload = function() {
  >
  <RotateCcw className="w-5 h-5 flex-shrink-0" strokeWidth={2.5} />
  <span className="hidden sm:inline whitespace-nowrap">{isReturnMode ? 'Bekor' : 'Qaytarish'}</span>
+ </button>
+ 
+ <button
+ onClick={openPurchaseHistory}
+ className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-3 lg:px-5 py-3 lg:py-3.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl transition-all font-bold text-sm lg:text-base shadow-lg hover:shadow-xl active:scale-95 min-w-0"
+ title="Xaridlar tarixi"
+ >
+ <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+ </svg>
+ <span className="hidden sm:inline whitespace-nowrap">Tarix</span>
  </button>
  
  <button
@@ -1271,8 +1358,14 @@ window.onload = function() {
 
  {/* Payment Button - Same height as action buttons */}
  <button
- onClick={() => setShowPayment(true)}
- disabled={cart.length === 0}
+ onClick={() => {
+ if (hasInsufficientStock) {
+ showAlert('Savatda yetarli miqdorda bo\'lmagan mahsulotlar bor!', 'Xatolik', 'danger');
+ return;
+ }
+ setShowPayment(true);
+ }}
+ disabled={cart.length === 0 || hasInsufficientStock}
  className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 lg:px-8 py-3 lg:py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-black text-base lg:text-lg shadow-lg hover:shadow-xl active:scale-95 relative overflow-hidden group whitespace-nowrap flex-shrink-0"
  >
  <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors"></div>
@@ -1376,7 +1469,7 @@ window.onload = function() {
  ? 'bg-green-50 dark:bg-green-900/30 border-green-500 shadow-lg' 
  : 'bg-white dark:bg-red-900/20 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 hover:border-red-400 hover:shadow-lg'
  }`}
- onClick={() => toggleProductSelection(product._id)}
+ onClick={() => toggleProductSelection(product)}
  >
  {/* Checkbox */}
  <div className={`flex-shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${
@@ -1545,8 +1638,8 @@ window.onload = function() {
  <span className="inline xs:hidden">Qaytarish</span>
  </h3>
  <p className="text-xs lg:text-sm font-bold text-slate-700 dark:text-neutral-400">
- <span className="hidden xs:inline">Qaytariladigan tovarni tanlang</span>
- <span className="inline xs:hidden">Tovarni tanlang</span>
+ <span className="hidden xs:inline">Qaytariladigan mahsulotni tanlang</span>
+ <span className="inline xs:hidden">Mahsulotni tanlang</span>
  </p>
  </div>
  </div>
@@ -1561,7 +1654,7 @@ window.onload = function() {
  <Search className="absolute left-4 w-5 h-5 text-slate-500 pointer-events-none" />
  <input
  type="text"
- placeholder="Tovar nomi yoki kodi..."
+ placeholder="Mahsulot nomi yoki kodi..."
  value={returnSearchQuery}
  onChange={e => handleReturnSearch(e.target.value)}
  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-warning-300 dark:border-neutral-600 rounded-2xl focus:outline-none focus:border-warning-500 focus:ring-4 focus:ring-warning-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
@@ -1569,14 +1662,14 @@ window.onload = function() {
  />
  </div>
  </div>
- {/* Results */}
+ {/* Results - Show products for return */}
  <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-neutral-800">
  {searchResults.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12">
  <div className="w-20 h-20 bg-warning-100 dark:bg-warning-900/30 rounded-2xl flex items-center justify-center mb-4">
  <AlertTriangle className="w-10 h-10 text-warning-500" />
  </div>
- <p className="text-lg font-bold text-slate-900 dark:text-neutral-100">Tovar topilmadi</p>
+ <p className="text-lg font-bold text-slate-900 dark:text-neutral-100">Mahsulot topilmadi</p>
  <p className="text-sm font-semibold text-slate-600 dark:text-neutral-400 mt-1">Boshqa nom yoki kod bilan qidiring</p>
  </div>
  ) : (
@@ -1613,6 +1706,141 @@ window.onload = function() {
  ))}
  </div>
  )}
+ </div>
+ </div>
+ </div>
+ )}
+ 
+ {/* Purchase History Modal (Tarix) */}
+ {showPurchaseHistory && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowPurchaseHistory(false)} />
+ <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-indigo-200">
+ {/* Header */}
+ <div className="p-4 sm:p-6 bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/30 border-b border-indigo-200 flex-shrink-0">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+ <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+ </svg>
+ </div>
+ <div>
+ <h3 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100">Tarix</h3>
+ <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">{purchaseHistory.length} ta xarid</p>
+ </div>
+ </div>
+ <button
+ onClick={() => setShowPurchaseHistory(false)}
+ className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-white/50 dark:hover:bg-neutral-700 transition-colors flex-shrink-0"
+ >
+ <X className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-500 dark:text-neutral-400" />
+ </button>
+ </div>
+ </div>
+ {/* Content */}
+ <div className="flex-1 overflow-auto p-3 sm:p-4">
+ {isLoadingHistory ? (
+ <div className="flex flex-col items-center justify-center py-12">
+ <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+ <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">Yuklanmoqda...</p>
+ </div>
+ ) : purchaseHistory.length === 0 ? (
+ <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
+ <div className="w-20 h-20 bg-neutral-100 dark:bg-neutral-700 rounded-2xl flex items-center justify-center mb-4">
+ <svg className="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+ </svg>
+ </div>
+ <p className="text-lg font-medium">Xaridlar tarixi bo'sh</p>
+ <p className="text-sm mt-1">Hozircha xaridlar yo'q</p>
+ </div>
+ ) : (
+ <div className="space-y-3">
+ {purchaseHistory.map(receipt => {
+ const customerName = receipt.customer?.name || 'Oddiy mijoz';
+ const isExpanded = selectedReceipt?._id === receipt._id;
+ return (
+ <div key={receipt._id} className="bg-white dark:bg-neutral-800 border-2 rounded-2xl overflow-hidden transition-all hover:shadow-md border-neutral-200 dark:border-neutral-600 hover:border-indigo-400">
+ {/* Main Card */}
+ <div className="p-4">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3 flex-1 min-w-0">
+ <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/30">
+ <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-indigo-600 dark:text-indigo-400">
+ <circle cx="8" cy="21" r="1"></circle>
+ <circle cx="19" cy="21" r="1"></circle>
+ <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+ </svg>
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center gap-2 mb-1">
+ <p className="font-bold text-neutral-900 dark:text-neutral-100 truncate">{customerName}</p>
+ <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-full whitespace-nowrap">
+ {receipt.paymentMethod === 'cash' ? 'Naqd' : receipt.paymentMethod === 'card' ? 'Karta' : receipt.paymentMethod === 'debt' ? 'Qarz' : 'Aralash'}
+ </span>
+ </div>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400">
+ {receipt.items.length} ta mahsulot • {new Date(receipt.createdAt).toLocaleDateString('uz-UZ')} {new Date(receipt.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+ </p>
+ <p className="text-sm font-black text-neutral-900 dark:text-neutral-100 mt-1">
+ {receipt.total.toLocaleString()} <span className="text-xs font-bold">so'm</span>
+ </p>
+ </div>
+ </div>
+ <button 
+ onClick={() => setSelectedReceipt(isExpanded ? null : receipt)}
+ className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ml-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+ >
+ <svg className={`w-5 h-5 text-neutral-600 dark:text-neutral-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+ </svg>
+ </button>
+ </div>
+ </div>
+ 
+ {/* Expanded Details */}
+ {isExpanded && (
+ <div className="border-t border-neutral-200 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-700/50 p-4 animate-fadeIn">
+ {/* Products List */}
+ <div className="space-y-2">
+ <h4 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-3">Mahsulotlar ro'yxati</h4>
+ {receipt.items.map((item: any, index: number) => (
+ <div key={index} className="bg-white dark:bg-neutral-700 rounded-xl p-3 border border-neutral-200 dark:border-neutral-600">
+ <div className="flex items-start justify-between gap-3">
+ <div className="flex-1 min-w-0">
+ <p className="font-bold text-neutral-900 dark:text-neutral-100 text-sm mb-1">
+ {index + 1}. {item.name}
+ </p>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+ Kod: {item.code}
+ </p>
+ <div className="flex items-center gap-2 text-xs">
+ <span className="text-neutral-600 dark:text-neutral-400">
+ {item.quantity} ta × {item.price.toLocaleString()} so'm
+ </span>
+ </div>
+ </div>
+ <div className="text-right flex-shrink-0">
+ <p className="text-sm font-black text-neutral-900 dark:text-neutral-100">
+ {(item.quantity * item.price).toLocaleString()}
+ </p>
+ <p className="text-xs text-neutral-500">so'm</p>
+ </div>
+ </div>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ <div className="p-3 sm:p-4 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0">
+ <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">💡 Xaridlar avtomatik saqlanadi</p>
  </div>
  </div>
  </div>
