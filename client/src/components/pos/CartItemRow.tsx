@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { CartItem } from '../../types';
 import ProductNameDisplay from '../shared/ProductNameDisplay';
@@ -25,6 +25,8 @@ const CartItemRow = memo(({
  onClick,
  showToast
 }: CartItemRowProps) => {
+ const [showFullName, setShowFullName] = useState(false);
+ 
  const handleQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
  const val = e.target.value;
  if (val === '' || /^\d+$/.test(val)) {
@@ -81,70 +83,72 @@ const CartItemRow = memo(({
  {/* Desktop: Table Row Layout */}
  <div
  onClick={handleRowClick}
- className={`hidden md:grid grid-cols-12 gap-3 px-6 py-4 items-center cursor-pointer transition-all ${
+ className={`hidden md:grid grid-cols-12 px-4 py-3 items-center cursor-pointer transition-all ${
  isInsufficientStock
  ? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-red-600 shadow-md'
  : isSelected
  ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 shadow-sm'
  : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
  }`}
+ style={{ gap: '0.5rem' }}
  >
  <div className="col-span-1">
- <span className="text-sm font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded">
+ <span className="text-xs font-mono font-bold text-slate-900 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 rounded">
  {item.code}
  </span>
  </div>
  <div className="col-span-2 min-w-0">
+ <div className="text-xs font-bold text-slate-900 dark:text-neutral-100 break-words leading-tight">
  <ProductNameDisplay 
  name={item.name}
- className="text-sm font-bold text-slate-900 dark:text-neutral-100 break-words"
  hidePrice={true}
  />
  </div>
+ </div>
  <div className="col-span-1 text-center">
  <div className="flex flex-col items-center gap-1">
- <span className={`text-sm font-bold ${isInsufficientStock ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
+ <span className={`text-xs font-bold ${isInsufficientStock ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
  {remainingStock} ta
  </span>
  {isInsufficientStock && (
- <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded">
+ <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
  Yetmaydi!
  </span>
  )}
  </div>
  </div>
- <div className="col-span-1 text-right">
- <span className="text-sm font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>
+ <div className="col-span-1 text-right" style={{ marginRight: '0.75rem' }}>
+ <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>
  </div>
- <div className="col-span-2 flex items-center justify-center">
+ <div className="col-span-1 flex items-center justify-center" style={{ marginLeft: '0.75rem' }}>
  <input
  type="text"
  value={item.cartQuantity}
  onChange={handleQuantityChange}
  onBlur={handleQuantityBlur}
- className="w-24 h-12 text-center font-black text-xl border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
+ className="w-16 h-10 text-center font-bold text-base border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
  />
  </div>
- <div className="col-span-2 text-right">
+ <div className="col-span-2 text-right" style={{ marginLeft: '-0.25rem' }}>
  <input
  type="text"
  value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
- className="w-32 h-12 text-right text-base font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl px-3 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 transition-all bg-white"
+ className="w-24 h-10 text-right text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
  />
  </div>
- <div className="col-span-2 text-right">
- <span className="text-lg font-black text-slate-900 dark:text-neutral-100">
+ <div className="col-span-2 text-right" style={{ marginLeft: '-2.5rem' }}>
+ <span className="text-base font-black text-slate-900 dark:text-neutral-100">
  {totalPrice.toLocaleString()}
  </span>
  </div>
- <div className="col-span-1 flex justify-center">
+ <div className="col-span-2 flex justify-center" style={{ marginLeft: '-1rem' }}>
  <button
  onClick={handleRemoveClick}
- className="w-10 h-10 flex items-center justify-center rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all hover:scale-110"
+ className="w-8 h-8 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all hover:scale-110"
  >
- <Trash2 className="w-5 h-5" />
+ <Trash2 className="w-4 h-4" />
  </button>
  </div>
  </div>
@@ -193,10 +197,10 @@ const CartItemRow = memo(({
 
  {/* Card Body */}
  <div className="p-3 space-y-2">
- {/* Soni va Narx - Bir qatorda, ko'proq joy bilan */}
- <div className="flex items-end justify-between gap-4">
+ {/* Soni va Narx - Bir qatorda, ixcham */}
+ <div className="flex items-end justify-between gap-2">
  {/* Quantity Stepper - Kompakt */}
- <div className="space-y-1">
+ <div className="space-y-0.5">
  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 block">Soni:</span>
  <div className="flex items-center gap-1">
  <button
@@ -209,7 +213,7 @@ const CartItemRow = memo(({
  onQuantityChange(item._id, newQty);
  }
  }}
- className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold text-lg transition-all active:scale-95 shadow-sm"
+ className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold text-base transition-all active:scale-95 shadow-sm"
  >
  <span className="leading-none">−</span>
  </button>
@@ -219,14 +223,14 @@ const CartItemRow = memo(({
  onChange={handleQuantityChange}
  onBlur={handleQuantityBlur}
  onClick={(e) => e.stopPropagation()}
- className="w-14 h-9 text-center text-base font-black border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
+ className="w-12 h-8 text-center text-sm font-black border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
  />
  <button
  onClick={(e) => {
  e.stopPropagation();
  onQuantityChange(item._id, item.cartQuantity + 1);
  }}
- className="w-8 h-8 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold text-lg transition-all active:scale-95 shadow-sm"
+ className="w-7 h-7 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold text-base transition-all active:scale-95 shadow-sm"
  >
  <span className="leading-none">+</span>
  </button>
@@ -234,7 +238,7 @@ const CartItemRow = memo(({
  </div>
 
  {/* Price Input */}
- <div className="flex-1 space-y-1">
+ <div className="flex-1 space-y-0.5">
  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 block">Narx:</span>
  <input
  type="text"
@@ -242,7 +246,7 @@ const CartItemRow = memo(({
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
  onClick={(e) => e.stopPropagation()}
- className="w-full h-9 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
+ className="w-full h-8 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
  />
  </div>
  </div>

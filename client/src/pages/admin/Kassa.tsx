@@ -124,7 +124,12 @@ export default function Kassa() {
  // Load price mode from localStorage
  const [priceMode, setPriceMode] = useState<'retail' | 'wholesale'>(() => {
  const saved = localStorage.getItem('kassaPriceMode');
- return (saved === 'wholesale' ? 'wholesale' : 'retail') as 'retail' | 'wholesale';
+ // Migration: if saved is 'retail', change to 'wholesale' as new default
+ if (saved === 'retail' || !saved) {
+ localStorage.setItem('kassaPriceMode', 'wholesale');
+ return 'wholesale';
+ }
+ return saved as 'retail' | 'wholesale';
  });
  
  // Save price mode to localStorage when it changes
@@ -355,10 +360,10 @@ export default function Kassa() {
  cart.forEach(item => {
  // MongoDB structure:
  // - dona_narx/retailPrice = Dona narxi (300k)
- // - price/optom_narx = Optom narxi (asosiy)
+ // - optom_narx/price (original) = Optom narxi (asosiy)
  const price = newMode === 'retail' 
- ? ((item as any).dona_narx || (item as any).retailPrice || item.price || 0) // Dona
- : (item.price || (item as any).optom_narx || 0); // Optom
+ ? ((item as any).dona_narx || (item as any).retailPrice || (item as any).optom_narx || 0) // Dona
+ : ((item as any).optom_narx || item.price || 0); // Optom
  newPrices[item._id] = price.toString();
  });
  return newPrices;
@@ -874,8 +879,8 @@ body {
 .meta { font-size: 9px; font-weight: bold; white-space: nowrap; }
 .items { text-align: left; margin: 0 auto; width: 100%; padding: 0 2mm; }
 .item { margin-bottom: 0.8mm; text-align: left; }
-.item-name { font-weight: bold; font-size: 13px; text-align: left; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; padding-left: 2mm; }
-.item-calc { display: block; text-align: left; font-size: 12px; font-weight: bold; padding-left: 8mm; /* Format: qty x price = total */ }
+.item-name { font-weight: normal; font-size: 12px; text-align: left; word-wrap: break-word; line-height: 1.2; margin-bottom: 0.3mm; padding-left: 2mm; }
+.item-calc { display: block; text-align: left; font-size: 12px; font-weight: 900; padding-left: 8mm; /* Format: qty x price = total */ }
 .price { font-weight: bold; }
 .total-box { padding: 0.8mm 0; margin: 0.8mm auto 0.4mm auto; text-align: center; width: 100%; }
 .total-sum { font-size: 14px; font-weight: bold; text-align: center; }
@@ -1156,19 +1161,19 @@ window.onload = function() {
  <div className="flex-1 flex flex-col overflow-hidden max-w-full">
  {/* Table */}
  <div className="flex flex-1 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden flex-col shadow-sm max-w-full">
- {/* Table Wrapper - No horizontal scroll on mobile */}
- <div className="flex-1 overflow-y-auto max-w-full md:overflow-x-auto">
- <div className="md:min-w-[1000px]">
+ {/* Table Wrapper - No horizontal scroll */}
+ <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full">
+ <div className="w-full">
  {/* Table Header - Hidden on Mobile */}
- <div className="hidden md:grid grid-cols-12 gap-3 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600">
+ <div className="hidden md:grid grid-cols-12 px-4 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-neutral-200 dark:border-neutral-600" style={{ gap: '0.5rem' }}>
  <div className="col-span-1 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("Kod")}</div>
  <div className="col-span-2 text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MAHSULOT")}</div>
  <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("MIQDOR")}</div>
- <div className="col-span-1 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("TAN NARX")}</div>
- <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SONI")}</div>
- <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("NARX")}</div>
- <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("SUMMA")}</div>
- <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{tKey("AMAL")}</div>
+ <div className="col-span-1 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide whitespace-nowrap" style={{ marginRight: '0.75rem' }}>{tKey("TAN NARX")}</div>
+ <div className="col-span-1 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide" style={{ marginLeft: '0.75rem' }}>{tKey("SONI")}</div>
+ <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide" style={{ marginLeft: '-0.25rem' }}>{tKey("NARX")}</div>
+ <div className="col-span-2 text-right text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide" style={{ marginLeft: '-2.5rem' }}>{tKey("SUMMA")}</div>
+ <div className="col-span-2 text-center text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide" style={{ marginLeft: '-1rem' }}>{tKey("AMAL")}</div>
  </div>
 
  {/* Table Body */}
