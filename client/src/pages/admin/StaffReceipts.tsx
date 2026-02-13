@@ -144,6 +144,21 @@ export default function StaffReceipts() {
  });
  return unique;
  };
+ 
+ // YANGI: Arxivlangan xaridlarni olish
+ const getArchivedReceipts = (workerId: string) => {
+ const filtered = receipts.filter(r => r.createdBy?._id === workerId && r.status === 'archived');
+ // Remove duplicates by _id (defensive)
+ const unique = filtered.filter((r, index, self) => 
+ index === self.findIndex(t => t._id === r._id)
+ );
+ console.log(`📦 getArchivedReceipts for ${workerId}:`, {
+ filtered: filtered.length,
+ unique: unique.length,
+ ids: unique.map(r => ({ id: r._id, status: r.status, itemsCount: r.items.length }))
+ });
+ return unique;
+ };
 
  const handleEditItem = (receiptId: string, itemIndex: number, currentPrice: number, currentQuantity: number) => {
  setEditingItem({ receiptId, itemIndex });
@@ -246,14 +261,15 @@ export default function StaffReceipts() {
  {displayWorkers.flatMap((worker, workerIndex) => {
  const workerReceipts = getWorkerReceipts(worker._id);
  const readyReceipts = getReadyReceipts(worker._id);
+ const archivedReceipts = getArchivedReceipts(worker._id);
  
  // If worker has no receipts, skip
- if (workerReceipts.length === 0 && readyReceipts.length === 0) {
+ if (workerReceipts.length === 0 && readyReceipts.length === 0 && archivedReceipts.length === 0) {
  return [];
  }
  
  // Combine all receipts
- const allReceipts = [...workerReceipts, ...readyReceipts];
+ const allReceipts = [...workerReceipts, ...readyReceipts, ...archivedReceipts];
  
  // Show each receipt as a separate card
  return allReceipts.map((receipt) => {
@@ -323,6 +339,13 @@ export default function StaffReceipts() {
  <div className="bg-warning-50 border-b border-warning-200 px-5 py-3">
  <p className="text-warning-700 text-sm font-medium text-center">
  ⏳ {t("Kassaga yuborilgan - tayyor")}
+ </p>
+ </div>
+ )}
+ {isArchived && !isPending && !isReady && (
+ <div className="bg-neutral-100 border-b border-neutral-300 px-5 py-3">
+ <p className="text-neutral-700 text-sm font-medium text-center">
+ 📦 {t("Arxivlangan - kassaga yuklangan")}
  </p>
  </div>
  )}
@@ -467,7 +490,7 @@ export default function StaffReceipts() {
  </div>
  )}
  
- {isPending && (
+ {(isPending || isArchived) && (
  <button
  onClick={async () => {
  try {
@@ -517,7 +540,11 @@ export default function StaffReceipts() {
  alert(errorMsg);
  }
  }}
- className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors bg-warning-500 hover:bg-warning-600"
+ className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors ${
+ isPending 
+ ? 'bg-warning-500 hover:bg-warning-600' 
+ : 'bg-emerald-500 hover:bg-emerald-600'
+ }`}
  >
  <Download className="w-5 h-5" />
  {t("Kassaga yuklash")}

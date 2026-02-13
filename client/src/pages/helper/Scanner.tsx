@@ -535,10 +535,10 @@ export default function HelperScanner() {
  })),
  customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
- status: 'pending' // Change status to pending when sending to cashier
+ status: 'archived' // YANGI: Darhol arxivga tushirish
  });
  
- showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ showAlert("Chek kassaga yuborildi va arxivlandi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
  // RESET selectedCustomer for next NEW receipt
@@ -643,10 +643,10 @@ export default function HelperScanner() {
  })),
  customer: customerValue, // null for regular customer, ID for specific customer
  draftId: currentDraftId,
- status: sendToArchive ? 'archived' : 'pending' // Set status based on action
+ status: 'archived' // YANGI: Har doim arxivga tushirish (kassaga yuborish ham, arxivga saqlash ham)
  });
  
- showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
+ showAlert(sendToArchive ? "Chek arxivga saqlandi!" : "Chek kassaga yuborildi va arxivlandi!", 'Muvaffaqiyat', 'success');
  setCart([]);
  setReceiptStatus('draft');
  // RESET selectedCustomer for next NEW receipt

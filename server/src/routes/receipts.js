@@ -195,13 +195,13 @@ router.put('/draft/submit', auth, authorize('helper'), async (req, res) => {
 router.get('/staff', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const { status } = req.query;
-    // Show ONLY draft and pending receipts (NOT archived - those are helper's private)
+    // YANGI: Show draft, pending, AND archived receipts
     const query = { 
-      status: { $in: ['draft', 'pending'] },
+      status: { $in: ['draft', 'pending', 'archived'] },
       // Only show receipts with items (not empty)
       'items.0': { $exists: true }
     };
-    if (status && status !== 'all' && ['draft', 'pending'].includes(status)) {
+    if (status && status !== 'all' && ['draft', 'pending', 'archived'].includes(status)) {
       query.status = status;
     }
     
@@ -340,12 +340,12 @@ router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req
       }
     }
 
-    // Mark as completed - this will remove it from archive automatically
-    receipt.status = 'completed';
+    // YANGI: Arxivga tushirish (status = 'archived')
+    receipt.status = 'archived';
     receipt.processedBy = req.user._id;
     await receipt.save();
     
-    console.log('✅ Receipt marked as completed:', receipt._id);
+    console.log('✅ Receipt archived after loading to kassa:', receipt._id);
     
     // Clear inventory cache to refresh products
     clearInventoryCache();
@@ -353,6 +353,35 @@ router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req
     res.json(receipt);
   } catch (error) {
     console.error('❌ Error in load-to-kassa:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Update receipt status (for resending archived receipts)
+router.put('/:id/status', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!['draft', 'pending', 'approved', 'archived', 'completed'].includes(status)) {
+      return res.status(400).json({ message: 'Noto\'g\'ri status' });
+    }
+    
+    const receipt = await Receipt.findById(req.params.id);
+    if (!receipt) {
+      return res.status(404).json({ message: 'Chek topilmadi' });
+    }
+    
+    receipt.status = status;
+    await receipt.save();
+    
+    console.log('✅ Receipt status updated:', {
+      id: receipt._id,
+      newStatus: status
+    });
+    
+    res.json(receipt);
+  } catch (error) {
+    console.error('❌ Error updating receipt status:', error);
     res.status(500).json({ message: 'Server xatosi', error: error.message });
   }
 });
