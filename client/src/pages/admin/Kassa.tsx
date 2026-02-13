@@ -138,6 +138,12 @@ export default function Kassa() {
  const receiptId = localStorage.getItem('kassaReceiptId');
  const customerId = localStorage.getItem('kassaCustomerId');
  
+ console.log('🔍 Checking localStorage for worker items:', {
+ hasKassaItems: !!kassaItems,
+ hasReceiptId: !!receiptId,
+ hasCustomerId: customerId !== null
+ });
+ 
  if (kassaItems) {
  try {
  const items = JSON.parse(kassaItems);
@@ -189,15 +195,20 @@ export default function Kassa() {
  if (receiptId) {
  setWorkerReceiptIds(receiptId.split(','));
  }
+ 
  // Clear localStorage after loading
  localStorage.removeItem('kassaItems');
  localStorage.removeItem('kassaReceiptId');
  localStorage.removeItem('kassaCustomerId');
+ 
+ // Show success toast
+ toast.success('Xarid yuklandi!', `${uniqueItems.length} ta mahsulot savatga qo'shildi`);
  } catch (err) {
  console.error('Error loading worker items:', err);
+ showAlert('Xaridni yuklashda xatolik yuz berdi', 'Xatolik', 'danger');
  }
  }
- }, []);
+ }, [toast, showAlert]);
 
  useEffect(() => {
  loadSavedReceipts();
@@ -217,12 +228,22 @@ export default function Kassa() {
  loadWorkerItems();
  };
  
+ // YANGI: Real-time polling - har 2 soniyada localStorage ni tekshirish
+ const pollInterval = setInterval(() => {
+ const kassaItems = localStorage.getItem('kassaItems');
+ if (kassaItems) {
+ console.log('🔄 Polling detected new items, reloading...');
+ loadWorkerItems();
+ }
+ }, 2000); // Har 2 soniyada tekshirish
+ 
  window.addEventListener('storage', handleStorageChange);
  window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
  
  return () => {
  window.removeEventListener('storage', handleStorageChange);
  window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+ clearInterval(pollInterval);
  };
  }, [loadWorkerItems]);
 
