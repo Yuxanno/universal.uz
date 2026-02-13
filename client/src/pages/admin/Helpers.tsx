@@ -28,7 +28,7 @@ export default function Helpers() {
  const fetchHelpers = async () => {
  try {
  const res = await api.get('/users/helpers');
- setHelpers(res.data);
+ setHelpers(res.data.reverse()); // Yangi qo'shilganlar tepada
  } catch (err) { console.error('Error fetching helpers:', err); }
  finally { setLoading(false); }
  };

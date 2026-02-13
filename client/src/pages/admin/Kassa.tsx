@@ -474,7 +474,7 @@ export default function Kassa() {
  ? (quantityInputProduct.dona_narx || quantityInputProduct.price) // Dona narx
  : quantityInputProduct.price; // Optom narx
  
- newCart.push({
+ newCart.unshift({
  ...quantityInputProduct,
  cartQuantity: quantity,
  tan_narx: quantityInputProduct.costPrice || quantityInputProduct.tan_narx,
@@ -534,7 +534,7 @@ export default function Kassa() {
  ? (product.dona_narx || product.price) // Dona narx
  : product.price; // Optom narx
  
- newCart.push({
+ newCart.unshift({
  ...product,
  cartQuantity: 1,
  tan_narx: product.costPrice || product.tan_narx,

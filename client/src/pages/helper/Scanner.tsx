@@ -450,13 +450,13 @@ export default function HelperScanner() {
  }
  // Add with dona_narx as default price (auto-filled)
  const defaultPrice = product.dona_narx || product.price || 0;
- return [...prev, { 
+ return [{ 
  ...product, 
  cartQuantity: 1, 
  price: defaultPrice, // Avtomatik dona_narx
  originalPrice: product.dona_narx || product.price, // Saqlab qo'yamiz
  optom_narx: product.price || product.optom_narx // Validatsiya uchun
- }];
+ }, ...prev]; // unshift - yangi mahsulot tepada
  });
  setSearchQuery(''); // Qidiruv inputini tozalaymiz
  setSearchResults([]);
