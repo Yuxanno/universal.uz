@@ -55,15 +55,20 @@ export default function DebtDetailsModal({ debt, group, onClose, onUpdate, onAdd
 
     setIsSubmitting(true);
     try {
-      // If both cash and card, make two separate payments
-      if (cash > 0 && card > 0) {
-        await api.post(`/debts/${debt._id}/payment`, { amount: cash, method: 'cash' });
-        await api.post(`/debts/${debt._id}/payment`, { amount: card, method: 'card' });
-      } else if (cash > 0) {
-        await api.post(`/debts/${debt._id}/payment`, { amount: cash, method: 'cash' });
-      } else if (card > 0) {
-        await api.post(`/debts/${debt._id}/payment`, { amount: card, method: 'card' });
+      // Use bulk payment endpoint to pay oldest debts first
+      const customerId = debt.customer?._id || group?.customer?._id;
+      
+      if (!customerId) {
+        alert(t('Mijoz topilmadi!'));
+        return;
       }
+
+      await api.post('/debts/pay-bulk', {
+        customerId,
+        cashAmount: cash,
+        cardAmount: card,
+        totalAmount: totalPayment
+      });
       
       setShowPaymentForm(false);
       setCashAmount('');

@@ -24,6 +24,7 @@ export default function Customers() {
  const [showRegionFilter, setShowRegionFilter] = useState(false);
  const [showDetailsModal, setShowDetailsModal] = useState(false);
  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+ const [customerModalKey, setCustomerModalKey] = useState(0); // Force re-render key
  // SENIOR SOLUTION: Inline error messages for form fields
  const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
  // Return functionality
@@ -188,8 +189,9 @@ export default function Customers() {
  setShowReturnModal(false);
  setSelectedPurchase(null);
  
- // Refresh customers list to get updated totals
- await fetchCustomers();
+ // Refresh customers list to get updated totals (force refresh, bypass cache)
+ await fetchCustomers(true);
+ console.log('✅ Customers list refreshed (forced)');
  
  // Refresh customer details modal with fresh data from server
  try {
@@ -206,6 +208,9 @@ export default function Customers() {
  
  // Force update by creating new object reference
  setSelectedCustomer({...freshCustomerData});
+ 
+ // Force modal re-render by updating key
+ setCustomerModalKey(prev => prev + 1);
  
  console.log('🔄 State updated, component should re-render');
  } catch (err) {
@@ -586,7 +591,7 @@ export default function Customers() {
 
  {/* Customer Details Modal */}
  {showDetailsModal && selectedCustomer && (
- <div key={`customer-modal-${selectedCustomer._id}-${selectedCustomer.totalPurchases}-${selectedCustomer.debt}`} className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+ <div key={`customer-modal-${customerModalKey}`} className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDetailsModal(false)} />
  <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-2xl relative z-10 animate-scaleIn overflow-hidden border-2 border-surface-100 dark:border-surface-700 max-h-[90vh] flex flex-col">
  {/* Header */}
