@@ -62,10 +62,10 @@ router.get('/:id', auth, async (req, res) => {
     const customer = await Customer.findById(req.params.id);
     if (!customer) return res.status(404).json({ message: 'Mijoz topilmadi' });
     
-    // Get detailed purchase history with receipts
+    // Get detailed purchase history with receipts (exclude fully returned receipts)
     const receipts = await Receipt.find({
       customer: req.params.id,
-      status: { $in: ['completed', 'approved'] },
+      status: { $in: ['completed', 'approved'], $ne: 'returned' },
       isReturn: { $ne: true }
     }).sort({ createdAt: -1 }).limit(50);
     

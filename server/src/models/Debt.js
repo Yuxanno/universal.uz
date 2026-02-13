@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
-  method: { type: String, enum: ['cash', 'card'], default: 'cash' },
+  method: { type: String, enum: ['cash', 'card', 'return'], default: 'cash' },
   date: { type: Date, default: Date.now },
-  source: { type: String, enum: ['manual', 'pos'], default: 'manual' } // Track where payment came from
+  source: { type: String, enum: ['manual', 'pos', 'return'], default: 'manual' } // Track where payment came from
 });
 
 const debtSchema = new mongoose.Schema({

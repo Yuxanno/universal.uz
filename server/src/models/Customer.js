@@ -6,7 +6,7 @@ const purchaseHistorySchema = new mongoose.Schema({
   receiptId: { type: mongoose.Schema.Types.ObjectId, ref: 'Receipt' },
   type: { type: String, enum: ['purchase', 'debt_payment'], default: 'purchase' },
   debtId: { type: mongoose.Schema.Types.ObjectId, ref: 'Debt' }, // For debt payments
-  paymentMethod: { type: String, enum: ['cash', 'card', 'mixed'] } // Payment method
+  paymentMethod: { type: String, enum: ['cash', 'card', 'mixed', 'return'] } // Payment method
 }, { _id: false });
 
 const customerSchema = new mongoose.Schema({

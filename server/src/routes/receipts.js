@@ -897,4 +897,301 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// SENIOR SOLUTION: Product return endpoint with automatic debt/payment handling
+router.post('/return', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { customerId, receiptId, items, returnTotal, originalPurchase } = req.body;
+    
+    console.log('🔄 [RETURN] Processing return:', {
+      customerId,
+      receiptId,
+      itemsCount: items.length,
+      returnTotal,
+      originalPurchase
+    });
+    
+    // Validate input
+    if (!customerId || !items || items.length === 0 || !returnTotal) {
+      return res.status(400).json({ message: 'Noto\'g\'ri ma\'lumotlar' });
+    }
+    
+    const Customer = require('../models/Customer');
+    const Debt = require('../models/Debt');
+    const WarehouseInventory = require('../models/WarehouseInventory');
+    
+    // Get customer
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ message: 'Mijoz topilmadi' });
+    }
+    
+    // Get original receipt to update it
+    const originalReceipt = await Receipt.findById(receiptId);
+    if (!originalReceipt) {
+      return res.status(404).json({ message: 'Asl chek topilmadi' });
+    }
+    
+    console.log('📋 [RETURN] Original receipt:', {
+      id: originalReceipt._id,
+      total: originalReceipt.total,
+      itemsCount: originalReceipt.items.length
+    });
+    
+    // Calculate remaining items and total after return
+    let remainingTotal = originalReceipt.total;
+    const updatedItems = originalReceipt.items.map(item => {
+      const returnItem = items.find(ri => ri.product === item.product.toString());
+      if (returnItem) {
+        const remainingQty = item.quantity - returnItem.quantity;
+        const itemTotal = item.price * item.quantity;
+        const returnItemTotal = item.price * returnItem.quantity;
+        
+        remainingTotal -= returnItemTotal;
+        
+        console.log(`📦 [RETURN] Item ${item.name}: ${item.quantity} → ${remainingQty} (returned: ${returnItem.quantity})`);
+        
+        return {
+          ...item.toObject(),
+          quantity: remainingQty
+        };
+      }
+      return item.toObject();
+    }).filter(item => item.quantity > 0); // Remove items with 0 quantity
+    
+    const isFullReturn = updatedItems.length === 0 || remainingTotal <= 0;
+    
+    console.log('📊 [RETURN] Receipt update:', {
+      originalTotal: originalReceipt.total,
+      returnTotal,
+      remainingTotal,
+      originalItemsCount: originalReceipt.items.length,
+      remainingItemsCount: updatedItems.length,
+      isFullReturn
+    });
+    
+    // Create return receipt
+    const returnReceipt = new Receipt({
+      items: items.map(item => ({
+        product: item.product,
+        name: item.name,
+        code: item.code,
+        price: item.price,
+        quantity: item.quantity
+      })),
+      total: returnTotal,
+      paymentMethod: 'cash', // Default, will be adjusted
+      customer: customerId,
+      status: 'completed',
+      isReturn: true,
+      description: `Qaytarilgan: ${customer.name} - ${new Date().toLocaleDateString('uz-UZ')} - ${returnTotal.toLocaleString('uz-UZ')} so'm`,
+      createdBy: req.user._id
+    });
+    
+    await returnReceipt.save();
+    console.log('✅ [RETURN] Return receipt created:', returnReceipt._id);
+    
+    // Update or delete original receipt
+    if (isFullReturn) {
+      // Mark receipt as fully returned (don't delete, keep for history)
+      originalReceipt.status = 'returned';
+      originalReceipt.isReturn = true;
+      await originalReceipt.save();
+      console.log('✅ [RETURN] Original receipt marked as fully returned');
+    } else {
+      // Update receipt with remaining items and new total
+      originalReceipt.items = updatedItems;
+      originalReceipt.total = remainingTotal;
+      
+      // Recalculate payment breakdown proportionally
+      const returnRatio = returnTotal / originalPurchase.total;
+      originalReceipt.cashAmount = Math.round((originalReceipt.cashAmount || 0) * (1 - returnRatio));
+      originalReceipt.cardAmount = Math.round((originalReceipt.cardAmount || 0) * (1 - returnRatio));
+      originalReceipt.debtAmount = Math.round((originalReceipt.debtAmount || 0) * (1 - returnRatio));
+      
+      await originalReceipt.save();
+      console.log('✅ [RETURN] Original receipt updated with remaining items');
+    }
+    
+    // Update product quantities (add back to inventory)
+    for (const item of items) {
+      // Update Product model
+      await Product.findByIdAndUpdate(item.product, { 
+        $inc: { quantity: item.quantity } 
+      });
+      
+      // Update WarehouseInventory
+      const inventory = await WarehouseInventory.findOne({ product: item.product });
+      if (inventory) {
+        inventory.quantity += item.quantity;
+        await inventory.save();
+        console.log(`📦 [RETURN] Added ${item.quantity} to inventory for ${item.name}`);
+      }
+    }
+    
+    // SENIOR LOGIC: Handle payment refund priority
+    // 1. First reduce debt if exists
+    // 2. Then refund to card if card payment was made
+    // 3. Finally refund cash
+    
+    let remainingRefund = returnTotal;
+    const refundBreakdown = {
+      debtReduced: 0,
+      cardRefund: 0,
+      cashRefund: 0
+    };
+    
+    console.log('💰 [RETURN] Starting refund calculation:', {
+      returnTotal,
+      customerDebt: customer.debt,
+      originalPurchase
+    });
+    
+    // Step 1: Reduce debt first (if customer has debt from this purchase)
+    if (originalPurchase.debtAmount > 0 && customer.debt > 0) {
+      console.log('💰 [RETURN] Step 1: Checking debts...');
+      
+      // Find debts related to this receipt
+      const relatedDebts = await Debt.find({
+        customer: customerId,
+        receipt: receiptId,
+        type: 'receivable',
+        status: { $ne: 'paid' }
+      }).sort({ createdAt: 1 }); // Oldest first
+      
+      console.log(`💰 [RETURN] Found ${relatedDebts.length} related debts`);
+      
+      for (const debt of relatedDebts) {
+        if (remainingRefund <= 0) break;
+        
+        const debtRemaining = debt.amount - debt.paidAmount;
+        const debtReduction = Math.min(remainingRefund, debtRemaining);
+        
+        console.log(`💰 [RETURN] Processing debt ${debt._id}:`, {
+          debtAmount: debt.amount,
+          debtPaid: debt.paidAmount,
+          debtRemaining,
+          debtReduction
+        });
+        
+        // Add payment to debt
+        debt.payments.push({
+          amount: debtReduction,
+          method: 'return',
+          date: new Date()
+        });
+        debt.paidAmount += debtReduction;
+        
+        if (debt.paidAmount >= debt.amount) {
+          debt.status = 'paid';
+          console.log(`✅ [RETURN] Debt ${debt._id} fully paid!`);
+        }
+        
+        await debt.save();
+        
+        // Update customer debt
+        customer.debt -= debtReduction;
+        
+        // Add to customer purchase history
+        customer.purchaseHistory.push({
+          date: new Date(),
+          amount: debtReduction,
+          receiptId: returnReceipt._id,
+          type: 'debt_payment',
+          debtId: debt._id,
+          paymentMethod: 'return'
+        });
+        
+        remainingRefund -= debtReduction;
+        refundBreakdown.debtReduced += debtReduction;
+        
+        console.log(`💰 [RETURN] Reduced debt by ${debtReduction} so'm, remaining refund: ${remainingRefund}`);
+      }
+    } else {
+      console.log('💰 [RETURN] Step 1: No debt to reduce (debtAmount: %s, customerDebt: %s)', 
+        originalPurchase.debtAmount, customer.debt);
+    }
+    
+    // Step 2: Refund to card (proportional to original card payment)
+    if (remainingRefund > 0 && originalPurchase.cardAmount > 0) {
+      const cardRefund = Math.min(remainingRefund, originalPurchase.cardAmount);
+      refundBreakdown.cardRefund = cardRefund;
+      remainingRefund -= cardRefund;
+      console.log(`💳 [RETURN] Step 2: Card refund: ${cardRefund} so'm, remaining: ${remainingRefund}`);
+    } else {
+      console.log('💳 [RETURN] Step 2: No card refund (remaining: %s, cardAmount: %s)', 
+        remainingRefund, originalPurchase.cardAmount);
+    }
+    
+    // Step 3: Refund remaining as cash
+    if (remainingRefund > 0) {
+      refundBreakdown.cashRefund = remainingRefund;
+      console.log(`💵 [RETURN] Step 3: Cash refund: ${remainingRefund} so'm`);
+    } else {
+      console.log('💵 [RETURN] Step 3: No cash refund needed');
+    }
+    
+    // Update customer total purchases
+    customer.totalPurchases = Math.max(0, (customer.totalPurchases || 0) - returnTotal);
+    await customer.save();
+    
+    console.log('✅ [RETURN] Customer updated:', {
+      customerId: customer._id,
+      name: customer.name,
+      newDebt: customer.debt,
+      newTotalPurchases: customer.totalPurchases
+    });
+    
+    console.log('✅ [RETURN] Return processed successfully:', {
+      returnTotal,
+      refundBreakdown,
+      returnReceiptId: returnReceipt._id,
+      isFullReturn,
+      remainingTotal: isFullReturn ? 0 : remainingTotal
+    });
+    
+    // Clear inventory cache
+    clearInventoryCache();
+    
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('inventory:updated', {
+        type: 'return',
+        items: items.map(item => ({
+          productId: item.product,
+          quantity: item.quantity
+        }))
+      });
+      
+      global.io.emit('customer:updated', {
+        customerId: customer._id
+      });
+    }
+    
+    res.json({
+      success: true,
+      returnReceipt: {
+        _id: returnReceipt._id,
+        total: returnReceipt.total,
+        items: returnReceipt.items,
+        createdAt: returnReceipt.createdAt
+      },
+      refundBreakdown,
+      customerUpdate: {
+        debt: customer.debt,
+        totalPurchases: customer.totalPurchases
+      },
+      receiptUpdate: {
+        isFullReturn,
+        remainingTotal,
+        remainingItemsCount: updatedItems.length
+      },
+      message: 'Mahsulotlar muvaffaqiyatli qaytarildi'
+    });
+    
+  } catch (error) {
+    console.error('❌ [RETURN] Error:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 module.exports = router;
