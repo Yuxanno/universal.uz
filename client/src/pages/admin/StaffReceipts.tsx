@@ -51,6 +51,7 @@ export default function StaffReceipts() {
  const [editingItem, setEditingItem] = useState<{receiptId: string, itemIndex: number} | null>(null);
  const [editPrice, setEditPrice] = useState('');
  const [editQuantity, setEditQuantity] = useState('');
+ const [loadingReceiptId, setLoadingReceiptId] = useState<string | null>(null); // YANGI: Loading state
 
  const fetchData = useCallback(async () => {
  try {
@@ -493,6 +494,10 @@ export default function StaffReceipts() {
  {(isPending || isArchived) && (
  <button
  onClick={async () => {
+ if (loadingReceiptId) return; // Prevent double click
+ 
+ setLoadingReceiptId(receipt._id); // Start loading
+ 
  try {
  // OPTIMIZED: Backend returns complete receipt with product details
  await api.put(`/receipts/${receipt._id}/load-to-kassa`);
@@ -538,16 +543,29 @@ export default function StaffReceipts() {
  console.error('Error loading to kassa:', err);
  const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';
  alert(errorMsg);
+ setLoadingReceiptId(null); // Stop loading on error
  }
  }}
- className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-colors ${
- isPending 
+ disabled={loadingReceiptId === receipt._id}
+ className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-all ${
+ loadingReceiptId === receipt._id
+ ? 'bg-gray-400 cursor-not-allowed'
+ : isPending 
  ? 'bg-warning-500 hover:bg-warning-600' 
  : 'bg-emerald-500 hover:bg-emerald-600'
  }`}
  >
+ {loadingReceiptId === receipt._id ? (
+ <>
+ <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+ {t("Yuklanmoqda...")}
+ </>
+ ) : (
+ <>
  <Download className="w-5 h-5" />
  {t("Kassaga yuklash")}
+ </>
+ )}
  </button>
  )}
  </div>
