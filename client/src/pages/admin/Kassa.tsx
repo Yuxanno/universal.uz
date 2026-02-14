@@ -297,7 +297,7 @@ export default function Kassa() {
  const results = searchProducts(displayedProducts, debouncedSearchQuery).slice(0, 50);
  setSearchResults(results);
  } else {
- setSearchResults(displayedProducts.slice(0, 50)); // Show first 50
+ setSearchResults(displayedProducts.slice(0, 50)); // Show first 50 when empty
  }
  }, [debouncedSearchQuery, displayedProducts]);
 
@@ -1268,7 +1268,7 @@ window.onload = function() {
  <div className="w-12 h-12 border-4 border-red-200 border-t-red-500 rounded-full animate-spin mb-4"></div>
  <p className="text-sm font-semibold text-slate-600">Qidirilmoqda...</p>
  </div>
- ) : searchResults.length === 0 ? (
+ ) : searchQuery.length > 0 && searchResults.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12">
  <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
  <Package className="w-10 h-10 text-red-500" />
@@ -1540,7 +1540,7 @@ window.onload = function() {
  <div className="w-12 h-12 border-4 border-red-200 border-t-red-500 rounded-full animate-spin mb-4"></div>
  <p className="text-sm font-semibold text-slate-600">Qidirilmoqda...</p>
  </div>
- ) : searchResults.length === 0 ? (
+ ) : searchQuery.length > 0 && searchResults.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12">
  <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
  <Package className="w-10 h-10 text-red-500" />
@@ -1755,7 +1755,7 @@ window.onload = function() {
  </div>
  {/* Results - Show products for return */}
  <div className="flex-1 overflow-auto p-4 bg-slate-50 dark:bg-neutral-800">
- {searchResults.length === 0 ? (
+ {returnSearchQuery.length > 0 && searchResults.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12">
  <div className="w-20 h-20 bg-warning-100 dark:bg-warning-900/30 rounded-2xl flex items-center justify-center mb-4">
  <AlertTriangle className="w-10 h-10 text-warning-500" />

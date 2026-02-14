@@ -12,6 +12,9 @@ import { uzLatToCyr } from './uzLatToCyr';
 export interface SearchableProduct {
  code: string;
  name: string;
+ price?: number;
+ dona_narx?: number;
+ optom_narx?: number;
  [key: string]: any;
 }
 
@@ -98,8 +101,61 @@ export function searchProducts<T extends SearchableProduct>(
  
  const trimmedQuery = query.trim().toLowerCase();
  
+ // Check if query is a number (price search)
+ const isNumericQuery = /^\d+$/.test(trimmedQuery);
+ const numericQuery = isNumericQuery ? parseInt(trimmedQuery) : null;
+ 
+ // Debug: Log search query and first 3 products
+ if (numericQuery !== null) {
+ console.log(`🔍 [Price Search] Searching for price: ${numericQuery}`);
+ console.log(`📦 First 3 products in database:`, products.slice(0, 3).map(p => ({
+ name: p.name,
+ price: p.price,
+ dona_narx: p.dona_narx,
+ optom_narx: p.optom_narx,
+ tan_narx: (p as any).tan_narx,
+ costPrice: (p as any).costPrice
+ })));
+ }
+ 
+ // Counter for debug logging
+ let debugCount = 0;
+ 
  // Filter products
  const filtered = products.filter(product => {
+ // Exact price search - if query is numeric, search by exact price match
+ if (numericQuery !== null) {
+ // Check exact match for price, dona_narx, optom_narx, tan_narx, or costPrice
+ // Round prices to handle decimal values
+ const priceMatch = product.price && Math.round(product.price) === numericQuery;
+ const donaNarxMatch = product.dona_narx && Math.round(product.dona_narx) === numericQuery;
+ const optomNarxMatch = product.optom_narx && Math.round(product.optom_narx) === numericQuery;
+ const tanNarxMatch = (product as any).tan_narx && Math.round((product as any).tan_narx) === numericQuery;
+ const costPriceMatch = (product as any).costPrice && Math.round((product as any).costPrice) === numericQuery;
+ 
+ // Debug: Log first 5 matching products
+ if (debugCount < 10 && (priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch)) {
+ debugCount++;
+ console.log(`✅ [Match ${debugCount}] ${product.name}:`, {
+ code: product.code,
+ price: product.price,
+ dona_narx: product.dona_narx,
+ optom_narx: product.optom_narx,
+ tan_narx: (product as any).tan_narx,
+ costPrice: (product as any).costPrice,
+ matches: { priceMatch, donaNarxMatch, optomNarxMatch, tanNarxMatch, costPriceMatch }
+ });
+ }
+ 
+ if (priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch) {
+ return true;
+ }
+ 
+ // If no exact match found, don't search by code for numeric queries
+ // This prevents "5000" from matching codes like "45000" or "25000"
+ return false;
+ }
+ 
  // Поиск по коду
  if (matchesQuery(product.code, trimmedQuery)) {
  return true;
@@ -113,8 +169,49 @@ export function searchProducts<T extends SearchableProduct>(
  return false;
  });
  
- // Sort: код с начала > короткий код > алфавитный порядок
+ // Sort: для числового поиска - точное совпадение цены первым, затем код с начала > короткий код > алфавитный порядок
  const sorted = [...filtered].sort((a, b) => {
+ // Priority 0: If numeric search, exact price match comes first
+ if (numericQuery !== null) {
+ // Check which price fields match for each product
+ const aPriceMatch = a.price && Math.round(a.price) === numericQuery;
+ const aDonaNarxMatch = a.dona_narx && Math.round(a.dona_narx) === numericQuery;
+ const aOptomNarxMatch = a.optom_narx && Math.round(a.optom_narx) === numericQuery;
+ const aTanNarxMatch = (a as any).tan_narx && Math.round((a as any).tan_narx) === numericQuery;
+ const aCostPriceMatch = (a as any).costPrice && Math.round((a as any).costPrice) === numericQuery;
+ 
+ const bPriceMatch = b.price && Math.round(b.price) === numericQuery;
+ const bDonaNarxMatch = b.dona_narx && Math.round(b.dona_narx) === numericQuery;
+ const bOptomNarxMatch = b.optom_narx && Math.round(b.optom_narx) === numericQuery;
+ const bTanNarxMatch = (b as any).tan_narx && Math.round((b as any).tan_narx) === numericQuery;
+ const bCostPriceMatch = (b as any).costPrice && Math.round((b as any).costPrice) === numericQuery;
+ 
+ // Priority order: price > dona_narx > optom_narx > tan_narx > costPrice
+ // Assign priority scores (lower is better)
+ let aScore = 999;
+ let bScore = 999;
+ 
+ if (aPriceMatch) aScore = 1;
+ else if (aDonaNarxMatch) aScore = 2;
+ else if (aOptomNarxMatch) aScore = 3;
+ else if (aTanNarxMatch) aScore = 4;
+ else if (aCostPriceMatch) aScore = 5;
+ 
+ if (bPriceMatch) bScore = 1;
+ else if (bDonaNarxMatch) bScore = 2;
+ else if (bOptomNarxMatch) bScore = 3;
+ else if (bTanNarxMatch) bScore = 4;
+ else if (bCostPriceMatch) bScore = 5;
+ 
+ // Sort by priority score
+ if (aScore !== bScore) {
+ return aScore - bScore;
+ }
+ 
+ // If same priority, sort by code (ascending)
+ return a.code.localeCompare(b.code);
+ }
+ 
  const aCode = a.code.toLowerCase();
  const bCode = b.code.toLowerCase();
  

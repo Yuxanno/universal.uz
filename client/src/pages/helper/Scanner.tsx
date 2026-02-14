@@ -389,17 +389,79 @@ export default function HelperScanner() {
  
  console.log('🔍 [HELPER] Search query:', q);
  
+ // Check if query is a number (price search)
+ const isNumericQuery = /^\d+$/.test(q);
+ const numericQuery = isNumericQuery ? parseInt(q) : null;
+ 
  // Filter products
- const filtered = products.filter(p =>
- p.name.toLowerCase().includes(q) ||
- p.code.toLowerCase().includes(q)
- );
+ const filtered = products.filter(p => {
+ // Exact price search - if query is numeric, search by exact price match
+ if (numericQuery !== null) {
+ // Check exact match for price, dona_narx, or optom_narx
+ const priceMatch = p.price && Math.round(p.price) === numericQuery;
+ const donaNarxMatch = (p as any).dona_narx && Math.round((p as any).dona_narx) === numericQuery;
+ const optomNarxMatch = (p as any).optom_narx && Math.round((p as any).optom_narx) === numericQuery;
+ const tanNarxMatch = (p as any).tan_narx && Math.round((p as any).tan_narx) === numericQuery;
+ const costPriceMatch = p.costPrice && Math.round(p.costPrice) === numericQuery;
+ 
+ if (priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch) {
+ return true;
+ }
+ 
+ // If no exact match found, don't search by code for numeric queries
+ return false;
+ }
+ 
+ // Regular search by name or code
+ return p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+ });
  
  console.log('📦 [HELPER] Filtered count:', filtered.length);
  console.log('📋 [HELPER] First 3 filtered:', filtered.slice(0, 3).map(p => ({ code: p.code, name: p.name })));
  
- // Sort: kod boshidan boshlanadigan birinchi, keyin uzunlik bo'yicha
+ // Sort: для числового поиска - точное совпадение цены первым, затем код с начала > короткий код > алфавитный порядок
  const sorted = [...filtered].sort((a, b) => {
+ // Priority 0: If numeric search, exact price match comes first
+ if (numericQuery !== null) {
+ // Check which price fields match for each product
+ const aPriceMatch = a.price && Math.round(a.price) === numericQuery;
+ const aDonaNarxMatch = (a as any).dona_narx && Math.round((a as any).dona_narx) === numericQuery;
+ const aOptomNarxMatch = (a as any).optom_narx && Math.round((a as any).optom_narx) === numericQuery;
+ const aTanNarxMatch = (a as any).tan_narx && Math.round((a as any).tan_narx) === numericQuery;
+ const aCostPriceMatch = a.costPrice && Math.round(a.costPrice) === numericQuery;
+ 
+ const bPriceMatch = b.price && Math.round(b.price) === numericQuery;
+ const bDonaNarxMatch = (b as any).dona_narx && Math.round((b as any).dona_narx) === numericQuery;
+ const bOptomNarxMatch = (b as any).optom_narx && Math.round((b as any).optom_narx) === numericQuery;
+ const bTanNarxMatch = (b as any).tan_narx && Math.round((b as any).tan_narx) === numericQuery;
+ const bCostPriceMatch = b.costPrice && Math.round(b.costPrice) === numericQuery;
+ 
+ // Priority order: price > dona_narx > optom_narx > tan_narx > costPrice
+ // Assign priority scores (lower is better)
+ let aScore = 999;
+ let bScore = 999;
+ 
+ if (aPriceMatch) aScore = 1;
+ else if (aDonaNarxMatch) aScore = 2;
+ else if (aOptomNarxMatch) aScore = 3;
+ else if (aTanNarxMatch) aScore = 4;
+ else if (aCostPriceMatch) aScore = 5;
+ 
+ if (bPriceMatch) bScore = 1;
+ else if (bDonaNarxMatch) bScore = 2;
+ else if (bOptomNarxMatch) bScore = 3;
+ else if (bTanNarxMatch) bScore = 4;
+ else if (bCostPriceMatch) bScore = 5;
+ 
+ // Sort by priority score
+ if (aScore !== bScore) {
+ return aScore - bScore;
+ }
+ 
+ // If same priority, sort by code (ascending)
+ return a.code.localeCompare(b.code);
+ }
+ 
  const aCode = a.code.toLowerCase();
  const bCode = b.code.toLowerCase();
  
@@ -429,7 +491,7 @@ export default function HelperScanner() {
  
  setSearchResults(sorted);
  } else {
- setSearchResults([]);
+ setSearchResults(products.slice(0, 50)); // Show first 50 when empty
  }
  };
 
@@ -1004,8 +1066,14 @@ export default function HelperScanner() {
  )}
 
  {searchQuery && searchResults.length === 0 && (
- <div className="card text-center py-8 text-surface-500">
- Tovar topilmadi
+ <div className="card text-center py-12">
+ <div className="flex flex-col items-center">
+ <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
+ <Package className="w-8 h-8 text-red-500" />
+ </div>
+ <p className="text-lg font-bold text-surface-900">Mahsulot topilmadi</p>
+ <p className="text-sm text-surface-500 mt-1">Boshqa nom yoki kod bilan qidiring</p>
+ </div>
  </div>
  )}
 

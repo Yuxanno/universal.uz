@@ -296,7 +296,6 @@ export const translations: Record<string, string> = {
  // Receipt print
  "Xaridingiz uchun rahmat!": "Харидингиз учун раҳмат!",
  "Yana kutamiz!": "Яна кутамиз!",
- "Sana": "Сана",
  "Vaqt": "Вақт",
  "Chek": "Чек",
  "JAMI": "ЖАМИ",
