@@ -181,7 +181,11 @@ const CartItemRow = memo(({
  value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
- className="w-24 h-10 text-right text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
+ onClick={(e) => {
+ e.stopPropagation();
+ e.currentTarget.select();
+ }}
+ className="w-24 h-10 text-right text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white cursor-text"
  />
  </div>
  <div className="col-span-2 text-right" style={{ marginLeft: '-2.5rem' }}>
@@ -293,8 +297,11 @@ const CartItemRow = memo(({
  value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
- onClick={(e) => e.stopPropagation()}
- className="w-full h-8 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
+ onClick={(e) => {
+ e.stopPropagation();
+ e.currentTarget.select();
+ }}
+ className="w-full h-8 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white cursor-text"
  />
  </div>
  </div>
