@@ -83,28 +83,19 @@ export default function Kassa() {
  return saved ? JSON.parse(saved) : {};
  });
  
- // SENIOR OPTIMIZATION: Debounce localStorage saves to reduce write operations
+ // Save cart to localStorage when it changes
  useEffect(() => {
- const timeoutId = setTimeout(() => {
  localStorage.setItem('kassaCart', JSON.stringify(cart));
- }, 300); // 300ms debounce
- return () => clearTimeout(timeoutId);
  }, [cart]);
  
- // SENIOR OPTIMIZATION: Debounce localStorage saves
+ // Save localPrices to localStorage when it changes
  useEffect(() => {
- const timeoutId = setTimeout(() => {
  localStorage.setItem('kassaLocalPrices', JSON.stringify(localPrices));
- }, 300);
- return () => clearTimeout(timeoutId);
  }, [localPrices]);
  
- // SENIOR OPTIMIZATION: Debounce localStorage saves
+ // Save localNames to localStorage when it changes
  useEffect(() => {
- const timeoutId = setTimeout(() => {
  localStorage.setItem('kassaLocalNames', JSON.stringify(localNames));
- }, 300);
- return () => clearTimeout(timeoutId);
  }, [localNames]);
  
  const [showPayment, setShowPayment] = useState(false);
@@ -675,8 +666,7 @@ export default function Kassa() {
  return;
  }
  
- // SENIOR OPTIMIZATION 1: Pre-calculate and save all data BEFORE clearing state
- // Check stock availability
+ // YANGI: Check if any product in cart has insufficient stock
  for (const item of cart) {
  const product = displayedProducts.find(p => p._id === item._id);
  if (product) {
@@ -689,17 +679,11 @@ export default function Kassa() {
  'Xatolik',
  'danger'
  );
- return;
+ return; // Stop payment process
  }
  }
  }
  
- // CRITICAL: Save customer ID before clearing state
- const savedCustomerId = selectedCustomer;
- const savedIsReturnMode = isReturnMode;
- const savedWorkerReceiptIds = [...workerReceiptIds];
- 
- // Pre-calculate sale items
  const saleItems = cart.map(item => {
  const localPrice = localPrices[item._id];
  const price = localPrice !== undefined ? (parseInt(localPrice.replace(/\s/g, '')) || 0) : item.price;
@@ -727,8 +711,8 @@ export default function Kassa() {
  }
 
  // Get customer info for receipt
- const customer = savedCustomerId && savedCustomerId !== '' 
- ? customers.find(c => c._id === savedCustomerId)
+ const customer = selectedCustomer && selectedCustomer !== '' 
+ ? customers.find(c => c._id === selectedCustomer)
  : null;
  
  // Calculate total debt after this sale
@@ -736,7 +720,6 @@ export default function Kassa() {
  ? (customer.debt || 0) + debtAmount 
  : 0;
 
- // SENIOR OPTIMIZATION 2: Prepare receipt data BEFORE API calls
  const receiptData: PrintReceipt = {
  items: saleItems,
  total: finalTotal,
@@ -750,82 +733,76 @@ export default function Kassa() {
  receiptNumber: Date.now().toString().slice(-8)
  };
 
- // SENIOR OPTIMIZATION 3: Update UI immediately (optimistic update)
- setCart([]);
- setLocalPrices({});
- localStorage.removeItem('kassaCart');
- localStorage.removeItem('kassaLocalPrices');
- setSelectedCustomer('');
- setPriceMode('retail');
- localStorage.setItem('kassaPriceMode', 'retail');
- setShowPayment(false);
- setIsReturnMode(false);
- setPrintReceipt(receiptData);
- 
- // SENIOR OPTIMIZATION 4: Show receipt immediately (no delay)
- handlePrint(receiptData);
- 
- // Show success message immediately
- if (debtAmount > 0) {
- toast.success(`Savdo muvaffaqiyatli! Qarz: ${debtAmount.toLocaleString()} so'm`);
- } else {
- toast.success('Savdo muvaffaqiyatli yakunlandi!');
- }
-
- // SENIOR OPTIMIZATION 5: Do API calls in background (non-blocking)
  try {
- const totalDebtPayment = debtPaymentCash + debtPaymentCard;
- 
- // Parallel API calls for better performance
- const apiCalls = [
- api.post('/receipts', {
+ // Create main sale receipt
+ await api.post('/receipts', {
  items: saleItems,
  total: finalTotal,
  paymentMethod: paymentMethod,
  cashAmount: cashAmount,
  cardAmount: cardAmount,
  debtAmount: debtAmount,
- isReturn: savedIsReturnMode,
- customer: savedCustomerId && savedCustomerId !== '' ? savedCustomerId : null
- })
- ];
+ isReturn: isReturnMode,
+ customer: selectedCustomer && selectedCustomer !== '' ? selectedCustomer : null
+ });
  
- // Add debt payment if needed
- if (totalDebtPayment > 0 && savedCustomerId && savedCustomerId !== '') {
- apiCalls.push(
- api.post('/debts/pay-bulk', {
- customerId: savedCustomerId,
+ // Pay off customer's existing debt if debtPaymentCash or debtPaymentCard > 0
+ const totalDebtPayment = debtPaymentCash + debtPaymentCard;
+ if (totalDebtPayment > 0 && selectedCustomer && selectedCustomer !== '') {
+ try {
+ await api.post('/debts/pay-bulk', {
+ customerId: selectedCustomer,
  cashAmount: debtPaymentCash,
  cardAmount: debtPaymentCard,
  totalAmount: totalDebtPayment
- })
- );
+ });
+ } catch (err) {
+ console.error('Error paying customer debt:', err);
+ showAlert('Qarz to\'lovida xatolik yuz berdi', 'Xatolik', 'danger');
+ }
  }
  
- // Execute all API calls in parallel
- await Promise.all(apiCalls);
+ // Refresh products to update quantities in real-time
+ refreshProducts();
  
- // Delete worker receipts in parallel
- if (savedWorkerReceiptIds.length > 0) {
- await Promise.all(
- savedWorkerReceiptIds.map(id => 
- api.delete(`/receipts/${id}`).catch(err => 
- console.error('Error deleting worker receipt:', err)
- )
- )
- );
+ // Delete worker receipts if they exist
+ if (workerReceiptIds.length > 0) {
+ for (const id of workerReceiptIds) {
+ try {
+ await api.delete(`/receipts/${id}`);
+ } catch (err) {
+ console.error('Error deleting worker receipt:', err);
+ }
+ }
  setWorkerReceiptIds([]);
  }
  
- // Refresh products after all operations to update stock quantities
- refreshProducts();
+ setCart([]);
+ setLocalPrices({});
+ localStorage.removeItem('kassaCart'); // Clear cart from localStorage
+ localStorage.removeItem('kassaLocalPrices'); // Clear prices from localStorage
+ setSelectedCustomer(''); // Reset customer selection
+ setPriceMode('retail'); // Reset to dona narxi
+ localStorage.setItem('kassaPriceMode', 'retail'); // Save to localStorage
+ setShowPayment(false);
+ setIsReturnMode(false);
+ setPrintReceipt(receiptData);
+ 
+ // Auto-print receipt
+ setTimeout(() => {
+ handlePrint(receiptData);
+ }, 100);
+ 
+ // Show success message with toast
+ if (debtAmount > 0) {
+ toast.success(`Savdo muvaffaqiyatli! Qarz: ${debtAmount.toLocaleString()} so'm`);
+ } else {
+ toast.success('Savdo muvaffaqiyatli yakunlandi!');
+ }
  } catch (err: any) {
  console.error('Error creating receipt:', err);
  const message = err.response?.data?.message || 'Xatolik yuz berdi';
  showAlert(message, 'Xatolik', 'danger');
- // CRITICAL: If API fails, we should restore the cart state
- // But since we already showed receipt, we can't easily rollback
- // This is a trade-off for better UX
  }
  };
 

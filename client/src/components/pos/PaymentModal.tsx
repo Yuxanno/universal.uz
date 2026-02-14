@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Banknote, CreditCard, AlertTriangle, User, Calculator } from 'lucide-react';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useLanguage } from '../../context/LanguageContext';
@@ -12,8 +12,7 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-// SENIOR OPTIMIZATION: Memoize component to prevent unnecessary re-renders
-const PaymentModal = memo(function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
+export default function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
   const { t } = useLanguage();
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
@@ -22,8 +21,8 @@ const PaymentModal = memo(function PaymentModal({ total, customerName, customerI
   const [debtPaymentCard, setDebtPaymentCard] = useState('');
   const [customerTotalDebt, setCustomerTotalDebt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDebtPayment, setShowDebtPayment] = useState(false);
-  const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [showDebtPayment, setShowDebtPayment] = useState(false); // New state for checkbox
+  const [isBlacklisted, setIsBlacklisted] = useState(false); // Check if customer is blacklisted
   
   // SENIOR SOLUTION: Auto focus cash input
   const cashInputRef = useRef<HTMLInputElement>(null);
@@ -39,38 +38,29 @@ const PaymentModal = memo(function PaymentModal({ total, customerName, customerI
     }, 100);
   }, []);
 
-  // SENIOR OPTIMIZATION: Fetch customer debt in parallel with minimal data
+  // Fetch customer's total debt when modal opens
   useEffect(() => {
     const fetchCustomerDebt = async () => {
       if (customerId && customerId !== '') {
         try {
-          // OPTIMIZATION 1: Parallel requests instead of sequential
-          const [customerResponse, debtsResponse] = await Promise.all([
-            api.get(`/customers/${customerId}`),
-            api.get(`/debts/grouped?type=receivable`)
-          ]);
-          
-          const totalDebt = customerResponse.data.debt || 0;
+          // Get customer data directly - it has debt field
+          const response = await api.get(`/customers/${customerId}`);
+          const totalDebt = response.data.debt || 0;
           setCustomerTotalDebt(totalDebt);
           
-          // OPTIMIZATION 2: Early exit if no debts to check
-          if (!debtsResponse.data || debtsResponse.data.length === 0) {
-            setIsBlacklisted(false);
-            return;
-          }
-          
           // Check if customer is blacklisted
+          const debtsResponse = await api.get(`/debts/grouped?type=receivable`);
           const customerGroup = debtsResponse.data.find((g: any) => g.customer._id === customerId);
-          setIsBlacklisted(customerGroup?.status === 'blacklist');
+          if (customerGroup && customerGroup.status === 'blacklist') {
+            setIsBlacklisted(true);
+          } else {
+            setIsBlacklisted(false);
+          }
         } catch (error) {
           console.error('❌ Error fetching customer debt:', error);
           setCustomerTotalDebt(0);
           setIsBlacklisted(false);
         }
-      } else {
-        // OPTIMIZATION 3: Reset state immediately for no customer
-        setCustomerTotalDebt(0);
-        setIsBlacklisted(false);
       }
     };
     fetchCustomerDebt();
@@ -414,6 +404,4 @@ const PaymentModal = memo(function PaymentModal({ total, customerName, customerI
       </div>
     </div>
   );
-});
-
-export default PaymentModal;
+}
