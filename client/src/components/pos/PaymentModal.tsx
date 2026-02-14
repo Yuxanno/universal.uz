@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { X, Banknote, CreditCard, AlertTriangle, User, Calculator } from 'lucide-react';
 import { formatNumber, formatInputNumber, parseNumber } from '../../utils/format';
 import { useLanguage } from '../../context/LanguageContext';
@@ -12,7 +12,8 @@ interface PaymentModalProps {
   onClose: () => void;
 }
 
-export default function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
+// SENIOR OPTIMIZATION: Memoize component to prevent unnecessary re-renders
+const PaymentModal = memo(function PaymentModal({ total, customerName, customerId, onConfirm, onClose }: PaymentModalProps) {
   const { t } = useLanguage();
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
@@ -21,8 +22,8 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
   const [debtPaymentCard, setDebtPaymentCard] = useState('');
   const [customerTotalDebt, setCustomerTotalDebt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDebtPayment, setShowDebtPayment] = useState(false); // New state for checkbox
-  const [isBlacklisted, setIsBlacklisted] = useState(false); // Check if customer is blacklisted
+  const [showDebtPayment, setShowDebtPayment] = useState(false);
+  const [isBlacklisted, setIsBlacklisted] = useState(false);
   
   // SENIOR SOLUTION: Auto focus cash input
   const cashInputRef = useRef<HTMLInputElement>(null);
@@ -38,29 +39,38 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
     }, 100);
   }, []);
 
-  // Fetch customer's total debt when modal opens
+  // SENIOR OPTIMIZATION: Fetch customer debt in parallel with minimal data
   useEffect(() => {
     const fetchCustomerDebt = async () => {
       if (customerId && customerId !== '') {
         try {
-          // Get customer data directly - it has debt field
-          const response = await api.get(`/customers/${customerId}`);
-          const totalDebt = response.data.debt || 0;
+          // OPTIMIZATION 1: Parallel requests instead of sequential
+          const [customerResponse, debtsResponse] = await Promise.all([
+            api.get(`/customers/${customerId}`),
+            api.get(`/debts/grouped?type=receivable`)
+          ]);
+          
+          const totalDebt = customerResponse.data.debt || 0;
           setCustomerTotalDebt(totalDebt);
           
-          // Check if customer is blacklisted
-          const debtsResponse = await api.get(`/debts/grouped?type=receivable`);
-          const customerGroup = debtsResponse.data.find((g: any) => g.customer._id === customerId);
-          if (customerGroup && customerGroup.status === 'blacklist') {
-            setIsBlacklisted(true);
-          } else {
+          // OPTIMIZATION 2: Early exit if no debts to check
+          if (!debtsResponse.data || debtsResponse.data.length === 0) {
             setIsBlacklisted(false);
+            return;
           }
+          
+          // Check if customer is blacklisted
+          const customerGroup = debtsResponse.data.find((g: any) => g.customer._id === customerId);
+          setIsBlacklisted(customerGroup?.status === 'blacklist');
         } catch (error) {
           console.error('❌ Error fetching customer debt:', error);
           setCustomerTotalDebt(0);
           setIsBlacklisted(false);
         }
+      } else {
+        // OPTIMIZATION 3: Reset state immediately for no customer
+        setCustomerTotalDebt(0);
+        setIsBlacklisted(false);
       }
     };
     fetchCustomerDebt();
@@ -404,4 +414,6 @@ export default function PaymentModal({ total, customerName, customerId, onConfir
       </div>
     </div>
   );
-}
+});
+
+export default PaymentModal;
