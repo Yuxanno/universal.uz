@@ -117,10 +117,13 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  // Store rank (0 = most sold, 1 = second most sold, etc.)
  topProductsMap.set(item._id, index);
  });
- console.log(`📊 Loaded ${topProductsMap.size} top products for ranking`);
+ // Always log in production too (for debugging)
+ console.log(`📊 [ProductsContext] Loaded ${topProductsMap.size} top products for ranking`);
  }
- } catch (err) {
- console.warn('⚠️ Could not fetch top products, using default sorting');
+ } catch (err: any) {
+ // Always log error in production too
+ console.error('❌ [ProductsContext] Could not fetch top products:', err.message || err);
+ console.warn('⚠️ [ProductsContext] Using fallback sorting (soldCount)');
  }
  
  // Get main warehouse first
@@ -181,6 +184,9 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  isTopProduct: topProductsMap.has(p._id),
  rank: topProductsMap.get(p._id)
  })));
+ } else {
+ // Production: Log only summary
+ console.log(`📊 [ProductsContext] Sorted ${sortedProducts.length} products (${topProductsMap.size} from top products API)`);
  }
  
  // Update state IMMEDIATELY with sorted products

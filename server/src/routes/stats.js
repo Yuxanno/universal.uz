@@ -161,7 +161,7 @@ router.get('/chart', auth, authorize('admin'), async (req, res) => {
   }
 });
 
-router.get('/top-products', auth, authorize('admin'), async (req, res) => {
+router.get('/top-products', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     

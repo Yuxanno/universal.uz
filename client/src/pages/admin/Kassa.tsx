@@ -316,6 +316,9 @@ export default function Kassa() {
  const optomPrice = product.price || 0; // Optom narxi
  const tanPrice = product.costPrice || 0; // Tan narxi
  
+ // CRITICAL: Use priceMode to determine default price
+ const defaultPrice = priceMode === 'retail' ? donaPrice : optomPrice;
+ 
  // Check if product quantity is low - show toast instead of modal
  const minStockThreshold = product.minStock || 5;
  if (product.quantity <= minStockThreshold && product.quantity > 0) {
@@ -339,27 +342,27 @@ export default function Kassa() {
  return prev.map(p => p._id === product._id ? {...p, cartQuantity: p.cartQuantity + 1} : p);
  }
  
- // Map prices correctly
+ // Map prices correctly - use priceMode to set default price
  return [...prev, {
  ...product, 
  cartQuantity: 1,
- price: donaPrice, // Default: dona narxi
+ price: defaultPrice, // Use priceMode: optom or dona
  dona_narx: donaPrice,
  optom_narx: optomPrice,
  tan_narx: tanPrice
  }];
  });
  
- // Set local price to dona price by default
+ // Set local price based on priceMode
  setLocalPrices(prev => ({
  ...prev,
- [product._id]: donaPrice.toString()
+ [product._id]: defaultPrice.toString()
  }));
  
  // Modal'ni darhol yopadi
  setShowSearch(false);
  setSearchQuery('');
- }, [toast]);
+ }, [priceMode, toast]);
 
  // Toggle between retail and wholesale prices
  const togglePriceMode = useCallback(() => {
