@@ -1329,7 +1329,7 @@ export default function Products() {
  
  // Формируем цену с кодом если он введен
  const displayPrice = printCodePrefix.trim() 
- ? `${printCodePrefix.trim()},${price.toString().replace(/\s/g, '')}` 
+ ? `${printCodePrefix.trim()},${Math.floor(price / 10).toString().replace(/\s/g, '')}` 
  : price.toLocaleString();
  
  // Avtomatik font size - uzun nomlar uchun kichikroq
