@@ -8,12 +8,13 @@ import { useCustomers } from '../../context/CustomersContext';
 import { regions, regionNames } from '../../data/regions';
 import { useLanguage } from '../../context/LanguageContext';
 import PhoneInput from '../../components/PhoneInput';
+import ReturnModal from '../../components/customers/ReturnModal';
 import api from '../../utils/api';
 
 export default function Customers() {
   const { t } = useLanguage();
-  const { AlertComponent } = useAlert();
-  const { customers, loading, addCustomer, updateCustomer } = useCustomers();
+  const { showConfirm, AlertComponent } = useAlert();
+  const { customers, loading, addCustomer, updateCustomer, fetchCustomers } = useCustomers();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRegion, setFilterRegion] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('');
@@ -23,6 +24,11 @@ export default function Customers() {
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({ name: '', phone: '+998', region: '', district: '' });
+  const [customerModalKey, setCustomerModalKey] = useState(0); // Force re-render key
+  // Return functionality
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [selectedPurchase, setSelectedPurchase] = useState<any>(null);
+  const [processingReturn, setProcessingReturn] = useState(false);
 
   const openDetailsModal = async (customer: Customer) => {
     try {
@@ -34,6 +40,128 @@ export default function Customers() {
       console.error('Error fetching customer details:', err);
       setSelectedCustomer(customer);
       setShowDetailsModal(true);
+    }
+  };
+
+  // Open return modal
+  const openReturnModal = (purchase: any) => {
+    setSelectedPurchase(purchase);
+    setShowReturnModal(true);
+  };
+
+  // Process return
+  const processReturn = async (itemsToReturn: { product: string; quantity: number }[]) => {
+    if (!selectedPurchase || !selectedCustomer) return;
+    
+    if (itemsToReturn.length === 0) {
+      showConfirm('Qaytariladigan mahsulot tanlanmagan', 'Ogohlantirish', 'warning');
+      return;
+    }
+    
+    setProcessingReturn(true);
+    
+    try {
+      // Get full item details
+      const fullItems = itemsToReturn.map(returnItem => {
+        const originalItem = selectedPurchase.items.find((item: any) => 
+          (item.product || item._id) === returnItem.product
+        );
+        return {
+          product: returnItem.product,
+          name: originalItem.name,
+          code: originalItem.code,
+          price: originalItem.price,
+          quantity: returnItem.quantity
+        };
+      });
+      
+      // Calculate return total
+      const returnTotal = fullItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Call backend API
+      const response = await api.post('/receipts/return', {
+        customerId: selectedCustomer._id,
+        receiptId: selectedPurchase.receiptId,
+        items: fullItems,
+        returnTotal,
+        originalPurchase: {
+          total: selectedPurchase.total,
+          cashAmount: selectedPurchase.cashAmount || 0,
+          cardAmount: selectedPurchase.cardAmount || 0,
+          debtAmount: selectedPurchase.debtAmount || 0
+        }
+      });
+      
+      console.log('✅ Return response:', response.data);
+      
+      // Show detailed success message with refund breakdown
+      const { refundBreakdown, customerUpdate, receiptUpdate } = response.data;
+      let successMessage = 'Mahsulotlar muvaffaqiyatli qaytarildi!\n\n';
+      
+      if (receiptUpdate?.isFullReturn) {
+        successMessage += '🔄 To\'liq qaytarildi - xarid ro\'yxatdan o\'chirildi\n\n';
+      } else if (receiptUpdate) {
+        successMessage += `📦 Qisman qaytarildi\n`;
+        successMessage += `Qolgan summa: ${formatNumber(receiptUpdate.remainingTotal)} so'm\n\n`;
+      }
+      
+      if (refundBreakdown.debtReduced > 0) {
+        successMessage += `💰 Qarzdan ayrildi: ${formatNumber(refundBreakdown.debtReduced)} so'm\n`;
+      }
+      if (refundBreakdown.cardRefund > 0) {
+        successMessage += `💳 Kartaga qaytarildi: ${formatNumber(refundBreakdown.cardRefund)} so'm\n`;
+      }
+      if (refundBreakdown.cashRefund > 0) {
+        successMessage += `💵 Naqd qaytarildi: ${formatNumber(refundBreakdown.cashRefund)} so'm\n`;
+      }
+      
+      if (customerUpdate) {
+        successMessage += `\n📊 Yangi qarz: ${formatNumber(customerUpdate.debt)} so'm`;
+        successMessage += `\n📊 Jami xaridlar: ${formatNumber(customerUpdate.totalPurchases)} so'm`;
+      }
+      
+      console.log('📊 Customer update:', customerUpdate);
+      console.log('📊 Receipt update:', receiptUpdate);
+      
+      // Close return modal first
+      setShowReturnModal(false);
+      setSelectedPurchase(null);
+      
+      // Refresh customers list to get updated totals (force refresh, bypass cache)
+      await fetchCustomers(true);
+      console.log('✅ Customers list refreshed (forced)');
+      
+      // Refresh customer details modal with fresh data from server
+      try {
+        const res = await api.get(`/customers/${selectedCustomer._id}`);
+        const freshCustomerData = res.data;
+        
+        console.log('✅ Customer data refreshed:', {
+          debt: freshCustomerData.debt,
+          totalPurchases: freshCustomerData.totalPurchases,
+          purchaseHistoryCount: freshCustomerData.detailedPurchaseHistory?.length,
+          oldDebt: selectedCustomer.debt,
+          oldTotalPurchases: selectedCustomer.totalPurchases
+        });
+        
+        // Force update by creating new object reference
+        setSelectedCustomer({...freshCustomerData});
+        
+        // Force modal re-render by updating key
+        setCustomerModalKey(prev => prev + 1);
+        
+        console.log('🔄 State updated, component should re-render');
+      } catch (err) {
+        console.error('Error refreshing customer details:', err);
+      }
+      
+      showConfirm(successMessage, 'Muvaffaqiyat', 'success');
+    } catch (err: any) {
+      console.error('Error processing return:', err);
+      const errorMsg = err.response?.data?.message || 'Qaytarishda xatolik yuz berdi';
+      showConfirm(errorMsg, 'Xatolik', 'danger');
+    } finally {
+      setProcessingReturn(false);
     }
   };
 
@@ -425,7 +553,7 @@ export default function Customers() {
 
       {/* Customer Details Modal */}
       {showDetailsModal && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+        <div key={`customer-modal-${customerModalKey}`} className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDetailsModal(false)} />
           <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-2xl relative z-10 animate-scaleIn overflow-hidden border-2 border-surface-100 dark:border-surface-700 max-h-[90vh] flex flex-col">
             {/* Header */}
@@ -484,7 +612,7 @@ export default function Customers() {
                           .map((purchase: any, index: number) => (
                           <div key={index} className="rounded-xl p-3 border bg-surface-50 dark:bg-surface-700 border-surface-200 dark:border-surface-600">
                             <div className="flex items-center justify-between mb-2">
-                              <div>
+                              <div className="flex-1">
                                 <p className="text-sm font-bold text-surface-900 dark:text-surface-100">
                                   {new Date(purchase.date).toLocaleDateString('en-GB').replace(/\//g, '.')} {new Date(purchase.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                 </p>
@@ -492,10 +620,25 @@ export default function Customers() {
                                   Chek #{purchase.receiptId.toString().slice(-8)}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <p className="text-lg font-black text-brand-600 dark:text-brand-400">
-                                  {formatNumber(purchase.total)} {t("so'm")}
-                                </p>
+                              <div className="flex items-center gap-2">
+                                <div className="text-right">
+                                  <p className="text-lg font-black text-brand-600 dark:text-brand-400">
+                                    {formatNumber(purchase.total)} {t("so'm")}
+                                  </p>
+                                </div>
+                                {/* Qaytarish tugmasi */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openReturnModal(purchase);
+                                  }}
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600 transition-all hover:scale-110 active:scale-95"
+                                  title="Mahsulotni qaytarish"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                </button>
                               </div>
                             </div>
                             
@@ -595,6 +738,19 @@ export default function Customers() {
           </div>
         </div>
       )}
+      
+      {/* Return Modal */}
+      <ReturnModal
+        isOpen={showReturnModal}
+        onClose={() => {
+          setShowReturnModal(false);
+          setSelectedPurchase(null);
+        }}
+        purchase={selectedPurchase}
+        customerName={selectedCustomer?.name || ''}
+        onConfirm={processReturn}
+        processing={processingReturn}
+      />
     </div>
   );
 }
