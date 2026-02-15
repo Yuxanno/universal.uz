@@ -185,7 +185,7 @@ const DebtMobileCard = memo(({
             {group.remainingAmount > 0 && (
               <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-2 inline-block">
                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  {t("Qoldiq")}: {formatNumber(group.remainingAmount)} {t("so'm")}
+                  {t("Qolgan qarz")}: {formatNumber(group.remainingAmount)} {t("so'm")}
                 </span>
               </div>
             )}
@@ -578,7 +578,7 @@ export default function Debts() {
                   <span className="table-header-cell col-span-2">{t("Telefon")}</span>
                   <span className="table-header-cell col-span-2">{t("Jami qarz")}</span>
                   <span className="table-header-cell col-span-2">{t("To'langan")}</span>
-                  <span className="table-header-cell col-span-2">{t("Qoldiq")}</span>
+                  <span className="table-header-cell col-span-2">{t("Qolgan qarz")}</span>
                   <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export default function Debts() {
                   <span className="table-header-cell col-span-2">{t("Telefon")}</span>
                   <span className="table-header-cell col-span-2">{t("Jami qarz")}</span>
                   <span className="table-header-cell col-span-2">{t("To'langan")}</span>
-                  <span className="table-header-cell col-span-2">{t("Qoldiq")}</span>
+                  <span className="table-header-cell col-span-2">{t("Qolgan qarz")}</span>
                   <span className="table-header-cell col-span-1 text-center">{t("Amallar")}</span>
                 </div>
               </div>

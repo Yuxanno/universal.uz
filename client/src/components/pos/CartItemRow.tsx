@@ -101,8 +101,7 @@ const CartItemRow = memo(({
  <>
  {/* Desktop: Table Row Layout */}
  <div
- onClick={handleRowClick}
- className={`hidden md:grid px-4 py-3 items-center cursor-pointer transition-all ${
+ className={`hidden md:grid px-4 py-3 items-center transition-all ${
  editingName ? 'grid-cols-1' : 'grid-cols-12'
  } ${
  isInsufficientStock
@@ -166,25 +165,33 @@ const CartItemRow = memo(({
  <div className="col-span-1 text-right" style={{ marginRight: '0.75rem' }}>
  <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>
  </div>
- <div className="col-span-1 flex items-center justify-center" style={{ marginLeft: '0.75rem' }}>
+ <div 
+ className="col-span-1 flex items-center justify-center" 
+ style={{ marginLeft: '0.75rem' }}
+ >
  <input
  type="text"
  value={item.cartQuantity}
  onChange={handleQuantityChange}
  onBlur={handleQuantityBlur}
- className="w-16 h-10 text-center font-bold text-base border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white"
+ onFocus={(e) => e.currentTarget.select()}
+ readOnly={false}
+ tabIndex={0}
+ className="w-16 h-10 text-center font-bold text-base border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white cursor-text"
  />
  </div>
- <div className="col-span-2 text-right" style={{ marginLeft: '-0.25rem' }}>
+ <div 
+ className="col-span-2 text-right" 
+ style={{ marginLeft: '-0.25rem' }}
+ >
  <input
  type="text"
  value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
- onClick={(e) => {
- e.stopPropagation();
- e.currentTarget.select();
- }}
+ onFocus={(e) => e.currentTarget.select()}
+ readOnly={false}
+ tabIndex={0}
  className="w-24 h-10 text-right text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white cursor-text"
  />
  </div>
@@ -275,7 +282,10 @@ const CartItemRow = memo(({
  onChange={handleQuantityChange}
  onBlur={handleQuantityBlur}
  onClick={(e) => e.stopPropagation()}
- className="w-12 h-8 text-center text-sm font-black border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
+ onFocus={(e) => e.currentTarget.select()}
+ readOnly={false}
+ tabIndex={0}
+ className="w-12 h-8 text-center text-sm font-black border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white cursor-text"
  />
  <button
  onClick={(e) => {
@@ -297,10 +307,17 @@ const CartItemRow = memo(({
  value={localPrice !== undefined ? localPrice : item.price.toLocaleString()}
  onChange={handlePriceChange}
  onBlur={handlePriceBlur}
+ onMouseDown={(e) => {
+ e.stopPropagation();
+ }}
  onClick={(e) => {
  e.stopPropagation();
+ e.currentTarget.focus();
  e.currentTarget.select();
  }}
+ onFocus={(e) => e.currentTarget.select()}
+ readOnly={false}
+ tabIndex={0}
  className="w-full h-8 text-left text-sm font-bold border-2 border-slate-300 dark:border-neutral-600 dark:bg-neutral-700 text-slate-900 dark:text-neutral-100 rounded-lg px-2 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all bg-white cursor-text"
  />
  </div>

@@ -1029,10 +1029,10 @@ router.post('/return', auth, authorize('admin', 'cashier'), async (req, res) => 
     }
     
     // CORRECTED LOGIC: Handle payment refund priority
-    // 1. First reduce debt FROM THIS PURCHASE ONLY (if any)
+    // YANGI LOGIKA: Agar mijozning qarzi bo'lsa, AVVAL qarzdan ayriladi
+    // 1. First reduce ANY customer debt (prioritize debt reduction)
     // 2. Then refund to card (proportional to original card payment)
     // 3. Then refund cash (proportional to original cash payment)
-    // 4. Finally reduce OTHER debts if anything remains
     
     let remainingRefund = returnTotal;
     const refundBreakdown = {
@@ -1047,59 +1047,64 @@ router.post('/return', auth, authorize('admin', 'cashier'), async (req, res) => 
       originalPurchase
     });
     
-    // Step 1: Reduce debt FROM THIS PURCHASE FIRST (if this purchase had debt)
-    if (originalPurchase.debtAmount > 0) {
-      console.log('💰 [RETURN] Step 1: This purchase had debt, finding related debt...');
+    // Step 1: YANGI - Reduce ANY customer debt FIRST (if customer has debt)
+    if (customer.debt > 0 && remainingRefund > 0) {
+      console.log('💰 [RETURN] Step 1: Customer has debt, reducing from total debt...');
       
-      // Find debt specifically from this receipt
-      const receiptDebt = await Debt.findOne({
+      // Find ALL unpaid debts for this customer (oldest first)
+      const allDebts = await Debt.find({
         customer: customerId,
-        receipt: receiptId,
         type: 'receivable',
         status: { $ne: 'paid' }
-      });
+      }).sort({ createdAt: 1 }); // Oldest first
       
-      if (receiptDebt) {
-        const debtRemaining = receiptDebt.amount - receiptDebt.paidAmount;
+      console.log(`💰 [RETURN] Found ${allDebts.length} unpaid debts`);
+      
+      for (const debt of allDebts) {
+        if (remainingRefund <= 0) break;
         
-        if (debtRemaining > 0) {
-          const debtReduction = Math.min(remainingRefund, debtRemaining);
-          
-          console.log(`💰 [RETURN] Reducing debt from this purchase:`, {
-            debtAmount: receiptDebt.amount,
-            debtPaid: receiptDebt.paidAmount,
-            debtRemaining,
-            debtReduction
-          });
-          
-          // Add payment to debt
-          receiptDebt.payments.push({
-            amount: debtReduction,
-            method: 'return',
-            date: new Date()
-          });
-          receiptDebt.paidAmount += debtReduction;
-          
-          if (receiptDebt.paidAmount >= receiptDebt.amount) {
-            receiptDebt.status = 'paid';
-            console.log(`✅ [RETURN] Receipt debt fully paid!`);
-          }
-          
-          await receiptDebt.save();
-          
-          // Update customer debt
-          customer.debt -= debtReduction;
-          
-          remainingRefund -= debtReduction;
-          refundBreakdown.debtReduced += debtReduction;
-          
-          console.log(`💰 [RETURN] Reduced receipt debt by ${debtReduction} so'm, remaining refund: ${remainingRefund}`);
+        const debtRemaining = debt.amount - debt.paidAmount;
+        
+        if (debtRemaining <= 0) {
+          console.log(`⏭️  [RETURN] Skipping debt ${debt._id} (already paid)`);
+          continue;
         }
-      } else {
-        console.log('⚠️  [RETURN] No unpaid debt found for this receipt');
+        
+        const debtReduction = Math.min(remainingRefund, debtRemaining);
+        
+        console.log(`💰 [RETURN] Reducing debt ${debt._id}:`, {
+          debtAmount: debt.amount,
+          debtPaid: debt.paidAmount,
+          debtRemaining,
+          debtReduction
+        });
+        
+        // Add payment to debt
+        debt.payments.push({
+          amount: debtReduction,
+          method: 'return',
+          date: new Date(),
+          description: `Mahsulot qaytarildi - ${returnTotal.toLocaleString('uz-UZ')} so'm`
+        });
+        debt.paidAmount += debtReduction;
+        
+        if (debt.paidAmount >= debt.amount) {
+          debt.status = 'paid';
+          console.log(`✅ [RETURN] Debt ${debt._id} fully paid!`);
+        }
+        
+        await debt.save();
+        
+        // Update customer debt
+        customer.debt -= debtReduction;
+        
+        remainingRefund -= debtReduction;
+        refundBreakdown.debtReduced += debtReduction;
+        
+        console.log(`💰 [RETURN] Reduced debt by ${debtReduction} so'm, remaining refund: ${remainingRefund}`);
       }
     } else {
-      console.log('💰 [RETURN] Step 1: This purchase had no debt');
+      console.log('💰 [RETURN] Step 1: Customer has no debt or no refund remaining');
     }
     
     // Step 2: Refund to card (proportional to original card payment)
@@ -1124,60 +1129,9 @@ router.post('/return', auth, authorize('admin', 'cashier'), async (req, res) => 
         remainingRefund, originalPurchase.cashAmount);
     }
     
-    // Step 4: If anything remains, reduce OTHER debts (oldest first)
-    if (remainingRefund > 0 && customer.debt > 0) {
-      console.log('💰 [RETURN] Step 4: Remaining refund, checking other debts...');
-      
-      const otherDebts = await Debt.find({
-        customer: customerId,
-        receipt: { $ne: receiptId }, // Exclude this receipt's debt
-        type: 'receivable',
-        status: { $ne: 'paid' }
-      }).sort({ createdAt: 1 }); // Oldest first
-      
-      console.log(`💰 [RETURN] Found ${otherDebts.length} other unpaid debts`);
-      
-      for (const debt of otherDebts) {
-        if (remainingRefund <= 0) break;
-        
-        const debtRemaining = debt.amount - debt.paidAmount;
-        
-        if (debtRemaining <= 0) {
-          console.log(`⏭️  [RETURN] Skipping debt ${debt._id} (already paid)`);
-          continue;
-        }
-        
-        const debtReduction = Math.min(remainingRefund, debtRemaining);
-        
-        console.log(`💰 [RETURN] Reducing other debt ${debt._id}:`, {
-          debtAmount: debt.amount,
-          debtPaid: debt.paidAmount,
-          debtRemaining,
-          debtReduction
-        });
-        
-        debt.payments.push({
-          amount: debtReduction,
-          method: 'return',
-          date: new Date()
-        });
-        debt.paidAmount += debtReduction;
-        
-        if (debt.paidAmount >= debt.amount) {
-          debt.status = 'paid';
-          console.log(`✅ [RETURN] Other debt ${debt._id} fully paid!`);
-        }
-        
-        await debt.save();
-        
-        customer.debt -= debtReduction;
-        remainingRefund -= debtReduction;
-        refundBreakdown.debtReduced += debtReduction;
-        
-        console.log(`💰 [RETURN] Reduced other debt by ${debtReduction} so'm, remaining: ${remainingRefund}`);
-      }
-    } else {
-      console.log('💰 [RETURN] Step 4: No remaining refund or no other debts');
+    // Step 4 is removed - we already handled all debts in Step 1
+    if (remainingRefund > 0) {
+      console.log('⚠️  [RETURN] Warning: Remaining refund after all steps:', remainingRefund);
     }
     
     // Update customer total purchases
