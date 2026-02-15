@@ -54,24 +54,15 @@ export function searchProducts<T extends SearchableProduct>(
         let matchReason = '';
 
         // 1. Поиск по ЦЕНЕ (только если запрос - чистое число)
-        // ВАЖНО: Ищем по DONA NARX, OPTOM NARX и TAN NARX
+        // ПРИОРИТЕТ: Сначала ищем по OPTOM, если нашли - возвращаем только их
+        // Если не нашли по OPTOM - ищем по DONA и TAN
         if (isNumeric && numValue !== null) {
-            // Optom narxi (price)
+            // Optom narxi (price) - ПЕРВЫЙ ПРИОРИТЕТ
             const optomPrice = product.price || (product as any).optom_narx;
-            // Dona narxi (retailPrice or dona_narx)
-            const donaPrice = (product as any).retailPrice || (product as any).dona_narx;
-            // Tan narxi (costPrice or tan_narx)
-            const tanPrice = product.costPrice || (product as any).tan_narx;
             
             if (optomPrice != null && Number(optomPrice) === numValue) {
                 matchReason = `Optom price match (${optomPrice})`;
                 console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | optom: ${optomPrice} === ${numValue}`);
-            } else if (donaPrice != null && Number(donaPrice) === numValue) {
-                matchReason = `Dona price match (${donaPrice})`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | dona: ${donaPrice} === ${numValue}`);
-            } else if (tanPrice != null && Number(tanPrice) === numValue) {
-                matchReason = `Tan price match (${tanPrice})`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | tan: ${tanPrice} === ${numValue}`);
             }
         }
 
