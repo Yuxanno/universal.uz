@@ -250,6 +250,29 @@ Mahsulot sotish va qaytarish (vozvrat) funksiyalari.
 
 ---
 
+### Kassa Improvements (2024-02-15)
+**Fayl**: `beets/features/kassa-improvements-2024-02-15.md`
+
+Kassa tizimi yaxshilanishlari.
+
+**Yaxshilanishlar**:
+1. **Narx bo'yicha aniq qidirish** - Faqat aniq narxdagi mahsulotlar
+2. **Top mahsulotlar birinchi o'rinda** - Statistikadan saralash
+3. **Scroll optimizatsiyasi** - Faqat mahsulotlar qismi scroll
+4. **Narx rejimi tuzatildi** - Optom/dona to'g'ri ishlaydi
+5. **Kassir uchun qaytarish** - Kassir ham qaytarish qila oladi
+
+**O'zgartirilgan Fayllar**:
+- `client/src/utils/productSearch.ts`
+- `client/src/context/ProductsContext.tsx`
+- `client/src/pages/admin/Kassa.tsx`
+- `client/src/pages/cashier/Customers.tsx`
+- `server/src/routes/stats.js`
+
+**Qachon ishlatish**: Kassa tizimida
+
+---
+
 ## Frontend Context
 
 ### AuthContext

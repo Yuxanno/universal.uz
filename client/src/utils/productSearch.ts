@@ -107,7 +107,7 @@ export function searchProducts<T extends SearchableProduct>(
  
  // Debug: Log search query
  if (numericQuery !== null) {
- console.log(`🔍 [PRICE SEARCH] Query: ${numericQuery}`);
+ console.log(`🔍 [CODE/PRICE SEARCH] Query: ${numericQuery}`);
  console.log(`📦 Total products before filter: ${products.length}`);
  }
  
@@ -116,10 +116,12 @@ export function searchProducts<T extends SearchableProduct>(
  
  // Filter products
  const filtered = products.filter(product => {
- // Exact price search - if query is numeric, search by exact price match ONLY
+ // Numeric search - search by CODE first, then by exact PRICE match
  if (numericQuery !== null) {
- // Check exact match for ALL price fields: price, dona_narx, optom_narx, tan_narx, costPrice
- // We check ALL possible price fields to ensure we find products with this exact price
+ // PRIORITY 1: Check if CODE matches (exact or contains)
+ const codeMatch = product.code && product.code.includes(trimmedQuery);
+ 
+ // PRIORITY 2: Check exact match for ALL price fields
  const priceMatch = product.price && Math.round(product.price) === numericQuery;
  const donaNarxMatch = product.dona_narx && Math.round(product.dona_narx) === numericQuery;
  const optomNarxMatch = product.optom_narx && Math.round(product.optom_narx) === numericQuery;
@@ -127,28 +129,28 @@ export function searchProducts<T extends SearchableProduct>(
  const costPriceMatch = (product as any).costPrice && Math.round((product as any).costPrice) === numericQuery;
  
  // Debug: Log first 10 matching products
- if (debugCount < 10 && (priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch)) {
+ if (debugCount < 10 && (codeMatch || priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch)) {
  debugCount++;
  console.log(`✅ [Match ${debugCount}] ${product.name}:`, {
  code: product.code,
+ codeMatch,
  price: product.price,
  dona_narx: product.dona_narx,
  optom_narx: product.optom_narx,
  tan_narx: (product as any).tan_narx,
  costPrice: (product as any).costPrice,
- matches: { priceMatch, donaNarxMatch, optomNarxMatch, tanNarxMatch, costPriceMatch }
+ matches: { codeMatch, priceMatch, donaNarxMatch, optomNarxMatch, tanNarxMatch, costPriceMatch }
  });
  }
  
- // CRITICAL: Return true ONLY if at least one price field matches EXACTLY
- // This ensures we show ONLY products with this exact price (e.g., 15000)
- // and NOT products with different prices (e.g., 7000, 9000, 10000)
- const hasMatch = priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch;
+ // Return true if CODE matches OR at least one price field matches EXACTLY
+ const hasMatch = codeMatch || priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch;
  
  if (!hasMatch && debugCount === 0) {
  // Log first non-matching product for debugging
  console.log(`❌ [NO MATCH] ${product.name}:`, {
  code: product.code,
+ codeMatch,
  price: product.price,
  dona_narx: product.dona_narx,
  optom_narx: product.optom_narx,
@@ -176,7 +178,7 @@ export function searchProducts<T extends SearchableProduct>(
  
  // Debug: Log filtered results count
  if (numericQuery !== null) {
- console.log(`✅ [FILTERED] Found ${filtered.length} products with price ${numericQuery}`);
+ console.log(`✅ [FILTERED] Found ${filtered.length} products with code or price ${numericQuery}`);
  if (filtered.length > 0) {
  console.log(`📋 First 5 results:`, filtered.slice(0, 5).map(p => ({
  name: p.name,
@@ -188,10 +190,25 @@ export function searchProducts<T extends SearchableProduct>(
  }
  }
  
- // Sort: для числового поиска - точное совпадение цены первым, затем код с начала > короткий код > алфавитный порядок
+ // Sort: для числового поиска - код первым, затем точное совпадение цены, затем код с начала > короткий код > алфавитный порядок
  const sorted = [...filtered].sort((a, b) => {
- // Priority 0: If numeric search, exact price match comes first
+ // Priority 0: If numeric search, CODE match comes FIRST, then exact price match
  if (numericQuery !== null) {
+ // Check if CODE matches
+ const aCodeMatch = a.code && a.code.includes(trimmedQuery);
+ const bCodeMatch = b.code && b.code.includes(trimmedQuery);
+ 
+ // CODE matches have highest priority
+ if (aCodeMatch && !bCodeMatch) return -1;
+ if (!aCodeMatch && bCodeMatch) return 1;
+ 
+ // If both have code match, sort by code length (shorter first)
+ if (aCodeMatch && bCodeMatch) {
+ const lengthDiff = a.code.length - b.code.length;
+ if (lengthDiff !== 0) return lengthDiff;
+ return a.code.localeCompare(b.code);
+ }
+ 
  // Check which price fields match for each product
  const aPriceMatch = a.price && Math.round(a.price) === numericQuery;
  const aDonaNarxMatch = a.dona_narx && Math.round(a.dona_narx) === numericQuery;

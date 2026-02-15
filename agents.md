@@ -401,6 +401,11 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 - ✅ Error handling yaxshilandi
 - ✅ Logging qo'shildi
 - ✅ Security middleware qo'shildi
+- ✅ Mahsulot qidirish - kod va narx bo'yicha qidirish (kod birinchi, keyin narx) (2024-02-15)
+- ✅ Kassa - top mahsulotlar birinchi o'rinda (2024-02-15)
+- ✅ Kassa - scroll optimizatsiyasi (2024-02-15)
+- ✅ Kassa - narx rejimi tuzatildi (optom/dona) (2024-02-15)
+- ✅ Kassir uchun qaytarish funksiyasi - to'liq amalga oshirilgan (2024-02-15)
 
 ### Rejalashtirilgan
 - [ ] Barcha endpointlarni v2 ga ko'chirish
@@ -409,6 +414,61 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 - [ ] API documentation (Swagger)
 - [ ] Caching layer (Redis)
 - [ ] Message queue (Bull)
+
+## 🆕 So'nggi Yangilanishlar (2024-02-15)
+
+### 1. Mahsulot Qidirish - Narx Bo'yicha Aniq Qidirish
+**Muammo**: 5000 deb qidirganda 45000, 25000 kabi mahsulotlar ham ko'rsatilardi.
+
+**Yechim**: 
+- Raqamli qidiruv faqat aniq narx bo'yicha ishlaydi
+- Barcha narx turlarida qidiradi: tan narxi, optom, dona
+- Kod bo'yicha qidirish o'chirilgan (raqamli qidiruv uchun)
+
+**Fayl**: `client/src/utils/productSearch.ts`
+
+### 2. Kassa - Top Mahsulotlar Birinchi O'rinda
+**Muammo**: Mahsulotlar tartibsiz ko'rsatilardi.
+
+**Yechim**:
+- `/stats/top-products` API'dan eng ko'p sotilgan mahsulotlar olinadi
+- Mahsulotlar avtomatik saralanadi: top mahsulotlar → soldCount → alifbo
+- Keshda ham tartib saqlanadi
+- Kassir ham top mahsulotlarni ko'rishi mumkin
+
+**Fayllar**: 
+- `client/src/context/ProductsContext.tsx`
+- `server/src/routes/stats.js`
+
+### 3. Kassa - Scroll Optimizatsiyasi
+**Muammo**: Mahsulotlarni scroll qilganda butun sahifa scroll bo'lardi.
+
+**Yechim**:
+- Asosiy container `h-screen` (aniq balandlik)
+- Faqat mahsulotlar qismi scroll bo'ladi
+- Header va cart o'z joyida qoladi
+
+**Fayl**: `client/src/pages/admin/Kassa.tsx`
+
+### 4. Kassa - Narx Rejimi Tuzatildi
+**Muammo**: Optom rejimida ham ba'zi mahsulotlar dona narxida hisoblanardi.
+
+**Yechim**:
+- `addToCart` funksiyasi `priceMode` ni tekshiradi
+- Default narx rejimga qarab o'rnatiladi (optom/dona)
+- Chekda ham to'g'ri narx ko'rsatiladi
+
+**Fayl**: `client/src/pages/admin/Kassa.tsx`
+
+### 5. Kassir Uchun Qaytarish Funksiyasi
+**Muammo**: Qaytarish faqat admin sahifasida mavjud edi.
+
+**Yechim**:
+- `/cashier/customers` sahifasiga qaytarish funksiyasi qo'shildi
+- Qarzdan ayrilish prioriteti (qarz → karta → naqd)
+- Real-time yangilanish
+
+**Fayl**: `client/src/pages/cashier/Customers.tsx`
 
 ## 📚 Qo'shimcha Resurslar
 

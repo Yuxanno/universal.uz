@@ -757,9 +757,56 @@ global.io.emit('customer:updated', {
 - **Yordamchi**: ❌ Faqat draft yaratish
 
 ### Qaytarish
-- **Admin**: ✅ To'liq ruxsat
-- **Kassir**: ✅ To'liq ruxsat
+- **Admin**: ✅ To'liq ruxsat (`/admin/customers` sahifasida)
+- **Kassir**: ✅ To'liq ruxsat (`/cashier/customers` sahifasida)
 - **Yordamchi**: ❌ Ruxsat yo'q
+
+### Kassir Uchun Qaytarish Funksiyasi
+
+Kassirlar `/cashier/customers` sahifasida mijozlar xaridlarini qaytarish imkoniyatiga ega:
+
+**Xususiyatlar**:
+- Har bir xarid yonida orange rangdagi qaytarish tugmasi
+- ReturnModal orqali mahsulotlarni tanlash
+- Qarzdan ayrilish prioriteti (qarz → karta → naqd)
+- Real-time yangilanish
+- Batafsil success message
+
+**Fayl**: `client/src/pages/cashier/Customers.tsx`
+
+**Kod**:
+```typescript
+// Qaytarish tugmasi
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    openReturnModal(purchase);
+  }}
+  className="w-9 h-9 flex items-center justify-center rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-600"
+  title="Mahsulotni qaytarish"
+>
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+  </svg>
+</button>
+
+// Qaytarishni qayta ishlash
+const processReturn = async (itemsToReturn) => {
+  const response = await api.post('/receipts/return', {
+    customerId: selectedCustomer._id,
+    receiptId: selectedPurchase.receiptId,
+    items: fullItems,
+    returnTotal,
+    originalPurchase: { ... }
+  });
+  
+  // Mijoz ma'lumotlarini yangilash
+  await fetchCustomers(true); // Force refresh
+  const res = await api.get(`/customers/${selectedCustomer._id}`);
+  setSelectedCustomer({...res.data});
+  setCustomerModalKey(prev => prev + 1); // Force re-render
+};
+```
 
 ---
 
