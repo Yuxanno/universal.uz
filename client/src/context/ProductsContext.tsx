@@ -28,14 +28,51 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  useEffect(() => {
  const cached = getCachedData<Product[]>('products_cache');
  const cacheTime = sessionStorage.getItem('products_cache_time');
+ const cachedTopProducts = sessionStorage.getItem('top_products_order');
  
  if (cached && cached.length > 0) {
  if (import.meta.env.DEV) {
  console.log('⚡ Instant load from cache:', cached.length, 'products');
  }
+ 
+ // If we have cached top products order, use it for sorting
+ let sortedCached = cached;
+ if (cachedTopProducts) {
+ try {
+ const topProductIds = JSON.parse(cachedTopProducts) as string[];
+ const topProductsMap = new Map<string, number>();
+ topProductIds.forEach((id, index) => {
+ topProductsMap.set(id, index);
+ });
+ 
+ sortedCached = [...cached].sort((a, b) => {
+ const aRank = topProductsMap.get(a._id);
+ const bRank = topProductsMap.get(b._id);
+ 
+ if (aRank !== undefined && bRank !== undefined) {
+ return aRank - bRank;
+ }
+ if (aRank !== undefined) return -1;
+ if (bRank !== undefined) return 1;
+ 
+ const aSoldCount = a.soldCount || 0;
+ const bSoldCount = b.soldCount || 0;
+ if (bSoldCount !== aSoldCount) {
+ return bSoldCount - aSoldCount;
+ }
+ 
+ return a.name.localeCompare(b.name);
+ });
+ 
+ console.log('📊 Applied cached top products order');
+ } catch (err) {
+ console.warn('⚠️ Could not parse cached top products order');
+ }
+ }
+ 
  // ОПТИМИЗАЦИЯ: Показываем все товары сразу из кеша
- setProducts(cached);
- setDisplayedProducts(cached);
+ setProducts(sortedCached);
+ setDisplayedProducts(sortedCached);
  setLastFetch(cacheTime ? parseInt(cacheTime) : Date.now());
  
  // Check if cache is valid
@@ -71,6 +108,21 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  }
  const startTime = Date.now();
  
+ // Fetch top products first to get sales ranking
+ let topProductsMap = new Map<string, number>(); // productId -> rank (lower is better)
+ try {
+ const topRes = await api.get('/stats/top-products?limit=100');
+ if (topRes.data && Array.isArray(topRes.data)) {
+ topRes.data.forEach((item: any, index: number) => {
+ // Store rank (0 = most sold, 1 = second most sold, etc.)
+ topProductsMap.set(item._id, index);
+ });
+ console.log(`📊 Loaded ${topProductsMap.size} top products for ranking`);
+ }
+ } catch (err) {
+ console.warn('⚠️ Could not fetch top products, using default sorting');
+ }
+ 
  // Get main warehouse first
  const warehousesRes = await api.get('/warehouses');
  const mainWarehouse = warehousesRes.data.find((w: any) => w.name === 'Asosiy ombor');
@@ -95,18 +147,63 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  _warehouseId: mainWarehouse._id
  })) as Product[];
  
- // Update state IMMEDIATELY
- setProducts(productsData);
- setDisplayedProducts(productsData);
+ // Sort products by top products ranking (most sold first)
+ const sortedProducts = [...productsData].sort((a, b) => {
+ const aRank = topProductsMap.get(a._id);
+ const bRank = topProductsMap.get(b._id);
+ 
+ // If both products are in top products list, sort by rank
+ if (aRank !== undefined && bRank !== undefined) {
+ return aRank - bRank; // Lower rank = higher priority
+ }
+ 
+ // If only A is in top products, A comes first
+ if (aRank !== undefined) return -1;
+ 
+ // If only B is in top products, B comes first
+ if (bRank !== undefined) return 1;
+ 
+ // If neither is in top products, sort by soldCount (fallback)
+ const aSoldCount = a.soldCount || 0;
+ const bSoldCount = b.soldCount || 0;
+ if (bSoldCount !== aSoldCount) {
+ return bSoldCount - aSoldCount;
+ }
+ 
+ // Final fallback: alphabetical by name
+ return a.name.localeCompare(b.name);
+ });
+ 
+ if (import.meta.env.DEV) {
+ console.log(`📊 Top 5 products in POS order:`, sortedProducts.slice(0, 5).map(p => ({
+ name: p.name,
+ soldCount: p.soldCount || 0,
+ isTopProduct: topProductsMap.has(p._id),
+ rank: topProductsMap.get(p._id)
+ })));
+ }
+ 
+ // Update state IMMEDIATELY with sorted products
+ setProducts(sortedProducts);
+ setDisplayedProducts(sortedProducts);
  setLastFetch(Date.now());
  
- // Cache the results
+ // Cache the results (sorted products) and top products order
  try {
- setCachedData('products_cache', productsData);
+ setCachedData('products_cache', sortedProducts);
+ // Also cache the top products order for faster sorting on next load
+ const topProductIds = Array.from(topProductsMap.keys());
+ sessionStorage.setItem('top_products_order', JSON.stringify(topProductIds));
  } catch (err) {
  console.warn('Cache too large, clearing old data');
  clearLargeCache();
- setCachedData('products_cache', productsData);
+ setCachedData('products_cache', sortedProducts);
+ try {
+ const topProductIds = Array.from(topProductsMap.keys());
+ sessionStorage.setItem('top_products_order', JSON.stringify(topProductIds));
+ } catch (e) {
+ console.warn('Could not cache top products order');
+ }
  }
  
  } catch (err: any) {
@@ -145,6 +242,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
  const clearCache = useCallback(() => {
  sessionStorage.removeItem('products_cache');
  sessionStorage.removeItem('products_cache_time');
+ sessionStorage.removeItem('top_products_order'); // Clear top products order cache too
  setProducts([]);
  setDisplayedProducts([]);
  setLastFetch(null);

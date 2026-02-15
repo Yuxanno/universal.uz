@@ -295,6 +295,7 @@ export default function Kassa() {
  if (debouncedSearchQuery.length > 0) {
  // Используем универсальную функцию поиска с поддержкой латиницы/кириллицы
  const results = searchProducts(displayedProducts, debouncedSearchQuery).slice(0, 50);
+ console.log(`🔍 [KASSA] Search query: "${debouncedSearchQuery}", Results: ${results.length}`);
  setSearchResults(results);
  } else {
  setSearchResults(displayedProducts.slice(0, 50)); // Show first 50 when empty

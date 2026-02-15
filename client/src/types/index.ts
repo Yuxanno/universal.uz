@@ -26,6 +26,7 @@ export interface Product {
  image?: string;
  images?: string[];
  minStock?: number;
+ soldCount?: number; // Sotilgan miqdor (eng ko'p sotiladigan mahsulotlarni aniqlash uchun)
  variants?: ProductVariant[];
 }
 
