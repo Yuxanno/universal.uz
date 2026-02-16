@@ -336,21 +336,21 @@ export default function Kassa() {
  }
  
  // Optimistic update - darhol UI'da ko'rsatadi
+ // YANGI LOGIKA: Har safar yangi qator yaratish (miqdorni oshirmaslik)
  setCart(prev => {
- const existing = prev.find(p => p._id === product._id);
- if (existing) {
- return prev.map(p => p._id === product._id ? {...p, cartQuantity: p.cartQuantity + 1} : p);
- }
- 
- // Map prices correctly - use priceMode to set default price
- return [...prev, {
- ...product, 
+ // Har doim yangi qator qo'shish - tepaga
+ // Unique cart ID to allow duplicate products
+ const cartId = `${product._id}_${Date.now()}_${Math.random()}`;
+ return [{
+ ...product,
+ _id: cartId, // Unique ID for this cart item
+ _productId: product._id, // Original product ID
  cartQuantity: 1,
  price: defaultPrice, // Use priceMode: optom or dona
  dona_narx: donaPrice,
  optom_narx: optomPrice,
  tan_narx: tanPrice
- }];
+ }, ...prev];
  });
  
  // Set local price based on priceMode
@@ -486,31 +486,32 @@ export default function Kassa() {
  }
  
  setCart(prev => {
- const newCart = [...prev];
- const existing = newCart.find(p => p._id === quantityInputProduct._id);
- if (existing) {
- existing.cartQuantity += quantity;
- } else {
- // Use priceMode to determine which price to use
- const selectedPrice = priceMode === 'retail' 
- ? (quantityInputProduct.dona_narx || quantityInputProduct.price) // Dona narx
- : quantityInputProduct.price; // Optom narx
+ // YANGI LOGIKA: Har safar yangi qator yaratish
+ const donaPrice = quantityInputProduct.dona_narx || quantityInputProduct.price;
+ const optomPrice = quantityInputProduct.price;
+ const selectedPrice = priceMode === 'retail' ? donaPrice : optomPrice;
  
- newCart.unshift({
+ // Unique cart ID to allow duplicate products
+ const cartId = `${quantityInputProduct._id}_${Date.now()}_${Math.random()}`;
+ 
+ const newItem = {
  ...quantityInputProduct,
+ _id: cartId, // Unique ID for this cart item
+ _productId: quantityInputProduct._id, // Original product ID
  cartQuantity: quantity,
+ price: selectedPrice,
  tan_narx: quantityInputProduct.costPrice || quantityInputProduct.tan_narx,
  optom_narx: quantityInputProduct.price || quantityInputProduct.optom_narx,
- dona_narx: quantityInputProduct.dona_narx || quantityInputProduct.price
- });
+ dona_narx: donaPrice
+ };
  
- // Set local price based on priceMode
+ // Set local price
  setLocalPrices(prev => ({
  ...prev,
- [quantityInputProduct._id]: selectedPrice.toString()
+ [cartId]: selectedPrice.toString()
  }));
- }
- return newCart;
+ 
+ return [newItem, ...prev];
  });
  
  // Reset and focus search input
@@ -545,33 +546,34 @@ export default function Kassa() {
  const productsToAdd = displayedProducts.filter(p => selectedProducts.has(p._id));
  
  setCart(prev => {
- const newCart = [...prev];
+ const newItems: any[] = [];
  productsToAdd.forEach(product => {
- const existing = newCart.find(p => p._id === product._id);
- if (existing) {
- existing.cartQuantity += 1;
- } else {
- // SENIOR SOLUTION: Use priceMode to determine which price to use
- const selectedPrice = priceMode === 'retail' 
- ? (product.dona_narx || product.price) // Dona narx
- : product.price; // Optom narx
+ // YANGI LOGIKA: Har safar yangi qator yaratish
+ const donaPrice = product.dona_narx || product.price;
+ const optomPrice = product.price;
+ const selectedPrice = priceMode === 'retail' ? donaPrice : optomPrice;
  
- newCart.unshift({
+ // Unique cart ID to allow duplicate products
+ const cartId = `${product._id}_${Date.now()}_${Math.random()}`;
+ 
+ newItems.push({
  ...product,
+ _id: cartId, // Unique ID for this cart item
+ _productId: product._id, // Original product ID
  cartQuantity: 1,
+ price: selectedPrice,
  tan_narx: product.costPrice || product.tan_narx,
  optom_narx: product.price || product.optom_narx,
- dona_narx: product.dona_narx || product.price
+ dona_narx: donaPrice
  });
  
- // Set local price based on priceMode
- setLocalPrices(prev => ({
- ...prev,
- [product._id]: selectedPrice.toString()
+ // Set local price
+ setLocalPrices(prevPrices => ({
+ ...prevPrices,
+ [cartId]: selectedPrice.toString()
  }));
- }
  });
- return newCart;
+ return [...newItems, ...prev];
  });
  
  setShowSearch(false);
@@ -655,7 +657,8 @@ export default function Kassa() {
  // Check if any product has insufficient stock
  const hasInsufficientStock = useMemo(() => {
  return cart.some(item => {
- const product = displayedProducts.find(p => p._id === item._id);
+ const productId = (item as any)._productId || item._id;
+ const product = displayedProducts.find(p => p._id === productId);
  if (!product) return false;
  return item.cartQuantity > product.quantity;
  });
@@ -672,7 +675,8 @@ export default function Kassa() {
  
  // YANGI: Check if any product in cart has insufficient stock
  for (const item of cart) {
- const product = displayedProducts.find(p => p._id === item._id);
+ const productId = (item as any)._productId || item._id;
+ const product = displayedProducts.find(p => p._id === productId);
  if (product) {
  const availableQuantity = product.quantity;
  const requestedQuantity = item.cartQuantity;
@@ -694,7 +698,7 @@ export default function Kassa() {
  const localName = localNames[item._id];
  const name = localName !== undefined ? localName : item.name;
  return {
- product: item._id,
+ product: (item as any)._productId || item._id, // Use original product ID
  name: name,
  code: item.code,
  price: price,
