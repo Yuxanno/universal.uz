@@ -197,6 +197,33 @@ Install → Activate → Fetch
    - Keshlarni ko'ring
    - Tozalang va qayta test qiling
 
+4. **Console Logs**:
+   - Browser console ni oching
+   - `🔧 [PWA]` loglarini kuzating
+   - Event va holatlarni tekshiring
+
+### Test Rejimi
+
+Agar `beforeinstallprompt` event ishlamasa (HTTPS yo'q, allaqachon o'rnatilgan, yoki brauzer qo'llab-quvvatlamasa), komponent avtomatik ravishda test rejimiga o'tadi:
+
+- 3 soniyadan keyin tugma paydo bo'ladi
+- "⚠️ Test rejimi" xabari ko'rsatiladi
+- Tugma "Ko'rsatma" deb nomlanadi
+- Bosilganda qo'lda o'rnatish yo'riqnomasi ko'rsatiladi
+
+### Console Loglar
+
+```javascript
+🔧 [PWA] Component mounted
+🔧 [PWA] Is standalone: false
+🔧 [PWA] Is iOS web app: false
+🔧 [PWA] Protocol: https:
+🔧 [PWA] Host: pos.universalbozor.uz
+🔧 [PWA] Event listener added
+🔧 [PWA] beforeinstallprompt event fired! // Yoki
+🔧 [PWA] Event not fired after 3s, showing test button
+```
+
 ### Lighthouse Audit
 
 ```bash

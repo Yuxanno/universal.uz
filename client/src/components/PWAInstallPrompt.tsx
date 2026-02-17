@@ -9,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 export const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     console.log('🔧 [PWA] Component mounted');
@@ -19,6 +20,8 @@ export const PWAInstallPrompt = () => {
     
     console.log('🔧 [PWA] Is standalone:', isStandalone);
     console.log('🔧 [PWA] Is iOS web app:', isInWebAppiOS);
+    console.log('🔧 [PWA] Protocol:', window.location.protocol);
+    console.log('🔧 [PWA] Host:', window.location.host);
     
     if (isStandalone || isInWebAppiOS) {
       console.log('🔧 [PWA] Already installed, hiding button');
@@ -31,18 +34,26 @@ export const PWAInstallPrompt = () => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallButton(true);
+      setIsTestMode(false);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
     console.log('🔧 [PWA] Event listener added');
 
-    // For testing - show button after 2 seconds if event doesn't fire
+    // For development/testing - show button after 3 seconds if event doesn't fire
+    // This helps test the UI even if PWA criteria aren't met
     const testTimer = setTimeout(() => {
       if (!deferredPrompt && !isStandalone && !isInWebAppiOS) {
-        console.log('🔧 [PWA] Event not fired, showing test button');
+        console.log('🔧 [PWA] Event not fired after 3s, showing test button');
+        console.log('🔧 [PWA] This might be because:');
+        console.log('  - Not HTTPS (current:', window.location.protocol, ')');
+        console.log('  - Already installed');
+        console.log('  - Browser doesn\'t support PWA');
+        console.log('  - Manifest.json issues');
         setShowInstallButton(true);
+        setIsTestMode(true);
       }
-    }, 2000);
+    }, 3000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
@@ -53,10 +64,30 @@ export const PWAInstallPrompt = () => {
 
   const handleInstallClick = async () => {
     console.log('🔧 [PWA] Install button clicked');
+    console.log('🔧 [PWA] Test mode:', isTestMode);
+    console.log('🔧 [PWA] Has deferred prompt:', !!deferredPrompt);
     
-    if (!deferredPrompt) {
-      console.log('🔧 [PWA] No deferred prompt available');
-      alert('O\'rnatish uchun:\n\nChrome: Manzil satridagi ⊕ belgisini bosing\niOS Safari: Share → Add to Home Screen');
+    if (!deferredPrompt || isTestMode) {
+      console.log('🔧 [PWA] No deferred prompt or test mode - showing instructions');
+      
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      let instructions = 'O\'rnatish uchun:\n\n';
+      
+      if (isIOS) {
+        instructions += 'iOS Safari:\n1. Pastdagi Share tugmasini bosing\n2. "Add to Home Screen" ni tanlang';
+      } else if (isAndroid) {
+        instructions += 'Android Chrome:\n1. Manzil satridagi ⋮ (3 nuqta) ni bosing\n2. "Add to Home screen" ni tanlang\n\nYoki:\nManzil satridagi ⊕ belgisini bosing';
+      } else {
+        instructions += 'Chrome/Edge:\n1. Manzil satridagi ⊕ belgisini bosing\n2. "O\'rnatish" ni tanlang\n\nYoki:\n1. ⋮ (3 nuqta) → "Install Universal.uz"';
+      }
+      
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        instructions += '\n\n⚠️ Eslatma: PWA faqat HTTPS da ishlaydi';
+      }
+      
+      alert(instructions);
       return;
     }
 
@@ -84,10 +115,15 @@ export const PWAInstallPrompt = () => {
     return null;
   }
 
-  console.log('🔧 [PWA] Rendering install button');
+  console.log('🔧 [PWA] Rendering install button (test mode:', isTestMode, ')');
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white border-2 border-primary-500 rounded-lg shadow-2xl p-4 z-50 animate-slide-up">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white border-2 border-primary-500 rounded-lg shadow-2xl p-4 z-50 animate-fade-up">
+      {isTestMode && (
+        <div className="mb-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+          ⚠️ Test rejimi - PWA event ishlamadi
+        </div>
+      )}
       <div className="flex items-start gap-3">
         <img src="/logo.jpg" alt="Universal" className="w-12 h-12 rounded-lg" />
         <div className="flex-1">
@@ -102,7 +138,7 @@ export const PWAInstallPrompt = () => {
               onClick={handleInstallClick}
               className="flex-1"
             >
-              O'rnatish
+              {isTestMode ? 'Ko\'rsatma' : 'O\'rnatish'}
             </Button>
             <Button
               onClick={() => {
