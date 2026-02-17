@@ -850,9 +850,9 @@ export default function Kassa() {
  // Execute all API calls in parallel - TEZ!
  await Promise.all(promises);
  
- // OPTIMIZED: Refresh products in background (non-blocking)
- // Socket will update products immediately, refresh is just backup
- refreshProducts();
+ // OPTIMIZED: Don't refresh products - Socket will update automatically!
+ // refreshProducts(); // REMOVED - 1.5 soniya tejaldi!
+ // Socket event 'inventory:updated' mahsulotlarni avtomatik yangilaydi
  
  setWorkerReceiptIds([]);
  
