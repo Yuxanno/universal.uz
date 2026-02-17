@@ -227,7 +227,7 @@ router.get('/archived', auth, authorize('admin', 'cashier'), async (req, res) =>
   }
 });
 
-// Get helper's own archived receipts (ONLY archived and sent_to_kassa status, NOT draft)
+// Get helper's own archived receipts (ONLY archived, sent_to_kassa, and pending status, NOT draft)
 router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
   try {
     console.log('📦 [my-archived] Request from user:', {
@@ -237,7 +237,7 @@ router.get('/my-archived', auth, authorize('helper'), async (req, res) => {
     });
     
     const receipts = await Receipt.find({ 
-      status: { $in: ['archived', 'sent_to_kassa'] }, // YANGI: sent_to_kassa ham qo'shildi
+      status: { $in: ['archived', 'sent_to_kassa', 'pending'] }, // YANGI: pending ham qo'shildi
       createdBy: req.user._id,
       // Only show receipts with items (not empty)
       'items.0': { $exists: true }

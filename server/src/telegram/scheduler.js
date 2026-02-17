@@ -126,6 +126,14 @@ const startAllJobs = () => {
     timezone: 'Asia/Tashkent'
   });
 
+  // Clean helper archive at midnight - delete archived and pending receipts
+  cron.schedule('0 0 * * *', async () => {
+    console.log('🧹 Cleaning helper archive...');
+    await cleanHelperArchive();
+  }, {
+    timezone: 'Asia/Tashkent'
+  });
+
   console.log('✅ All scheduled jobs started');
 };
 
@@ -291,16 +299,46 @@ const sendWeeklyReport = async () => {
 };
 
 /**
+ * Clean helper archive - delete archived and pending receipts
+ */
+const cleanHelperArchive = async () => {
+  try {
+    const Receipt = require('../models/Receipt');
+    
+    // Delete receipts with status 'archived' or 'pending' created by helpers
+    const result = await Receipt.deleteMany({
+      status: { $in: ['archived', 'pending'] },
+      // Only delete receipts created by helpers (not admin/cashier)
+      createdBy: { $exists: true }
+    });
+    
+    console.log(`🗑️ Cleaned helper archive: ${result.deletedCount} receipts deleted`);
+    
+    // Notify admin if any receipts were deleted
+    if (result.deletedCount > 0) {
+      await sendToAll(`🧹 *Arxiv tozalandi*\n\n${result.deletedCount} ta chek o'chirildi (00:00 avtomatik tozalash).`);
+    }
+    
+    return result.deletedCount;
+  } catch (error) {
+    console.error('❌ Error cleaning helper archive:', error);
+    return 0;
+  }
+};
+
+/**
  * Manual trigger functions (for testing)
  */
 const triggerDebtCheck = () => sendDebtNotifications();
 const triggerDailyReport = () => sendDailyReport();
 const triggerWeeklyReport = () => sendWeeklyReport();
+const triggerArchiveCleanup = () => cleanHelperArchive();
 
 module.exports = {
   init,
   updateAdminChatId,
   triggerDebtCheck,
   triggerDailyReport,
-  triggerWeeklyReport
+  triggerWeeklyReport,
+  triggerArchiveCleanup
 };

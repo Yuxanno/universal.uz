@@ -529,11 +529,6 @@ export default function StaffReceipts() {
  setLoadingReceiptId(receipt._id); // Start loading
  
  try {
- // OPTIMIZED: Backend returns complete receipt with product details
- await api.put(`/receipts/${receipt._id}/load-to-kassa`);
- 
- console.log('✅ Receipt loaded to kassa successfully');
- 
  // Prepare kassa items from receipt data (already have all info)
  const kassaItems = receipt.items.map((item) => ({
  _id: item.product,
@@ -566,9 +561,17 @@ export default function StaffReceipts() {
  // Dispatch event for same-tab updates
  window.dispatchEvent(new Event('kassaItemsUpdated'));
  
- // Navigate based on user role
+ // Navigate immediately (don't wait for API)
  const targetPath = user?.role === 'cashier' ? '/cashier' : '/admin/kassa';
  navigate(targetPath);
+ 
+ // Update backend asynchronously (don't await)
+ api.put(`/receipts/${receipt._id}/load-to-kassa`).then(() => {
+ console.log('✅ Receipt archived in background');
+ }).catch((err) => {
+ console.error('⚠️ Failed to archive receipt:', err);
+ });
+ 
  } catch (err: any) {
  console.error('Error loading to kassa:', err);
  const errorMsg = err.response?.data?.message || 'Xatolik yuz berdi';

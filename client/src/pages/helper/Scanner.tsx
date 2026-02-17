@@ -488,7 +488,13 @@ export default function HelperScanner() {
  count: res.data.length,
  receipts: res.data
  });
- setArchivedReceipts(res.data);
+ // Sort: pending birinchi, keyin archived
+ const sorted = res.data.sort((a: any, b: any) => {
+ if (a.status === 'pending' && b.status !== 'pending') return -1;
+ if (a.status !== 'pending' && b.status === 'pending') return 1;
+ return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+ });
+ setArchivedReceipts(sorted);
  } catch (err: any) {
  console.error('❌ [Helper] Error loading archive:', err);
  // Don't show error to user - just set empty array
@@ -520,23 +526,7 @@ export default function HelperScanner() {
  // Convert 'REGULAR_CUSTOMER' to null for backend
  const customerValue = selectedCustomer === 'REGULAR_CUSTOMER' ? null : selectedCustomer;
  
- // YANGI: Avval arxivga saqlash (kassaga yuborilgan deb)
- const archiveResponse = await api.put('/receipts/draft', {
- items: cart.map(item => ({
- product: item._id,
- name: item.name,
- code: item.code,
- price: item.price || 0,
- quantity: item.cartQuantity
- })),
- customer: customerValue,
- draftId: currentDraftId,
- status: 'sent_to_kassa' // YANGI STATUS: Kassaga yuborilgan
- });
- 
- console.log('✅ Saved with sent_to_kassa status:', archiveResponse.data._id);
- 
- // YANGI: Keyin kassaga yuklash uchun pending receipt yaratish
+ // OPTIMIZED: Faqat bitta API chaqiruv - to'g'ridan-to'g'ri pending status bilan
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -546,11 +536,11 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  })),
  customer: customerValue,
- draftId: null, // Yangi receipt yaratish
- status: 'pending' // Kassaga yuborish
+ draftId: null, // Yangi receipt yaratish (arxivga saqlamaslik)
+ status: 'pending' // To'g'ridan-to'g'ri kassaga yuborish
  });
  
- console.log('✅ Sent to kassa (pending)');
+ console.log('✅ Sent to kassa (pending) - optimized');
  
  showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
  setCart([]);
@@ -660,23 +650,7 @@ export default function HelperScanner() {
  });
  showAlert("Chek arxivga saqlandi!", 'Muvaffaqiyat', 'success');
  } else {
- // Kassaga yuborish: avval sent_to_kassa, keyin pending
- const archiveResponse = await api.put('/receipts/draft', {
- items: cart.map(item => ({
- product: item._id,
- name: item.name,
- code: item.code,
- price: item.price || 0,
- quantity: item.cartQuantity
- })),
- customer: customerValue,
- draftId: currentDraftId,
- status: 'sent_to_kassa' // YANGI STATUS
- });
- 
- console.log('✅ Saved with sent_to_kassa status:', archiveResponse.data._id);
- 
- // Keyin kassaga yuborish
+ // OPTIMIZED: Kassaga yuborish - faqat bitta API chaqiruv
  await api.put('/receipts/draft', {
  items: cart.map(item => ({
  product: item._id,
@@ -686,11 +660,11 @@ export default function HelperScanner() {
  quantity: item.cartQuantity
  })),
  customer: customerValue,
- draftId: null, // Yangi receipt
- status: 'pending'
+ draftId: null, // Yangi receipt yaratish (arxivga saqlamaslik)
+ status: 'pending' // To'g'ridan-to'g'ri kassaga yuborish
  });
  
- console.log('✅ Sent to kassa (pending)');
+ console.log('✅ Sent to kassa (pending) - optimized');
  showAlert("Chek kassaga yuborildi!", 'Muvaffaqiyat', 'success');
  }
  
@@ -1411,16 +1385,13 @@ export default function HelperScanner() {
  const customerName = receipt.customer?.name || 'Oddiy mijoz';
  const isPending = receipt.status === 'pending';
  const isArchived = receipt.status === 'archived';
- const isSentToKassa = receipt.status === 'sent_to_kassa'; // YANGI
  
  return (
  <div 
  key={receipt._id} 
  className={`bg-white border-2 rounded-2xl overflow-hidden transition-all hover:shadow-md ${
  isPending 
- ? 'border-red-300 hover:border-red-400' 
- : isSentToKassa
- ? 'border-green-300 hover:border-green-400'
+ ? 'border-green-300 hover:border-green-400' 
  : 'border-neutral-200 hover:border-blue-400'
  }`}
  >
@@ -1428,30 +1399,25 @@ export default function HelperScanner() {
  <div
  onClick={() => handleLoadFromArchive(receipt)}
  className={`p-4 cursor-pointer transition-all ${
- isPending ? 'hover:bg-red-50' : isSentToKassa ? 'hover:bg-green-50' : 'hover:bg-blue-50'
+ isPending ? 'hover:bg-green-50' : 'hover:bg-blue-50'
  }`}
  >
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3 flex-1 min-w-0">
  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
- isPending ? 'bg-red-100' : isSentToKassa ? 'bg-green-100' : 'bg-blue-100'
+ isPending ? 'bg-green-100' : 'bg-blue-100'
  }`}>
- <ShoppingCart className={`w-5 h-5 ${isPending ? 'text-red-600' : isSentToKassa ? 'text-green-600' : 'text-blue-600'}`} />
+ <ShoppingCart className={`w-5 h-5 ${isPending ? 'text-green-600' : 'text-blue-600'}`} />
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2">
  <p className="font-bold text-neutral-900 truncate">{customerName}</p>
  {isPending && (
- <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full whitespace-nowrap">
- Kassada
- </span>
- )}
- {isSentToKassa && (
  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full whitespace-nowrap">
- Kassaga yuborilgan
+ ✓ Kassaga yuborilgan
  </span>
  )}
- {isArchived && !isSentToKassa && (
+ {isArchived && (
  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full whitespace-nowrap">
  Arxiv
  </span>
@@ -1470,7 +1436,7 @@ export default function HelperScanner() {
  setExpandedArchiveId(isExpanded ? null : receipt._id);
  }}
  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ml-2 ${
- isPending ? 'hover:bg-red-100' : isSentToKassa ? 'hover:bg-green-100' : 'hover:bg-blue-100'
+ isPending ? 'hover:bg-green-100' : 'hover:bg-blue-100'
  }`}
  >
  <svg 
@@ -1488,7 +1454,7 @@ export default function HelperScanner() {
  {/* Expanded Details */}
  {isExpanded && (
  <div className={`px-4 pb-4 pt-2 border-t ${
- isPending ? 'bg-red-50 border-red-200' : 'bg-neutral-50 border-neutral-200'
+ isPending ? 'bg-green-50 border-green-200' : 'bg-neutral-50 border-neutral-200'
  }`}>
  <div className="space-y-2">
  <div className="flex items-center justify-between text-xs text-neutral-500 mb-3">
