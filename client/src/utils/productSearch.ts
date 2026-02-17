@@ -48,14 +48,24 @@ export function searchProducts<T extends SearchableProduct>(
     const numValue = isNumeric ? parseInt(q) : null;
 
     // Глобальный лог для дебага
-    console.log(`🔍 [SEARCH] Query: "${q}" | Strict Mode: ${hasDigits}`);
+    console.log(`🔍 [SEARCH] Query: "${q}" | Numeric: ${isNumeric} | Has Digits: ${hasDigits}`);
 
     const filtered = products.filter(product => {
         let matchReason = '';
 
+        // AGAR FAQAT HARF BO'LSA - FAQAT NOM BO'YICHA QIDIRISH
+        if (!hasDigits) {
+            const name = normalize(product.name);
+            // Обычное вхождение
+            if (name.includes(q) || normalize(uzLatToCyr(name)).includes(q)) {
+                matchReason = `Name match ("${q}" in "${name}")`;
+                return true;
+            }
+            return false; // Faqat nomdan qidirish
+        }
+
+        // AGAR RAQAM BO'LSA - KOD VA NARX BO'YICHA QIDIRISH
         // 1. Поиск по ЦЕНЕ (только если запрос - чистое число)
-        // ПРИОРИТЕТ: Сначала ищем по OPTOM, если нашли - возвращаем только их
-        // Если не нашли по OPTOM - ищем по DONA и TAN
         if (isNumeric && numValue !== null) {
             // Optom narxi (price) - ПЕРВЫЙ ПРИОРИТЕТ
             const optomPrice = product.price || (product as any).optom_narx;
@@ -63,48 +73,38 @@ export function searchProducts<T extends SearchableProduct>(
             if (optomPrice != null && Number(optomPrice) === numValue) {
                 matchReason = `Optom price match (${optomPrice})`;
                 console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | optom: ${optomPrice} === ${numValue}`);
+                return true;
             }
         }
 
-        if (matchReason) return true;
-
-        // 2. Поиск по КОДУ
+        // 2. Поиск по КОДУ (для всех запросов с цифрами)
         const code = normalize(product.code);
+        
         if (isNumeric) {
             // Только для чисто числовых запросов - СТРОГОЕ совпадение
             if (code === q) {
                 matchReason = `Code exact match (${code})`;
                 console.log(`✅ MATCH: ${product.name} | Code: ${code} === ${q}`);
+                return true;
             }
-        } else {
-            // Для текстовых запросов - вхождение
-            if (code.includes(q) || normalize(uzLatToCyr(code)).includes(q)) {
-                matchReason = `Code loose match (${code})`;
+        } else if (hasDigits) {
+            // Для запросов с цифрами и буквами (11000A) - вхождение или точное совпадение
+            if (code === q || code.includes(q)) {
+                matchReason = `Code match (${code} contains "${q}")`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${code} contains "${q}"`);
+                return true;
             }
         }
 
-        if (matchReason) return true;
-
-        // 3. Поиск по НАЗВАНИЮ
-        const name = normalize(product.name);
+        // 3. Поиск по НАЗВАНИЮ (только если есть цифры в запросе)
         if (hasDigits) {
-            // Строгое совпадение одного из слов
-            const tokens = name.split(/[^a-z0-9а-яёўқғҳ]+/i).filter(Boolean);
-            if (tokens.some(t => isExact(t, q))) {
-                matchReason = `Name exact word match ("${q}" in "${name}")`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Name word match: "${q}"`);
-            }
-        } else {
-            // Обычное вхождение
+            const name = normalize(product.name);
+            // Вхождение подстроки в название
             if (name.includes(q) || normalize(uzLatToCyr(name)).includes(q)) {
-                matchReason = `Name loose match ("${q}" in "${name}")`;
+                matchReason = `Name contains ("${q}" in "${name}")`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Name contains: "${q}"`);
+                return true;
             }
-        }
-
-        if (matchReason) {
-            // Для дебага можно включить лог каждого совпадения
-            // console.log(`✅ Match: ${product.name} | Reason: ${matchReason}`);
-            return true;
         }
 
         return false;
@@ -117,8 +117,13 @@ export function searchProducts<T extends SearchableProduct>(
         const aCode = normalize(a.code);
         const bCode = normalize(b.code);
 
+        // Точное совпадение кода - в начало
         if (aCode === q && bCode !== q) return -1;
         if (bCode === q && aCode !== q) return 1;
+
+        // Код начинается с запроса - выше
+        if (aCode.startsWith(q) && !bCode.startsWith(q)) return -1;
+        if (bCode.startsWith(q) && !aCode.startsWith(q)) return 1;
 
         return a.name.localeCompare(b.name, 'uz');
     });
