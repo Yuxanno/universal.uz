@@ -1,11 +1,21 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import Sidebar, { cashierMenuItems } from '../components/Sidebar';
 
 export default function CashierLayout() {
- const [collapsed, setCollapsed] = useState(false);
+ const location = useLocation();
+ // Auto-collapse sidebar on Kassa page
+ const isKassaPage = location.pathname === '/cashier' || location.pathname === '/cashier/';
+ const [collapsed, setCollapsed] = useState(isKassaPage);
  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+ 
+ // Auto-collapse sidebar when navigating to Kassa
+ useEffect(() => {
+ if (isKassaPage) {
+ setCollapsed(true);
+ }
+ }, [isKassaPage]);
 
  return (
  <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
