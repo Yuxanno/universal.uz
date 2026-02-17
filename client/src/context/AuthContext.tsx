@@ -17,10 +17,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
- // Avval sessionStorage dan tekshir (admin uchun)
+ // Check token expiry first
+ const sessionExpiry = sessionStorage.getItem('tokenExpiry');
+ const localExpiry = localStorage.getItem('tokenExpiry');
+ const now = Date.now();
+ 
+ // Check if token expired
+ if (sessionExpiry && parseInt(sessionExpiry) < now) {
+ console.log('🔒 Session token expired');
+ sessionStorage.removeItem('token');
+ sessionStorage.removeItem('tokenExpiry');
+ setLoading(false);
+ return;
+ }
+ 
+ if (localExpiry && parseInt(localExpiry) < now) {
+ console.log('🔒 Local token expired');
+ localStorage.removeItem('token');
+ localStorage.removeItem('tokenExpiry');
+ setLoading(false);
+ return;
+ }
+ 
+ // Get token
  let token = sessionStorage.getItem('token');
  
- // Agar sessionStorage da yo'q bo'lsa, localStorage dan tekshir (kassir/helper uchun)
  if (!token) {
  token = localStorage.getItem('token');
  }
@@ -30,7 +51,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  .then(res => setUser(res.data))
  .catch(() => {
  sessionStorage.removeItem('token');
+ sessionStorage.removeItem('tokenExpiry');
  localStorage.removeItem('token');
+ localStorage.removeItem('tokenExpiry');
  })
  .finally(() => setLoading(false));
  } else {
@@ -44,20 +67,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  // Admin va Kassir uchun token saqlanmasin (har safar login qilsin)
  // Faqat Helper uchun token saqlansin (1 marta login)
  if (res.data.user.role === 'admin' || res.data.user.role === 'cashier') {
- // Admin va Kassir uchun faqat sessionStorage (browser yopilganda o'chadi)
+ // Admin va Kassir uchun sessionStorage + expiry time (8 soat)
  sessionStorage.setItem('token', res.data.token);
+ const expiryTime = Date.now() + (8 * 60 * 60 * 1000); // 8 hours
+ sessionStorage.setItem('tokenExpiry', expiryTime.toString());
+ localStorage.setItem('tokenExpiry', expiryTime.toString()); // PWA uchun
  } else {
- // Faqat Helper uchun localStorage (saqlanib qoladi)
+ // Faqat Helper uchun localStorage (5 yil)
  localStorage.setItem('token', res.data.token);
+ const expiryTime = Date.now() + (5 * 365 * 24 * 60 * 60 * 1000); // 5 years
+ localStorage.setItem('tokenExpiry', expiryTime.toString());
  }
  
  setUser(res.data.user);
- return res.data.user; // Return user data for immediate redirect
+ return res.data.user;
  }, []);
 
  const logout = useCallback(() => {
  sessionStorage.removeItem('token');
+ sessionStorage.removeItem('tokenExpiry');
  localStorage.removeItem('token');
+ localStorage.removeItem('tokenExpiry');
  setUser(null);
  }, []);
 
