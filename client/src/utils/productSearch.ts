@@ -75,33 +75,58 @@ export function searchProducts<T extends SearchableProduct>(
             }
             
             // 2. Agar kod topilmasa, narx bo'yicha qidirish
+            // MUHIM: Faqat narx maydonlarini tekshirish, nom ichidagi raqamlarni emas!
+            const costPrice = product.costPrice || (product as any).tan_narx;
             const optomPrice = product.price || (product as any).optom_narx;
+            const donaPrice = product.dona_narx;
             
-            if (optomPrice != null && Number(optomPrice) === numValue) {
-                matchReason = `Optom price match (${optomPrice})`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | optom: ${optomPrice} === ${numValue}`);
+            // Narxlarni string ga o'tkazib, boshidan qidirish (5000 -> 5000, 5001, 5000.5 topadi, lekin 15000 topilmaydi)
+            const costStr = costPrice != null ? String(costPrice) : '';
+            const optomStr = optomPrice != null ? String(optomPrice) : '';
+            const donaStr = donaPrice != null ? String(donaPrice) : '';
+            
+            // Qidiruv qiymati bilan boshlanadigan narxlarni topish
+            if (costStr.startsWith(q) || optomStr.startsWith(q) || donaStr.startsWith(q)) {
+                matchReason = `Price starts with (cost:${costStr}, optom:${optomStr}, dona:${donaStr})`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Price starts with: ${q}`);
                 return true;
             }
             
             return false; // Faqat kod yoki narx
         }
 
-        // AGAR HARF + RAQAM BO'LSA - KOD VA NOM BO'YICHA
+        // AGAR HARF + RAQAM BO'LSA - KOD VA NOM BO'YICHA (FAQAT BOSHIDAN)
         if (hasDigits) {
-            // 1. Kod bo'yicha qidirish
+            // 1. Kod bo'yicha qidirish (boshidan yoki to'liq)
             const code = normalize(product.code);
-            if (code === q || code.includes(q)) {
-                matchReason = `Code match (${code} contains "${q}")`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${code} contains "${q}"`);
+            if (code === q || code.startsWith(q)) {
+                matchReason = `Code match (${code} starts with "${q}")`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${code} starts with "${q}"`);
                 return true;
             }
             
-            // 2. Nom bo'yicha qidirish
+            // 2. Nom bo'yicha qidirish (FAQAT BOSHIDAN)
+            // 5000T qidirganda: "5000T COLA" topiladi, lekin "COLA 5000T" yoki "JENS 15000T" topilmaydi
             const name = normalize(product.name);
-            if (name.includes(q) || normalize(uzLatToCyr(name)).includes(q)) {
-                matchReason = `Name contains ("${q}" in "${name}")`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Name contains: "${q}"`);
+            const nameCyr = normalize(uzLatToCyr(name));
+            
+            if (name.startsWith(q) || nameCyr.startsWith(q)) {
+                matchReason = `Name starts with ("${q}")`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Name starts with: "${q}"`);
                 return true;
+            }
+            
+            // 3. Nom ichida so'z boshidan qidirish (bo'sh joydan keyin)
+            // "COLA 5000T" topiladi, lekin "JENS KOJA20,15000T" topilmaydi
+            const words = name.split(/[\s,]+/); // Bo'sh joy yoki vergul bilan ajratish
+            const wordsCyr = nameCyr.split(/[\s,]+/);
+            
+            for (const word of [...words, ...wordsCyr]) {
+                if (word.startsWith(q)) {
+                    matchReason = `Word in name starts with ("${q}")`;
+                    console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Word "${word}" starts with: "${q}"`);
+                    return true;
+                }
             }
         }
 
