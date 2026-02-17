@@ -255,6 +255,19 @@ Agar `beforeinstallprompt` event ishlamasa (HTTPS yo'q, allaqachon o'rnatilgan, 
 PWA faqat HTTPS da ishlaydi:
 - Production: HTTPS majburiy
 - Development: localhost ishlaydi
+- HTTP da test rejimi ishlatiladi (qo'lda o'rnatish yo'riqnomasi)
+
+### beforeinstallprompt Event Shartlari
+
+Event faqat quyidagi shartlar bajarilganda ishga tushadi:
+1. HTTPS protokol (yoki localhost)
+2. Valid manifest.json
+3. Service Worker ro'yxatdan o'tgan
+4. Ilova hali o'rnatilmagan
+5. Brauzer PWA ni qo'llab-quvvatlaydi
+6. Foydalanuvchi saytda ma'lum vaqt o'tkazgan (engagement)
+
+Agar shartlar bajarilmasa, test rejimi avtomatik ishga tushadi.
 
 ## 🔗 Bog'liq Fayllar
 
