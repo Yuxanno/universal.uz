@@ -16,6 +16,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  const [user, setUser] = useState<User | null>(null);
  const [loading, setLoading] = useState(true);
 
+ // Track app session for PWA
+ useEffect(() => {
+ const handleVisibilityChange = () => {
+ if (document.visibilityState === 'visible') {
+ // App became visible (opened/resumed)
+ const sessionId = sessionStorage.getItem('appSessionId');
+ const lastSessionId = localStorage.getItem('lastAppSessionId');
+ 
+ // If no session ID or different session, it's a new app launch
+ if (!sessionId || sessionId !== lastSessionId) {
+ console.log('🔒 New PWA session detected, checking auth...');
+ 
+ // Check if user is admin/cashier and force re-login
+ const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+ if (token) {
+ api.get('/auth/me')
+ .then(res => {
+ if (res.data.role === 'admin' || res.data.role === 'cashier') {
+ console.log('🔒 Admin/Cashier detected in new session, logging out');
+ sessionStorage.removeItem('token');
+ sessionStorage.removeItem('tokenExpiry');
+ localStorage.removeItem('token');
+ localStorage.removeItem('tokenExpiry');
+ setUser(null);
+ }
+ })
+ .catch(() => {
+ // Token invalid, clear everything
+ sessionStorage.clear();
+ localStorage.removeItem('token');
+ localStorage.removeItem('tokenExpiry');
+ setUser(null);
+ });
+ }
+ 
+ // Create new session ID
+ const newSessionId = Date.now().toString();
+ sessionStorage.setItem('appSessionId', newSessionId);
+ localStorage.setItem('lastAppSessionId', newSessionId);
+ }
+ }
+ };
+ 
+ // Listen for visibility changes (PWA open/close)
+ document.addEventListener('visibilitychange', handleVisibilityChange);
+ 
+ // Initialize session on mount
+ const sessionId = Date.now().toString();
+ sessionStorage.setItem('appSessionId', sessionId);
+ localStorage.setItem('lastAppSessionId', sessionId);
+ 
+ return () => {
+ document.removeEventListener('visibilitychange', handleVisibilityChange);
+ };
+ }, []);
+
  useEffect(() => {
  // Check token expiry first
  const sessionExpiry = sessionStorage.getItem('tokenExpiry');
