@@ -22,7 +22,6 @@ export const PWAInstallPrompt = () => {
     console.log('🔧 [PWA] Is iOS web app:', isInWebAppiOS);
     console.log('🔧 [PWA] Protocol:', window.location.protocol);
     console.log('🔧 [PWA] Host:', window.location.host);
-    console.log('🔧 [PWA] User Agent:', navigator.userAgent);
     
     if (isStandalone || isInWebAppiOS) {
       console.log('🔧 [PWA] Already installed, hiding button');
@@ -31,7 +30,7 @@ export const PWAInstallPrompt = () => {
     }
 
     const handler = (e: Event) => {
-      console.log('🔧 [PWA] ✅ beforeinstallprompt event fired!');
+      console.log('🔧 [PWA] beforeinstallprompt event fired!');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallButton(true);
@@ -41,21 +40,20 @@ export const PWAInstallPrompt = () => {
     window.addEventListener('beforeinstallprompt', handler);
     console.log('🔧 [PWA] Event listener added');
 
-    // Wait longer for the event (5 seconds instead of 3)
-    // Chrome needs time to determine if PWA criteria are met
+    // For development/testing - show button after 3 seconds if event doesn't fire
+    // This helps test the UI even if PWA criteria aren't met
     const testTimer = setTimeout(() => {
       if (!deferredPrompt && !isStandalone && !isInWebAppiOS) {
-        console.log('🔧 [PWA] ⚠️ beforeinstallprompt event not fired after 5s');
-        console.log('🔧 [PWA] Possible reasons:');
-        console.log('  - PWA criteria not fully met');
-        console.log('  - User engagement too low');
-        console.log('  - Already dismissed recently');
+        console.log('🔧 [PWA] Event not fired after 3s, showing test button');
+        console.log('🔧 [PWA] This might be because:');
+        console.log('  - Not HTTPS (current:', window.location.protocol, ')');
+        console.log('  - Already installed');
         console.log('  - Browser doesn\'t support PWA');
-        console.log('🔧 [PWA] Showing button with manual instructions');
+        console.log('  - Manifest.json issues');
         setShowInstallButton(true);
         setIsTestMode(true);
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
@@ -69,45 +67,47 @@ export const PWAInstallPrompt = () => {
     console.log('🔧 [PWA] Test mode:', isTestMode);
     console.log('🔧 [PWA] Has deferred prompt:', !!deferredPrompt);
     
-    // Try to use deferred prompt first
-    if (deferredPrompt && !isTestMode) {
-      try {
-        console.log('🔧 [PWA] Showing native install prompt');
-        await deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log('🔧 [PWA] User choice:', outcome);
-
-        if (outcome === 'accepted') {
-          console.log('🔧 [PWA] PWA installed successfully');
-        } else {
-          console.log('🔧 [PWA] User dismissed the install prompt');
-        }
-        
-        setDeferredPrompt(null);
-        setShowInstallButton(false);
-        return;
-      } catch (error) {
-        console.error('🔧 [PWA] Install error:', error);
+    if (!deferredPrompt || isTestMode) {
+      console.log('🔧 [PWA] No deferred prompt or test mode - showing instructions');
+      
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      let instructions = 'O\'rnatish uchun:\n\n';
+      
+      if (isIOS) {
+        instructions += 'iOS Safari:\n1. Pastdagi Share tugmasini bosing\n2. "Add to Home Screen" ni tanlang';
+      } else if (isAndroid) {
+        instructions += 'Android Chrome:\n1. Manzil satridagi ⋮ (3 nuqta) ni bosing\n2. "Add to Home screen" ni tanlang\n\nYoki:\nManzil satridagi ⊕ belgisini bosing';
+      } else {
+        instructions += 'Chrome/Edge:\n1. Manzil satridagi ⊕ belgisini bosing\n2. "O\'rnatish" ni tanlang\n\nYoki:\n1. ⋮ (3 nuqta) → "Install Universal.uz"';
       }
+      
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        instructions += '\n\n⚠️ Eslatma: PWA faqat HTTPS da ishlaydi';
+      }
+      
+      alert(instructions);
+      return;
     }
-    
-    // Fallback: Show instructions
-    console.log('🔧 [PWA] Showing manual instructions');
-    
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /Android/.test(navigator.userAgent);
-    
-    let instructions = 'O\'rnatish uchun:\n\n';
-    
-    if (isIOS) {
-      instructions += 'iOS Safari:\n1. Pastdagi Share tugmasini bosing\n2. "Add to Home Screen" ni tanlang';
-    } else if (isAndroid) {
-      instructions += 'Android Chrome:\n1. Manzil satridagi ⋮ (3 nuqta) ni bosing\n2. "Add to Home screen" ni tanlang\n\nYoki:\nManzil satridagi ⊕ belgisini bosing';
-    } else {
-      instructions += 'Chrome/Edge:\n1. Manzil satridagi ⊕ belgisini bosing\n2. "O\'rnatish" ni tanlang\n\nYoki:\n1. ⋮ (3 nuqta) → "Install Universal.uz"';
+
+    try {
+      console.log('🔧 [PWA] Showing install prompt');
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('🔧 [PWA] User choice:', outcome);
+
+      if (outcome === 'accepted') {
+        console.log('🔧 [PWA] PWA installed successfully');
+      } else {
+        console.log('🔧 [PWA] User dismissed the install prompt');
+      }
+    } catch (error) {
+      console.error('🔧 [PWA] Install error:', error);
     }
-    
-    alert(instructions);
+
+    setDeferredPrompt(null);
+    setShowInstallButton(false);
   };
 
   if (!showInstallButton) {
@@ -121,7 +121,7 @@ export const PWAInstallPrompt = () => {
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white border-2 border-primary-500 rounded-lg shadow-2xl p-4 z-50 animate-fade-up">
       {isTestMode && (
         <div className="mb-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-          ⚠️ Test rejimi - Qo'lda o'rnatish yo'riqnomasi
+          ⚠️ Test rejimi - PWA event ishlamadi
         </div>
       )}
       <div className="flex items-start gap-3">
@@ -138,7 +138,7 @@ export const PWAInstallPrompt = () => {
               onClick={handleInstallClick}
               className="flex-1"
             >
-              O'rnatish
+              {isTestMode ? 'Ko\'rsatma' : 'O\'rnatish'}
             </Button>
             <Button
               onClick={() => {
