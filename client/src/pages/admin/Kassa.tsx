@@ -804,8 +804,11 @@ export default function Kassa() {
  };
 
  try {
- // Create main sale receipt
- await api.post('/receipts', {
+ // OPTIMIZED: Parallel execution - barcha API chaqiruvlarni parallel bajaramiz
+ const promises = [];
+ 
+ // 1. Create main sale receipt
+ const receiptPromise = api.post('/receipts', {
  items: saleItems,
  total: finalTotal,
  paymentMethod: paymentMethod,
@@ -815,37 +818,43 @@ export default function Kassa() {
  isReturn: isReturnMode,
  customer: selectedCustomer && selectedCustomer !== '' ? selectedCustomer : null
  });
+ promises.push(receiptPromise);
  
- // Pay off customer's existing debt if debtPaymentCash or debtPaymentCard > 0
+ // 2. Pay off customer's existing debt (parallel if needed)
  const totalDebtPayment = debtPaymentCash + debtPaymentCard;
  if (totalDebtPayment > 0 && selectedCustomer && selectedCustomer !== '') {
- try {
- await api.post('/debts/pay-bulk', {
+ promises.push(
+ api.post('/debts/pay-bulk', {
  customerId: selectedCustomer,
  cashAmount: debtPaymentCash,
  cardAmount: debtPaymentCard,
  totalAmount: totalDebtPayment
- });
- } catch (err) {
+ }).catch(err => {
  console.error('Error paying customer debt:', err);
  showAlert('Qarz to\'lovida xatolik yuz berdi', 'Xatolik', 'danger');
- }
+ })
+ );
  }
  
- // Refresh products to update quantities in real-time
+ // 3. Delete worker receipts (parallel)
+ if (workerReceiptIds.length > 0) {
+ promises.push(
+ ...workerReceiptIds.map(id => 
+ api.delete(`/receipts/${id}`).catch(err => {
+ console.error('Error deleting worker receipt:', err);
+ })
+ )
+ );
+ }
+ 
+ // Execute all API calls in parallel - TEZ!
+ await Promise.all(promises);
+ 
+ // OPTIMIZED: Refresh products in background (non-blocking)
+ // Socket will update products immediately, refresh is just backup
  refreshProducts();
  
- // Delete worker receipts if they exist
- if (workerReceiptIds.length > 0) {
- for (const id of workerReceiptIds) {
- try {
- await api.delete(`/receipts/${id}`);
- } catch (err) {
- console.error('Error deleting worker receipt:', err);
- }
- }
  setWorkerReceiptIds([]);
- }
  
  setCart([]);
  setLocalPrices({});
