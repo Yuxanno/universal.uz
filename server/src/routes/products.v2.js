@@ -72,6 +72,19 @@ router.post(
 );
 
 /**
+ * @route   PATCH /api/products/:id/quantity
+ * @desc    Update product quantity
+ * @access  Private (Admin, Cashier)
+ */
+router.patch(
+  '/:id/quantity',
+  auth,
+  authorize('admin', 'cashier'),
+  validate(productValidators.updateQuantity),
+  productController.updateQuantity
+);
+
+/**
  * @route   PUT /api/products/:id
  * @desc    Update product
  * @access  Private (Admin, Cashier)

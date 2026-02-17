@@ -260,6 +260,40 @@ class ProductService {
     return { exists: !!exists };
   }
 
+  /**
+   * Update product quantity only
+   */
+  async updateQuantity(id, quantity, userId) {
+    try {
+      const product = await Product.findById(id);
+      if (!product) {
+        throw new NotFoundError('Mahsulot');
+      }
+
+      // Validate quantity
+      if (quantity < 0) {
+        throw new ConflictError('Miqdor 0 dan kam bo\'lmasligi kerak');
+      }
+
+      // Update quantity
+      product.quantity = quantity;
+      await product.save();
+
+      await product.populate('warehouse', 'name');
+
+      logger.info(`Product quantity updated: ${product.name} (${product.code}) - ${quantity}`, {
+        productId: product._id,
+        userId,
+      });
+
+      return product;
+    } catch (error) {
+      if (error.isOperational) throw error;
+      logger.error('Error updating product quantity:', error);
+      throw new DatabaseError('Mahsulot miqdorini yangilashda xatolik');
+    }
+  }
+
   // Private helper methods
 
   async _resolveWarehouseId(warehouse) {

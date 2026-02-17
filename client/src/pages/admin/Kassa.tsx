@@ -173,9 +173,13 @@ export default function Kassa() {
  console.log(`🔄 Duplicate found in localStorage: ${item.name}, merging quantities (${existing.cartQuantity} + ${item.cartQuantity})`);
  existing.cartQuantity += item.cartQuantity;
  } else {
+ // Find full product data from displayedProducts to get quantity
+ const fullProduct = displayedProducts.find(p => p._id === item._id);
+ 
  // Map costPrice to tan_narx for validation
  groupedMap.set(item._id, { 
  ...item,
+ quantity: fullProduct?.quantity || item.quantity || 0, // Use full product quantity
  tan_narx: item.costPrice || item.tan_narx,
  optom_narx: item.price || item.optom_narx
  });
@@ -224,7 +228,7 @@ export default function Kassa() {
  showAlert('Xaridni yuklashda xatolik yuz berdi', 'Xatolik', 'danger');
  }
  }
- }, [toast, showAlert]);
+ }, [toast, showAlert, displayedProducts]);
 
  useEffect(() => {
  loadSavedReceipts();
@@ -299,6 +303,15 @@ export default function Kassa() {
  const donaPrice = (product as any).retailPrice || (product as any).dona_narx || product.price || 0; // Dona narxi
  const optomPrice = product.price || 0; // Optom narxi
  const tanPrice = product.costPrice || 0; // Tan narxi
+ 
+ // LOG: Mahsulot miqdorini tekshirish
+ console.log('📦 [addToCart] Product:', {
+ id: product._id,
+ code: product.code,
+ name: product.name,
+ quantity: product.quantity,
+ cartQuantity: 1
+ });
  
  // CRITICAL: Use priceMode to determine default price
  const defaultPrice = priceMode === 'retail' ? donaPrice : optomPrice;
@@ -396,6 +409,52 @@ export default function Kassa() {
  }));
  }, []);
 
+ const handleStockQuantityChange = useCallback(async (id: string, quantity: number) => {
+ try {
+ // Find product in cart to get the actual product ID
+ const cartItem = cart.find(item => item._id === id);
+ if (!cartItem) return;
+
+ // Get the original product ID (not the cart ID)
+ const productId = (cartItem as any)._productId || id;
+ 
+ console.log('🔧 [handleStockQuantityChange] Updating:', {
+ cartId: id,
+ productId,
+ quantity,
+ cartItem: {
+ _id: cartItem._id,
+ _productId: (cartItem as any)._productId,
+ name: cartItem.name
+ }
+ });
+
+ // Call API to update product quantity (using old API route for now)
+ const response = await api.patch(`/products/${productId}/quantity`, { quantity });
+ 
+ if (response.data.success) {
+ // Update all cart items with the same product ID
+ setCart(prev => prev.map(item => 
+ ((item as any)._productId || item._id) === productId 
+ ? { ...item, quantity } 
+ : item
+ ));
+ 
+ // Refresh products to get updated data
+ await refreshProducts();
+ 
+ toast.success('Miqdor yangilandi', `${cartItem.name}: ${quantity} ta`);
+ }
+ } catch (error: any) {
+ console.error('Error updating stock quantity:', error);
+ showAlert(
+ error.response?.data?.message || 'Miqdorni yangilashda xatolik',
+ 'Xatolik',
+ 'danger'
+ );
+ }
+ }, [cart, refreshProducts, toast, showAlert]);
+
  // Simplified search handler - just updates query
  const handleSearch = useCallback((query: string) => {
  setSearchQuery(query);
@@ -442,6 +501,16 @@ export default function Kassa() {
  setQuantityInputProduct(product);
  setQuantityInputValue('1');
  }, []);
+
+ // Handle search input key down - Shift to select first product
+ const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+ // Shift tugmasi bosilganda birinchi mahsulotni tanlash
+ if (e.key === 'Shift' && searchResults.length > 0) {
+ e.preventDefault();
+ const firstProduct = searchResults[0];
+ toggleProductSelection(firstProduct);
+ }
+ }, [searchResults, toggleProductSelection]);
  
  // SENIOR SOLUTION: Add product with quantity
  const addProductWithQuantity = useCallback(() => {
@@ -452,6 +521,15 @@ export default function Kassa() {
  toast.error('Miqdor 1 dan kam bo\'lmasligi kerak', 'Xatolik');
  return;
  }
+ 
+ // LOG: Mahsulot miqdorini tekshirish
+ console.log('📦 [addProductWithQuantity] Product:', {
+ id: quantityInputProduct._id,
+ code: quantityInputProduct.code,
+ name: quantityInputProduct.name,
+ quantity: quantityInputProduct.quantity,
+ cartQuantity: quantity
+ });
  
  // Check if product quantity is low - show toast instead of modal
  const minStockThreshold = quantityInputProduct.minStock || 5;
@@ -1211,6 +1289,7 @@ window.onload = function() {
  onQuantityChange={handleQuantityChange}
  onPriceChange={handlePriceChange}
  onNameChange={handleNameChange}
+ onStockQuantityChange={handleStockQuantityChange}
  onRemove={removeFromCart}
  onClick={handleCartItemClick}
  showAlert={showAlert}
@@ -1249,6 +1328,7 @@ window.onload = function() {
  placeholder={tKey("Mahsulot nomi yoki kodi...")}
  value={searchQuery}
  onChange={e => handleSearch(e.target.value)}
+ onKeyDown={handleSearchKeyDown}
  className="w-full pl-12 pr-4 py-3 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-red-300 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
  />
  </div>
@@ -1520,6 +1600,7 @@ window.onload = function() {
  placeholder={tKey("Mahsulot nomi yoki kodi...")}
  value={searchQuery}
  onChange={e => handleSearch(e.target.value)}
+ onKeyDown={handleSearchKeyDown}
  className="w-full pl-12 pr-4 py-4 text-base font-semibold bg-white dark:bg-neutral-700 border-2 border-red-300 dark:border-neutral-600 rounded-2xl focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/20 text-slate-900 dark:text-neutral-100 placeholder:text-slate-400 transition-all"
  autoFocus
  />

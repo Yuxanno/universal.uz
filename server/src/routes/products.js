@@ -692,4 +692,77 @@ router.delete('/:id', auth, authorize('admin', 'cashier'), async (req, res) => {
   }
 });
 
+// Update product quantity only (for Kassa)
+router.patch('/:id/quantity', auth, authorize('admin', 'cashier'), async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    
+    console.log('🔧 [PATCH /:id/quantity] Called with:', {
+      productId: req.params.id,
+      quantity,
+      userId: req.user?._id
+    });
+    
+    // Validate quantity
+    if (quantity === undefined || quantity === null) {
+      return res.status(400).json({ message: 'Miqdor kiritilishi shart' });
+    }
+    
+    if (quantity < 0) {
+      return res.status(400).json({ message: 'Miqdor 0 dan kam bo\'lmasligi kerak' });
+    }
+    
+    // Find and update product
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Mahsulot topilmadi' });
+    }
+    
+    // Update quantity
+    product.quantity = quantity;
+    await product.save();
+    
+    // Update WarehouseInventory if exists
+    if (product.warehouse) {
+      try {
+        const inventory = await WarehouseInventory.findOne({
+          product: req.params.id,
+          warehouse: product.warehouse
+        });
+        
+        if (inventory) {
+          inventory.quantity = quantity;
+          await inventory.save();
+          console.log(`✅ Updated inventory for product ${product.code}: ${quantity}`);
+        }
+      } catch (invError) {
+        console.error(`⚠️  Failed to update inventory:`, invError.message);
+      }
+    }
+    
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('inventory:updated', {
+        type: 'quantity_updated',
+        productId: req.params.id,
+        quantity: quantity
+      });
+    }
+    
+    // Clear cache
+    clearInventoryCache();
+    
+    console.log(`✅ Product quantity updated: ${product.code} - ${quantity}`);
+    
+    res.json({
+      success: true,
+      message: 'Mahsulot miqdori yangilandi',
+      data: product
+    });
+  } catch (error) {
+    console.error('Error updating product quantity:', error);
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 module.exports = router;

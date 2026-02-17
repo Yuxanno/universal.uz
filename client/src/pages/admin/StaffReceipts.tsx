@@ -115,10 +115,10 @@ export default function StaffReceipts() {
  }, [fetchData]);
 
  const getWorkerReceipts = (workerId: string) => {
- // Return draft and pending receipts (NOT archived - those are helper's private)
+ // Return only pending receipts (NOT draft or archived)
  const filtered = receipts.filter(r => 
  r.createdBy?._id === workerId && 
- (r.status === 'draft' || r.status === 'pending')
+ r.status === 'pending'
  );
  // Remove duplicates by _id (defensive)
  const unique = filtered.filter((r, index, self) => 
@@ -208,6 +208,16 @@ export default function StaffReceipts() {
  }
  };
 
+ const handleCancelReceipt = async (receiptId: string) => {
+ try {
+ await api.delete(`/receipts/${receiptId}`);
+ fetchData();
+ } catch (err) {
+ console.error('Error canceling receipt:', err);
+ alert('Chekni bekor qilishda xatolik');
+ }
+ };
+
  // Показываем всех рабочих (helpers)
  const displayWorkers = workers;
 
@@ -262,15 +272,14 @@ export default function StaffReceipts() {
  {displayWorkers.flatMap((worker, workerIndex) => {
  const workerReceipts = getWorkerReceipts(worker._id);
  const readyReceipts = getReadyReceipts(worker._id);
- const archivedReceipts = getArchivedReceipts(worker._id);
  
- // If worker has no receipts, skip
- if (workerReceipts.length === 0 && readyReceipts.length === 0 && archivedReceipts.length === 0) {
+ // If worker has no receipts, skip (arxivlangan cheklar ko'rinmasin)
+ if (workerReceipts.length === 0 && readyReceipts.length === 0) {
  return [];
  }
  
- // Combine all receipts
- const allReceipts = [...workerReceipts, ...readyReceipts, ...archivedReceipts];
+ // Combine receipts (faqat draft, pending, approved)
+ const allReceipts = [...workerReceipts, ...readyReceipts];
  
  // Show each receipt as a separate card
  return allReceipts.map((receipt) => {
@@ -301,26 +310,26 @@ export default function StaffReceipts() {
  }`}
  >
  {/* Header */}
- <div className={`px-5 py-4 ${
+ <div className={`px-4 py-3 ${
  isReady ? 'bg-success-500' : isPending ? 'bg-warning-500' : 'bg-surface-100'
  }`}>
  <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+ <div className="flex items-center gap-2">
+ <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
  isReady ? 'bg-success-400' : isPending ? 'bg-warning-400' : 'bg-white'
  }`}>
- <User className={`w-6 h-6 ${isReady || isPending ? 'text-white' : 'text-surface-600'}`} />
+ <User className={`w-5 h-5 ${isReady || isPending ? 'text-white' : 'text-surface-600'}`} />
  </div>
  <div>
- <h3 className={`font-semibold text-lg ${isReady || isPending ? 'text-white' : 'text-surface-900'}`}>
+ <h3 className={`font-semibold text-base ${isReady || isPending ? 'text-white' : 'text-surface-900'}`}>
  {worker.name || `Xodim ${workerIndex + 1}`}
  </h3>
- <p className={`text-sm ${isReady || isPending ? 'text-white/80' : 'text-surface-500'}`}>
+ <p className={`text-xs ${isReady || isPending ? 'text-white/80' : 'text-surface-500'}`}>
  {customerName}
  </p>
  </div>
  </div>
- {isReady && <CheckCircle className="w-7 h-7 text-white" />}
+ {isReady && <CheckCircle className="w-6 h-6 text-white" />}
  {isArchived && !isPending && !isReady && (
  <div className="w-3 h-3 bg-brand-500 rounded-full animate-pulse" />
  )}
@@ -329,30 +338,30 @@ export default function StaffReceipts() {
 
  {/* Notifications */}
  {isReady && (
- <div className="bg-success-50 border-b border-success-200 px-5 py-3">
- <p className="text-success-700 text-sm font-medium text-center">
+ <div className="bg-success-50 border-b border-success-200 px-4 py-2">
+ <p className="text-success-700 text-xs font-medium text-center">
  ✓ {t("Xodim barcha tovarlarni yig'di")}
  </p>
  </div>
  )}
  {/* Removed: "Yig'ilayotgan xarid (real-time)" banner */}
  {isPending && !isReady && (
- <div className="bg-warning-50 border-b border-warning-200 px-5 py-3">
- <p className="text-warning-700 text-sm font-medium text-center">
+ <div className="bg-warning-50 border-b border-warning-200 px-4 py-2">
+ <p className="text-warning-700 text-xs font-medium text-center">
  ⏳ {t("Kassaga yuborilgan - tayyor")}
  </p>
  </div>
  )}
  {isArchived && !isPending && !isReady && (
- <div className="bg-neutral-100 border-b border-neutral-300 px-5 py-3">
- <p className="text-neutral-700 text-sm font-medium text-center">
+ <div className="bg-neutral-100 border-b border-neutral-300 px-4 py-2">
+ <p className="text-neutral-700 text-xs font-medium text-center">
  📦 {t("Arxivlangan - kassaga yuklangan")}
  </p>
  </div>
  )}
 
  {/* Items list */}
- <div className="p-4 min-h-[200px] max-h-[400px] overflow-auto">
+ <div className="p-3 min-h-[150px] max-h-[300px] overflow-auto">
  {displayItems.length === 0 ? (
  <div className="text-center py-12 text-surface-400">
  <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -438,15 +447,20 @@ export default function StaffReceipts() {
  <div className="flex items-center gap-3 flex-shrink-0">
  {showPrices && (
  <div className="flex items-center gap-2 text-sm">
+ <span className="font-bold text-surface-900 min-w-[40px] text-center">
+ {item.quantity}
+ </span>
+ <span className="text-surface-400 font-bold text-lg">×</span>
  <span className="font-semibold text-surface-700 min-w-[70px] text-right">
  {formatNumber(item.price)}
  </span>
- <span className="text-surface-400 font-bold text-lg">×</span>
  </div>
  )}
+ {!showPrices && (
  <span className="font-bold text-surface-900 min-w-[40px] text-center text-sm">
  {item.quantity}
  </span>
+ )}
  {showPrices && (
  <span className="font-bold text-surface-900 min-w-[80px] text-right text-sm">
  {formatNumber(item.price * item.quantity)}
@@ -479,19 +493,35 @@ export default function StaffReceipts() {
  </div>
 
  {/* Footer */}
- <div className={`px-5 py-4 border-t ${
+ <div className={`px-4 py-3 border-t ${
  isPending ? 'border-warning-200 bg-warning-50' : 'border-surface-200 bg-surface-50'
  }`}>
  {showPrices && (
- <div className="flex items-center justify-between mb-4">
- <span className="text-surface-500 font-medium">{t("Jami")}:</span>
- <span className="text-3xl font-bold text-surface-900">
- {formatNumber(total)} <span className="text-base font-normal text-surface-500">{t("so'm")}</span>
+ <div className="flex items-center justify-between mb-3">
+ <span className="text-surface-500 font-medium text-sm">{t("Jami")}:</span>
+ <span className="text-2xl font-bold text-surface-900">
+ {formatNumber(total)} <span className="text-sm font-normal text-surface-500">{t("so'm")}</span>
  </span>
  </div>
  )}
  
  {(isPending || isArchived) && (
+ <div className="flex gap-2">
+ {/* Bekor qilish tugmasi */}
+ <button
+ onClick={() => handleCancelReceipt(receipt._id)}
+ disabled={loadingReceiptId === receipt._id}
+ className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+ loadingReceiptId === receipt._id
+ ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+ : 'bg-red-100 text-red-600 hover:bg-red-200 border-2 border-red-300'
+ }`}
+ >
+ <X className="w-4 h-4" />
+ {t("Bekor qilish")}
+ </button>
+ 
+ {/* Kassaga yuklash tugmasi */}
  <button
  onClick={async () => {
  if (loadingReceiptId) return; // Prevent double click
@@ -547,7 +577,7 @@ export default function StaffReceipts() {
  }
  }}
  disabled={loadingReceiptId === receipt._id}
- className={`w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-semibold text-lg transition-all ${
+ className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-white rounded-lg font-semibold text-sm transition-all ${
  loadingReceiptId === receipt._id
  ? 'bg-gray-400 cursor-not-allowed'
  : isPending 
@@ -557,16 +587,17 @@ export default function StaffReceipts() {
  >
  {loadingReceiptId === receipt._id ? (
  <>
- <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+ <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
  {t("Yuklanmoqda...")}
  </>
  ) : (
  <>
- <Download className="w-5 h-5" />
+ <Download className="w-4 h-4" />
  {t("Kassaga yuklash")}
  </>
  )}
  </button>
+ </div>
  )}
  </div>
  </div>

@@ -111,6 +111,31 @@ class ProductController {
       data: result,
     });
   });
+
+   /**
+    * @route   PATCH /api/products/:id/quantity
+    * @desc    Update product quantity
+    * @access  Private (Admin, Cashier)
+    */
+   updateQuantity = asyncHandler(async (req, res) => {
+     console.log('🔧 [updateQuantity] Called with:', {
+       productId: req.params.id,
+       quantity: req.body.quantity,
+       userId: req.user?.id
+     });
+     
+     const product = await productService.updateQuantity(
+       req.params.id,
+       req.body.quantity,
+       req.user.id
+     );
+
+     res.json({
+       success: true,
+       message: 'Mahsulot miqdori yangilandi',
+       data: product,
+     });
+   });
 }
 
 module.exports = new ProductController();

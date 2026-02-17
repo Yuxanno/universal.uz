@@ -13,6 +13,7 @@ interface CartItemRowProps {
  onNameChange: (id: string, name: string) => void;
  onRemove: (id: string) => void;
  onClick: (id: string) => void;
+ onStockQuantityChange?: (id: string, quantity: number) => void;
  showAlert?: (message: string, title: string, type: 'success' | 'danger' | 'warning') => void;
  showToast?: (title: string, message: string) => void;
 }
@@ -27,10 +28,14 @@ const CartItemRow = memo(({
  onNameChange,
  onRemove,
  onClick,
+ onStockQuantityChange,
+ showAlert,
  showToast
 }: CartItemRowProps) => {
  const [editingName, setEditingName] = useState(false);
  const [tempName, setTempName] = useState('');
+ const [editingStock, setEditingStock] = useState(false);
+ const [tempStock, setTempStock] = useState('');
  
  const handleNameDoubleClick = useCallback((e: React.MouseEvent) => {
  e.stopPropagation();
@@ -45,6 +50,22 @@ const CartItemRow = memo(({
  }
  setEditingName(false);
  }, [tempName, item._id, onNameChange]);
+
+ const handleStockClick = useCallback((e: React.MouseEvent) => {
+ e.stopPropagation();
+ if (onStockQuantityChange) {
+ setTempStock(String(item.quantity || 0));
+ setEditingStock(true);
+ }
+ }, [item.quantity, onStockQuantityChange]);
+
+ const handleStockBlur = useCallback(() => {
+ const newQuantity = tempStock === '' ? 0 : parseInt(tempStock);
+ if (!isNaN(newQuantity) && newQuantity >= 0 && onStockQuantityChange) {
+ onStockQuantityChange(item._id, newQuantity);
+ }
+ setEditingStock(false);
+ }, [tempStock, item._id, onStockQuantityChange]);
  
  const handleQuantityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
  const val = e.target.value;
@@ -151,16 +172,49 @@ const CartItemRow = memo(({
  </div>
  </div>
  <div className="col-span-1 text-center">
- <div className="flex flex-col items-center gap-1">
- <span className={`text-xs font-bold ${isInsufficientStock ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-neutral-100'}`}>
- {remainingStock} ta
- </span>
- {isInsufficientStock && (
- <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
- Yetmaydi!
+ {editingStock ? (
+ <input
+ type="text"
+ value={tempStock}
+ onChange={(e) => {
+ const val = e.target.value;
+ if (val === '' || /^\d+$/.test(val)) {
+ setTempStock(val);
+ }
+ }}
+ onBlur={handleStockBlur}
+ onKeyDown={(e) => {
+ if (e.key === 'Enter') {
+ e.currentTarget.blur();
+ }
+ if (e.key === 'Escape') {
+ setEditingStock(false);
+ setTempStock('');
+ }
+ }}
+ onFocus={(e) => {
+ // Cursor oxirida turishi uchun
+ const len = e.currentTarget.value.length;
+ e.currentTarget.setSelectionRange(len, len);
+ }}
+ onClick={(e) => {
+ e.stopPropagation();
+ // Cursor oxirida turishi uchun
+ const len = e.currentTarget.value.length;
+ e.currentTarget.setSelectionRange(len, len);
+ }}
+ className="w-20 h-8 text-right text-xs font-bold border-2 border-blue-500 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-neutral-700 text-slate-900 dark:text-neutral-100"
+ autoFocus
+ />
+ ) : (
+ <span 
+ className={`text-xs font-semibold cursor-pointer hover:text-blue-600 transition-colors ${isInsufficientStock ? 'text-red-600' : 'text-slate-600 dark:text-neutral-400'}`}
+ title={onStockQuantityChange ? (isInsufficientStock ? `Yetmaydi! Kerak: ${item.cartQuantity}, Mavjud: ${item.quantity}. Bosing tahrirlash uchun` : `Omborda: ${item.quantity} ta. Bosing tahrirlash uchun`) : (isInsufficientStock ? `Yetmaydi! Kerak: ${item.cartQuantity}, Mavjud: ${item.quantity}` : `Omborda: ${item.quantity} ta`)}
+ onClick={handleStockClick}
+ >
+ {item.quantity === 0 ? '0' : item.quantity}
  </span>
  )}
- </div>
  </div>
  <div className="col-span-1 text-right" style={{ marginRight: '0.75rem' }}>
  <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">{((item as any).costPrice || 0).toLocaleString()}</span>

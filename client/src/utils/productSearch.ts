@@ -64,10 +64,17 @@ export function searchProducts<T extends SearchableProduct>(
             return false; // Faqat nomdan qidirish
         }
 
-        // AGAR RAQAM BO'LSA - KOD VA NARX BO'YICHA QIDIRISH
-        // 1. Поиск по ЦЕНЕ (только если запрос - чистое число)
+        // AGAR FAQAT RAQAM BO'LSA - AVVAL KOD, KEYIN NARX
         if (isNumeric && numValue !== null) {
-            // Optom narxi (price) - ПЕРВЫЙ ПРИОРИТЕТ
+            // 1. Avval kod bo'yicha qidirish (PRIORITET)
+            const code = normalize(product.code);
+            if (code === q) {
+                matchReason = `Code exact match (${code})`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${code} === ${q}`);
+                return true;
+            }
+            
+            // 2. Agar kod topilmasa, narx bo'yicha qidirish
             const optomPrice = product.price || (product as any).optom_narx;
             
             if (optomPrice != null && Number(optomPrice) === numValue) {
@@ -75,31 +82,22 @@ export function searchProducts<T extends SearchableProduct>(
                 console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | optom: ${optomPrice} === ${numValue}`);
                 return true;
             }
+            
+            return false; // Faqat kod yoki narx
         }
 
-        // 2. Поиск по КОДУ (для всех запросов с цифрами)
-        const code = normalize(product.code);
-        
-        if (isNumeric) {
-            // Только для чисто числовых запросов - СТРОГОЕ совпадение
-            if (code === q) {
-                matchReason = `Code exact match (${code})`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${code} === ${q}`);
-                return true;
-            }
-        } else if (hasDigits) {
-            // Для запросов с цифрами и буквами (11000A) - вхождение или точное совпадение
+        // AGAR HARF + RAQAM BO'LSA - KOD VA NOM BO'YICHA
+        if (hasDigits) {
+            // 1. Kod bo'yicha qidirish
+            const code = normalize(product.code);
             if (code === q || code.includes(q)) {
                 matchReason = `Code match (${code} contains "${q}")`;
                 console.log(`✅ MATCH: ${product.name} | Code: ${code} contains "${q}"`);
                 return true;
             }
-        }
-
-        // 3. Поиск по НАЗВАНИЮ (только если есть цифры в запросе)
-        if (hasDigits) {
+            
+            // 2. Nom bo'yicha qidirish
             const name = normalize(product.name);
-            // Вхождение подстроки в название
             if (name.includes(q) || normalize(uzLatToCyr(name)).includes(q)) {
                 matchReason = `Name contains ("${q}" in "${name}")`;
                 console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Name contains: "${q}"`);
@@ -112,20 +110,49 @@ export function searchProducts<T extends SearchableProduct>(
 
     console.log(`📊 Results for "${q}": ${filtered.length}`);
 
-    // Сортировка
+    // Сортировка - boshidan boshlanadigan birinchi
     return filtered.sort((a, b) => {
         const aCode = normalize(a.code);
         const bCode = normalize(b.code);
+        const aName = normalize(a.name);
+        const bName = normalize(b.name);
 
-        // Точное совпадение кода - в начало
+        // Priority 1: Точное совпадение кода
         if (aCode === q && bCode !== q) return -1;
         if (bCode === q && aCode !== q) return 1;
 
-        // Код начинается с запроса - выше
-        if (aCode.startsWith(q) && !bCode.startsWith(q)) return -1;
-        if (bCode.startsWith(q) && !aCode.startsWith(q)) return 1;
+        // Priority 2: Код начинается с запроса (5000S birinchi, 15000S keyingi)
+        const aCodeStarts = aCode.startsWith(q);
+        const bCodeStarts = bCode.startsWith(q);
+        
+        if (aCodeStarts && !bCodeStarts) return -1;
+        if (bCodeStarts && !aCodeStarts) return 1;
 
-        return a.name.localeCompare(b.name, 'uz');
+        // Priority 3: Nom boshidan boshlanadigan (SOVUN8,5000S < SKOCH 10,5000S)
+        const aNameStarts = aName.startsWith(q);
+        const bNameStarts = bName.startsWith(q);
+        
+        if (aNameStarts && !bNameStarts) return -1;
+        if (bNameStarts && !aNameStarts) return 1;
+
+        // Priority 4: Nom ichida qayerda joylashgan (boshroqda bo'lsa birinchi)
+        const aNameIndex = aName.indexOf(q);
+        const bNameIndex = bName.indexOf(q);
+        
+        if (aNameIndex !== -1 && bNameIndex !== -1) {
+            if (aNameIndex !== bNameIndex) {
+                return aNameIndex - bNameIndex; // Boshroqda bo'lsa birinchi
+            }
+        }
+
+        // Priority 5: Qisqaroq kod/nom birinchi
+        if (aCodeStarts && bCodeStarts) {
+            const lengthDiff = aCode.length - bCode.length;
+            if (lengthDiff !== 0) return lengthDiff;
+        }
+
+        // Default: alfabetik
+        return aName.localeCompare(bName, 'uz');
     });
 }
 

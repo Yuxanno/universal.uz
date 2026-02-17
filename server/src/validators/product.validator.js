@@ -124,6 +124,21 @@ const productValidators = {
       code: Joi.string().trim().required(),
     }),
   }),
+
+  // Update quantity only
+  updateQuantity: Joi.object({
+    params: Joi.object({
+      id: schemas.objectId.required(),
+    }),
+    body: Joi.object({
+      quantity: Joi.number().integer().min(0).required().messages({
+        'number.base': 'Miqdor raqam bo\'lishi kerak',
+        'number.integer': 'Miqdor butun son bo\'lishi kerak',
+        'number.min': 'Miqdor 0 dan kichik bo\'lmasligi kerak',
+        'any.required': 'Miqdor kiritilishi shart',
+      }),
+    }),
+  }),
 };
 
 module.exports = productValidators;

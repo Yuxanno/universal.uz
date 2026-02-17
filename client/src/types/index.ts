@@ -43,6 +43,7 @@ export interface ProductVariant {
 export interface CartItem extends Product {
  cartQuantity: number;
  originalPrice?: number; // Store original price for price toggle
+ _productId?: string; // Original product ID (when cart item has unique ID)
 }
 
 export interface Receipt {
