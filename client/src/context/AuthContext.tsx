@@ -41,13 +41,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
  const login = useCallback(async (phone: string, password: string) => {
  const res = await api.post('/auth/login', { phone, password });
  
- // Admin uchun token saqlanmasin (har safar login qilsin)
- // Kassir va helper uchun token saqlansin (1 marta login)
- if (res.data.user.role === 'admin') {
- // Admin uchun faqat sessionStorage (browser yopilganda o'chadi)
+ // Admin va Kassir uchun token saqlanmasin (har safar login qilsin)
+ // Faqat Helper uchun token saqlansin (1 marta login)
+ if (res.data.user.role === 'admin' || res.data.user.role === 'cashier') {
+ // Admin va Kassir uchun faqat sessionStorage (browser yopilganda o'chadi)
  sessionStorage.setItem('token', res.data.token);
  } else {
- // Kassir va helper uchun localStorage (saqlanib qoladi)
+ // Faqat Helper uchun localStorage (saqlanib qoladi)
  localStorage.setItem('token', res.data.token);
  }
  
