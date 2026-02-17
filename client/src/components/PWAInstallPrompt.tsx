@@ -11,23 +11,45 @@ export const PWAInstallPrompt = () => {
   const [showInstallButton, setShowInstallButton] = useState(false);
 
   useEffect(() => {
+    console.log('🔧 [PWA] Component mounted');
+    
+    // Check if already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const isInWebAppiOS = (window.navigator as any).standalone === true;
+    
+    console.log('🔧 [PWA] Is standalone:', isStandalone);
+    console.log('🔧 [PWA] Is iOS web app:', isInWebAppiOS);
+    
+    if (isStandalone || isInWebAppiOS) {
+      console.log('🔧 [PWA] Already installed, hiding button');
+      setShowInstallButton(false);
+      return;
+    }
+
     const handler = (e: Event) => {
+      console.log('🔧 [PWA] beforeinstallprompt event fired!');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallButton(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+    console.log('🔧 [PWA] Event listener added');
 
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setShowInstallButton(false);
-    }
+    // For testing - show button after 2 seconds if event doesn't fire
+    const testTimer = setTimeout(() => {
+      if (!deferredPrompt && !isStandalone && !isInWebAppiOS) {
+        console.log('🔧 [PWA] Event not fired, showing test button');
+        setShowInstallButton(true);
+      }
+    }, 2000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      clearTimeout(testTimer);
+      console.log('🔧 [PWA] Component unmounted');
     };
-  }, []);
+  }, [deferredPrompt]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;

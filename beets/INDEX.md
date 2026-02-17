@@ -267,6 +267,27 @@ Qidiruv tizimidagi "aniq qidirish" va "variantlarni cheklash" optimizatsiyasi.
 
 ---
 
+### PWA Install (2024-02-17)
+**Fayl**: `beets/features/pwa-install-2024-02-17.md`
+
+Progressive Web App - ilovani o'rnatish funksiyasi.
+
+**Komponentlar**:
+- `PWAInstallPrompt` - O'rnatish dialog
+- Service Worker - Offline qo'llab-quvvatlash
+- Manifest - PWA konfiguratsiya
+
+**Xususiyatlar**:
+- beforeinstallprompt event handling
+- Standalone rejimni tekshirish
+- Kesh strategiyalari (static, dynamic)
+- Offline support
+- App shortcuts
+
+**Qachon ishlatish**: Ilovani telefonlarga o'rnatish
+
+---
+
 ## Frontend Context
 
 ### AuthContext
@@ -327,7 +348,7 @@ Yangi funksiya yoki modul qo'shganingizda:
 
 ## Hujjatlar Statistikasi
 
-**Yaratilgan**: 11 ta hujjat
+**Yaratilgan**: 12 ta hujjat
 **Yaratilmagan**: 6 ta hujjat (rejalashtirilgan)
 
 ### Yaratilgan Hujjatlar
@@ -342,6 +363,7 @@ Yangi funksiya yoki modul qo'shganingizda:
 - ✅ frontend/hooks/useToast.md
 - ✅ frontend/hooks/useDebounce.md
 - ✅ frontend/features/sales-and-returns.md
+- ✅ features/pwa-install-2024-02-17.md
 
 ### Rejalashtirilgan Hujjatlar
 - ⏳ frontend/utils/memoryOptimizer.md
