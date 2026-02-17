@@ -415,9 +415,35 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 - [ ] Caching layer (Redis)
 - [ ] Message queue (Bull)
 
-## 🆕 So'nggi Yangilanishlar (2024-02-15)
+## 🆕 So'nggi Yangilanishlar
 
-### 1. Mahsulot Qidirish - Narx Bo'yicha Aniq Qidirish
+### 2024-02-17
+
+#### PWA - Ilovani O'rnatish Funksiyasi
+**Maqsad**: Foydalanuvchilar ilovani telefonlariga o'rnatib, oddiy ilova kabi ishlata olishlari.
+
+**Qo'shilgan**:
+- PWA o'rnatish dialog komponenti
+- Yaxshilangan manifest.json (shortcuts, kategoriyalar)
+- Yangilangan Service Worker (kesh strategiyalari)
+- Offline qo'llab-quvvatlash
+
+**Fayllar**:
+- `client/src/components/PWAInstallPrompt.tsx` - O'rnatish dialog
+- `client/src/App.tsx` - Komponent integratsiyasi
+- `client/public/manifest.json` - PWA manifest
+- `client/public/sw.js` - Service worker
+- `beets/features/pwa-install-2024-02-17.md` - To'liq hujjat
+
+**Afzalliklar**:
+- ⚡ Tez yuklash (keshdan)
+- 📴 Offline ishlash
+- 🎨 Ilova kabi tajriba
+- 🏠 Home screen da
+
+### 2024-02-15
+
+#### 1. Mahsulot Qidirish - Narx Bo'yicha Aniq Qidirish
 **Muammo**: 5000 deb qidirganda 45000, 25000 kabi mahsulotlar ham ko'rsatilardi.
 
 **Yechim**: 
@@ -427,7 +453,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 
 **Fayl**: `client/src/utils/productSearch.ts`
 
-### 2. Kassa - Top Mahsulotlar Birinchi O'rinda
+#### 2. Kassa - Top Mahsulotlar Birinchi O'rinda
 **Muammo**: Mahsulotlar tartibsiz ko'rsatilardi.
 
 **Yechim**:
@@ -440,7 +466,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 - `client/src/context/ProductsContext.tsx`
 - `server/src/routes/stats.js`
 
-### 3. Kassa - Scroll Optimizatsiyasi
+#### 3. Kassa - Scroll Optimizatsiyasi
 **Muammo**: Mahsulotlarni scroll qilganda butun sahifa scroll bo'lardi.
 
 **Yechim**:
@@ -450,7 +476,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 
 **Fayl**: `client/src/pages/admin/Kassa.tsx`
 
-### 4. Kassa - Narx Rejimi Tuzatildi
+#### 4. Kassa - Narx Rejimi Tuzatildi
 **Muammo**: Optom rejimida ham ba'zi mahsulotlar dona narxida hisoblanardi.
 
 **Yechim**:
@@ -460,7 +486,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 
 **Fayl**: `client/src/pages/admin/Kassa.tsx`
 
-### 5. Kassir Uchun Qaytarish Funksiyasi
+#### 5. Kassir Uchun Qaytarish Funksiyasi
 **Muammo**: Qaytarish faqat admin sahifasida mavjud edi.
 
 **Yechim**:

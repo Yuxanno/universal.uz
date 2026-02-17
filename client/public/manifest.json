@@ -1,12 +1,16 @@
 {
-  "name": "Universal POS",
+  "name": "Universal.uz - Biznes boshqaruv tizimi",
   "short_name": "Universal",
-  "description": "Kassa va ombor boshqaruv tizimi",
+  "description": "Kassa va ombor boshqaruv tizimi - Savdo, inventarizatsiya, mijozlar va qarzlarni boshqarish",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "finance"],
+  "lang": "uz",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/logo.jpg",
@@ -19,6 +23,30 @@
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Kassa",
+      "short_name": "Kassa",
+      "description": "Savdo qilish",
+      "url": "/admin/kassa",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mahsulotlar",
+      "short_name": "Mahsulotlar",
+      "description": "Mahsulotlarni ko'rish",
+      "url": "/admin/products",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mijozlar",
+      "short_name": "Mijozlar",
+      "description": "Mijozlarni boshqarish",
+      "url": "/admin/customers",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
     }
   ]
 }

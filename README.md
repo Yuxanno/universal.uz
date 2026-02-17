@@ -47,6 +47,38 @@ VITE_API_URL=http://localhost:5050
 - ✅ Receipt printing
 - ✅ Role-based access (Admin, Cashier, Helper)
 - ✅ Offline support (PWA)
+- ✅ **PWA - Ilovani o'rnatish** (yangi!)
+
+## 📱 PWA - Ilovani O'rnatish
+
+Universal.uz ni telefoningizga yoki kompyuteringizga oddiy ilova kabi o'rnatishingiz mumkin!
+
+### Mobil (Android/iOS)
+
+1. Saytga kiring: `https://pos.universalbozor.uz`
+2. Pastda "O'rnatish" dialog paydo bo'ladi
+3. "O'rnatish" tugmasini bosing
+4. Ilova home screen ga qo'shiladi
+
+**iOS Safari uchun**:
+- Share tugmasini bosing (pastdagi o'rta tugma)
+- "Add to Home Screen" ni tanlang
+
+### Desktop (Chrome/Edge)
+
+1. Saytga kiring
+2. Address bar da o'rnatish ikonkasi (⊕) paydo bo'ladi
+3. Ikonkani bosing va "O'rnatish" ni tanlang
+
+### Afzalliklar
+
+- ⚡ Tez yuklash (keshdan)
+- 📴 Offline ishlash
+- 🎨 Ilova kabi tajriba
+- 🏠 Home screen da
+- 🚫 Brauzer UI yo'q
+
+Batafsil: [beets/features/pwa-install-2024-02-17.md](./beets/features/pwa-install-2024-02-17.md)
 
 ## 📖 Yangi Dasturchilar Uchun
 

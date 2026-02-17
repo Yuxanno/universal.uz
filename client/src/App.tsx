@@ -7,6 +7,7 @@ import { CustomersProvider } from './context/CustomersContext';
 import { WarehousesProvider } from './context/WarehousesContext';
 import { startMemoryMonitoring, stopMemoryMonitoring, monitorMemory } from './utils/memoryOptimizer';
 import { initSocket } from './utils/socket';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import Login from './pages/Login';
 
 // ОПТИМИЗАЦИЯ: Ленивая загрузка компонентов для быстрых переходов
@@ -98,6 +99,7 @@ function App() {
         <ProductsProvider>
           <CustomersProvider>
             <WarehousesProvider>
+              <PWAInstallPrompt />
               <BrowserRouter
  future={{
  v7_startTransition: true,
