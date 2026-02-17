@@ -389,105 +389,38 @@ export default function HelperScanner() {
  
  console.log('🔍 [HELPER] Search query:', q);
  
- // Check if query is a number (price search)
+ // Check if query is a number (code or price search)
  const isNumericQuery = /^\d+$/.test(q);
- const numericQuery = isNumericQuery ? parseInt(q) : null;
  
  // Filter products
  const filtered = products.filter(p => {
- // Exact price search - if query is numeric, search by exact price match
- if (numericQuery !== null) {
- // Check exact match for price, dona_narx, or optom_narx
- const priceMatch = p.price && Math.round(p.price) === numericQuery;
- const donaNarxMatch = (p as any).dona_narx && Math.round((p as any).dona_narx) === numericQuery;
- const optomNarxMatch = (p as any).optom_narx && Math.round((p as any).optom_narx) === numericQuery;
- const tanNarxMatch = (p as any).tan_narx && Math.round((p as any).tan_narx) === numericQuery;
- const costPriceMatch = p.costPrice && Math.round(p.costPrice) === numericQuery;
- 
- if (priceMatch || donaNarxMatch || optomNarxMatch || tanNarxMatch || costPriceMatch) {
- return true;
+ // ANIQ KOD QIDIRISH - raqam bo'lsa faqat kod bo'yicha
+ if (isNumericQuery) {
+ // Faqat aniq kod bo'yicha qidirish (11 -> faqat "11", 118 -> faqat "118")
+ return p.code === q;
  }
  
- // If no exact match found, don't search by code for numeric queries
- return false;
- }
- 
- // Regular search by name or code
+ // Matn qidirish - nom yoki kod ichida
  return p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
  });
  
  console.log('📦 [HELPER] Filtered count:', filtered.length);
- console.log('📋 [HELPER] First 3 filtered:', filtered.slice(0, 3).map(p => ({ code: p.code, name: p.name })));
+ console.log('📋 [HELPER] First 3 filtered:', filtered.slice(0, 3).map(p => ({ code: p.code, name: p.name, price: p.price })));
  
- // Sort: для числового поиска - точное совпадение цены первым, затем код с начала > короткий код > алфавитный порядок
+ // Sort: kod bo'yicha qisqaroq birinchi, keyin alifbo
  const sorted = [...filtered].sort((a, b) => {
- // Priority 0: If numeric search, exact price match comes first
- if (numericQuery !== null) {
- // Check which price fields match for each product
- const aPriceMatch = a.price && Math.round(a.price) === numericQuery;
- const aDonaNarxMatch = (a as any).dona_narx && Math.round((a as any).dona_narx) === numericQuery;
- const aOptomNarxMatch = (a as any).optom_narx && Math.round((a as any).optom_narx) === numericQuery;
- const aTanNarxMatch = (a as any).tan_narx && Math.round((a as any).tan_narx) === numericQuery;
- const aCostPriceMatch = a.costPrice && Math.round(a.costPrice) === numericQuery;
- 
- const bPriceMatch = b.price && Math.round(b.price) === numericQuery;
- const bDonaNarxMatch = (b as any).dona_narx && Math.round((b as any).dona_narx) === numericQuery;
- const bOptomNarxMatch = (b as any).optom_narx && Math.round((b as any).optom_narx) === numericQuery;
- const bTanNarxMatch = (b as any).tan_narx && Math.round((b as any).tan_narx) === numericQuery;
- const bCostPriceMatch = b.costPrice && Math.round(b.costPrice) === numericQuery;
- 
- // Priority order: price > dona_narx > optom_narx > tan_narx > costPrice
- // Assign priority scores (lower is better)
- let aScore = 999;
- let bScore = 999;
- 
- if (aPriceMatch) aScore = 1;
- else if (aDonaNarxMatch) aScore = 2;
- else if (aOptomNarxMatch) aScore = 3;
- else if (aTanNarxMatch) aScore = 4;
- else if (aCostPriceMatch) aScore = 5;
- 
- if (bPriceMatch) bScore = 1;
- else if (bDonaNarxMatch) bScore = 2;
- else if (bOptomNarxMatch) bScore = 3;
- else if (bTanNarxMatch) bScore = 4;
- else if (bCostPriceMatch) bScore = 5;
- 
- // Sort by priority score
- if (aScore !== bScore) {
- return aScore - bScore;
- }
- 
- // If same priority, sort by code (ascending)
- return a.code.localeCompare(b.code);
- }
- 
  const aCode = a.code.toLowerCase();
  const bCode = b.code.toLowerCase();
  
- const aCodeStartsWith = aCode.startsWith(q);
- const bCodeStartsWith = bCode.startsWith(q);
- 
- // Priority 1: Kod boshidan boshlanadigan
- if (aCodeStartsWith && !bCodeStartsWith) return -1;
- if (!aCodeStartsWith && bCodeStartsWith) return 1;
- 
- // Priority 2: Agar ikkisi ham kod boshidan boshlansa, qisqaroq kod birinchi
- if (aCodeStartsWith && bCodeStartsWith) {
- const lengthDiff = aCode.length - bCode.length;
- if (lengthDiff !== 0) return lengthDiff;
- return aCode.localeCompare(bCode);
- }
- 
- // Priority 3: Kod ichida bo'lsa, qisqaroq kod birinchi
+ // Priority 1: Qisqaroq kod birinchi
  const lengthDiff = aCode.length - bCode.length;
  if (lengthDiff !== 0) return lengthDiff;
  
- // Default: alfabetik
+ // Priority 2: Alfabetik
  return aCode.localeCompare(bCode);
  });
  
- console.log('🎯 [HELPER] First 10 sorted:', sorted.slice(0, 10).map(p => ({ code: p.code, name: p.name })));
+ console.log('🎯 [HELPER] First 10 sorted:', sorted.slice(0, 10).map(p => ({ code: p.code, name: p.name, price: p.price })));
  
  setSearchResults(sorted);
  } else {
@@ -1047,17 +980,18 @@ export default function HelperScanner() {
  onClick={() => addToCart(product)}
  className="w-full flex items-center justify-between p-4 hover:bg-surface-50 transition-colors text-left"
  >
- <div className="flex items-center gap-3">
- <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+ <div className="flex items-center gap-3 flex-1 min-w-0">
+ <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
  <Package className="w-5 h-5 text-brand-600" />
  </div>
- <div>
- <p className="font-medium text-surface-900">{product.name}</p>
+ <div className="flex-1 min-w-0">
+ <p className="font-medium text-surface-900 truncate">{product.name}</p>
  <p className="text-sm text-surface-500">Kod: {product.code}</p>
  </div>
  </div>
- <div className="text-right">
- <p className="text-sm text-surface-500">{product.quantity} dona</p>
+ <div className="text-right flex-shrink-0 ml-3">
+ <p className="font-semibold text-brand-600">{formatNumber(product.dona_narx || product.price || 0)} so'm</p>
+ <p className="text-xs text-surface-500">{product.quantity} dona</p>
  </div>
  </button>
  ))}

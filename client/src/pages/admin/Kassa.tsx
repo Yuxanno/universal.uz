@@ -244,30 +244,14 @@ export default function Kassa() {
  loadWorkerItems();
  };
  
- // YANGI: Real-time polling - har 2 soniyada localStorage ni tekshirish
- const pollInterval = setInterval(() => {
- const kassaItems = localStorage.getItem('kassaItems');
- if (kassaItems) {
- console.log('🔄 Polling detected new items, reloading...');
- loadWorkerItems();
- }
- }, 2000); // Har 2 soniyada tekshirish
- 
  window.addEventListener('storage', handleStorageChange);
  window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
  
  return () => {
  window.removeEventListener('storage', handleStorageChange);
  window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
- clearInterval(pollInterval);
  };
- }, [loadWorkerItems]);
-
- // Reload worker items when navigating to this page
- useEffect(() => {
- console.log('🔄 Route changed to Kassa, checking for worker items...');
- loadWorkerItems();
- }, [location.pathname, loadWorkerItems]);
+ }, []);
 
  // ИСПРАВЛЕНИЕ: Загружаем товары при монтировании, если их нет
  useEffect(() => {
