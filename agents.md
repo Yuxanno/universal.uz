@@ -466,7 +466,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 - `client/src/context/ProductsContext.tsx`
 - `server/src/routes/stats.js`
 
-#### 3. Kassa - Scroll Optimizatsiyasi
+### 3. Kassa - Scroll Optimizatsiyasi
 **Muammo**: Mahsulotlarni scroll qilganda butun sahifa scroll bo'lardi.
 
 **Yechim**:
@@ -476,7 +476,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 
 **Fayl**: `client/src/pages/admin/Kassa.tsx`
 
-#### 4. Kassa - Narx Rejimi Tuzatildi
+### 4. Kassa - Narx Rejimi Tuzatildi
 **Muammo**: Optom rejimida ham ba'zi mahsulotlar dona narxida hisoblanardi.
 
 **Yechim**:
@@ -486,7 +486,7 @@ Loyiha hozirda senior-level standartlarga ko'tarilmoqda:
 
 **Fayl**: `client/src/pages/admin/Kassa.tsx`
 
-#### 5. Kassir Uchun Qaytarish Funksiyasi
+### 5. Kassir Uchun Qaytarish Funksiyasi
 **Muammo**: Qaytarish faqat admin sahifasida mavjud edi.
 
 **Yechim**:
