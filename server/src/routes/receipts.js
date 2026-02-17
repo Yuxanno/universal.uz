@@ -347,8 +347,8 @@ router.put('/:id/load-to-kassa', auth, authorize('admin', 'cashier'), async (req
     
     console.log('✅ Receipt archived after loading to kassa:', receipt._id);
     
-    // Clear inventory cache to refresh products
-    clearInventoryCache();
+    // OPTIMIZED: Don't clear cache - Socket event handles updates
+    // clearInventoryCache(); // REMOVED
     
     res.json(receipt);
   } catch (error) {
@@ -712,8 +712,9 @@ router.post('/', auth, async (req, res) => {
       console.error('❌ [Socket] global.io is undefined! Socket not initialized.');
     }
     
-    // Clear inventory cache after sale
-    clearInventoryCache();
+    // OPTIMIZED: Don't clear cache - let it stay for faster subsequent requests
+    // Socket event already notified all clients to update their local state
+    // clearInventoryCache(); // REMOVED - cache saqlanadi, tezroq ishlaydi
     
     res.status(201).json(receipt);
   } catch (error) {
@@ -1153,8 +1154,8 @@ router.post('/return', auth, authorize('admin', 'cashier'), async (req, res) => 
       remainingTotal: isFullReturn ? 0 : remainingTotal
     });
     
-    // Clear inventory cache
-    clearInventoryCache();
+    // OPTIMIZED: Don't clear cache - Socket event handles updates
+    // clearInventoryCache(); // REMOVED
     
     // Emit socket event
     if (global.io) {
