@@ -132,22 +132,6 @@ export default function Kassa() {
  const quantityInputRef = useRef<HTMLInputElement>(null);
  const searchInputRef = useRef<HTMLInputElement>(null);
  
- // Load price mode from localStorage
- const [priceMode, setPriceMode] = useState<'retail' | 'wholesale'>(() => {
- const saved = localStorage.getItem('kassaPriceMode');
- // Migration: if saved is 'retail', change to 'wholesale' as new default
- if (saved === 'retail' || !saved) {
- localStorage.setItem('kassaPriceMode', 'wholesale');
- return 'wholesale';
- }
- return saved as 'retail' | 'wholesale';
- });
- 
- // Save price mode to localStorage when it changes
- useEffect(() => {
- localStorage.setItem('kassaPriceMode', priceMode);
- }, [priceMode]);
-
  // Load items from worker (StaffReceipts - "Kassaga yuklash")
  const loadWorkerItems = useCallback(() => {
  const kassaItems = localStorage.getItem('kassaItems');
@@ -299,22 +283,27 @@ export default function Kassa() {
  // MongoDB structure:
  // - costPrice = Tan narxi (240k)
  // - price = Optom narxi (asosiy narx)
- // - retailPrice or dona_narx = Dona narxi (300k)
- const donaPrice = (product as any).retailPrice || (product as any).dona_narx || product.price || 0; // Dona narxi
  const optomPrice = product.price || 0; // Optom narxi
  const tanPrice = product.costPrice || 0; // Tan narxi
  
- // LOG: Mahsulot miqdorini tekshirish
+ // LOG: Mahsulot va narx rejimini tekshirish
  console.log('📦 [addToCart] Product:', {
  id: product._id,
  code: product.code,
  name: product.name,
  quantity: product.quantity,
- cartQuantity: 1
+ cartQuantity: 1,
+ optomPrice,
+ tanPrice
  });
  
- // CRITICAL: Use priceMode to determine default price
- const defaultPrice = priceMode === 'retail' ? donaPrice : optomPrice;
+ // ALWAYS use optom price
+ const defaultPrice = optomPrice;
+ 
+ console.log('💰 [addToCart] Selected price (OPTOM):', {
+ defaultPrice,
+ optomPrice
+ });
  
  // Check if product quantity is low - show toast instead of modal
  const minStockThreshold = product.minStock || 5;
@@ -334,56 +323,32 @@ export default function Kassa() {
  
  // Optimistic update - darhol UI'da ko'rsatadi
  // YANGI LOGIKA: Har safar yangi qator yaratish (miqdorni oshirmaslik)
- setCart(prev => {
- // Har doim yangi qator qo'shish - tepaga
  // Unique cart ID to allow duplicate products
  const cartId = `${product._id}_${Date.now()}_${Math.random()}`;
+ 
+ setCart(prev => {
+ // Har doim yangi qator qo'shish - tepaga
  return [{
  ...product,
  _id: cartId, // Unique ID for this cart item
  _productId: product._id, // Original product ID
  cartQuantity: 1,
- price: defaultPrice, // Use priceMode: optom or dona
- dona_narx: donaPrice,
+ price: defaultPrice, // ALWAYS optom price
  optom_narx: optomPrice,
  tan_narx: tanPrice
  }, ...prev];
  });
  
- // Set local price based on priceMode
+ // Set local price (use same cartId)
  setLocalPrices(prev => ({
  ...prev,
- [product._id]: defaultPrice.toString()
+ [cartId]: defaultPrice.toString()
  }));
  
  // Modal'ni darhol yopadi
  setShowSearch(false);
  setSearchQuery('');
- }, [priceMode, toast]);
-
- // Toggle between retail and wholesale prices
- const togglePriceMode = useCallback(() => {
- setPriceMode(prev => {
- const newMode = prev === 'retail' ? 'wholesale' : 'retail';
- 
- // Update all cart items prices
- setLocalPrices(() => {
- const newPrices: {[key: string]: string} = {};
- cart.forEach(item => {
- // MongoDB structure:
- // - dona_narx/retailPrice = Dona narxi (300k)
- // - optom_narx/price (original) = Optom narxi (asosiy)
- const price = newMode === 'retail' 
- ? ((item as any).dona_narx || (item as any).retailPrice || (item as any).optom_narx || 0) // Dona
- : ((item as any).optom_narx || item.price || 0); // Optom
- newPrices[item._id] = price.toString();
- });
- return newPrices;
- });
- 
- return newMode;
- });
- }, [cart]);
+ }, [toast]);
 
  const removeFromCart = useCallback((id: string) => {
  setCart(prev => prev.filter(item => item._id !== id));
@@ -522,13 +487,29 @@ export default function Kassa() {
  return;
  }
  
- // LOG: Mahsulot miqdorini tekshirish
+ // MongoDB structure:
+ // - costPrice = Tan narxi
+ // - price = Optom narxi
+ const optomPrice = quantityInputProduct.price;
+ const tanPrice = quantityInputProduct.costPrice || quantityInputProduct.tan_narx;
+ 
+ // LOG: Mahsulot va narx rejimini tekshirish
  console.log('📦 [addProductWithQuantity] Product:', {
  id: quantityInputProduct._id,
  code: quantityInputProduct.code,
  name: quantityInputProduct.name,
  quantity: quantityInputProduct.quantity,
- cartQuantity: quantity
+ cartQuantity: quantity,
+ optomPrice,
+ tanPrice
+ });
+ 
+ // ALWAYS use optom price
+ const selectedPrice = optomPrice;
+ 
+ console.log('💰 [addProductWithQuantity] Selected price (OPTOM):', {
+ selectedPrice,
+ optomPrice
  });
  
  // Check if product quantity is low - show toast instead of modal
@@ -549,10 +530,6 @@ export default function Kassa() {
  
  setCart(prev => {
  // YANGI LOGIKA: Har safar yangi qator yaratish
- const donaPrice = quantityInputProduct.dona_narx || quantityInputProduct.price;
- const optomPrice = quantityInputProduct.price;
- const selectedPrice = priceMode === 'retail' ? donaPrice : optomPrice;
- 
  // Unique cart ID to allow duplicate products
  const cartId = `${quantityInputProduct._id}_${Date.now()}_${Math.random()}`;
  
@@ -561,10 +538,9 @@ export default function Kassa() {
  _id: cartId, // Unique ID for this cart item
  _productId: quantityInputProduct._id, // Original product ID
  cartQuantity: quantity,
- price: selectedPrice,
- tan_narx: quantityInputProduct.costPrice || quantityInputProduct.tan_narx,
- optom_narx: quantityInputProduct.price || quantityInputProduct.optom_narx,
- dona_narx: donaPrice
+ price: selectedPrice, // ALWAYS optom price
+ tan_narx: tanPrice,
+ optom_narx: optomPrice
  };
  
  // Set local price
@@ -586,7 +562,7 @@ export default function Kassa() {
  }, 100);
  
  toast.success('Savatga qo\'shildi', quantityInputProduct.name);
- }, [quantityInputProduct, quantityInputValue, priceMode, toast]);
+ }, [quantityInputProduct, quantityInputValue, toast]);
  
  // Focus quantity input when product is selected
  useEffect(() => {
@@ -607,13 +583,22 @@ export default function Kassa() {
  
  const productsToAdd = displayedProducts.filter(p => selectedProducts.has(p._id));
  
+ console.log('📦 [addSelectedToCart] Adding products:', {
+ count: productsToAdd.length
+ });
+ 
  setCart(prev => {
  const newItems: any[] = [];
  productsToAdd.forEach(product => {
  // YANGI LOGIKA: Har safar yangi qator yaratish
- const donaPrice = product.dona_narx || product.price;
+ // MongoDB structure:
+ // - costPrice = Tan narxi
+ // - price = Optom narxi
  const optomPrice = product.price;
- const selectedPrice = priceMode === 'retail' ? donaPrice : optomPrice;
+ const tanPrice = product.costPrice || product.tan_narx;
+ 
+ // ALWAYS use optom price
+ const selectedPrice = optomPrice;
  
  // Unique cart ID to allow duplicate products
  const cartId = `${product._id}_${Date.now()}_${Math.random()}`;
@@ -623,10 +608,9 @@ export default function Kassa() {
  _id: cartId, // Unique ID for this cart item
  _productId: product._id, // Original product ID
  cartQuantity: 1,
- price: selectedPrice,
- tan_narx: product.costPrice || product.tan_narx,
- optom_narx: product.price || product.optom_narx,
- dona_narx: donaPrice
+ price: selectedPrice, // ALWAYS optom price
+ tan_narx: tanPrice,
+ optom_narx: optomPrice
  });
  
  // Set local price
@@ -642,7 +626,7 @@ export default function Kassa() {
  setSearchQuery('');
  setSelectedProducts(new Set());
  // toast.success(`${selectedProducts.size} ta mahsulot qo'shildi`); // Disabled
- }, [selectedProducts, displayedProducts, showAlert, priceMode]);
+ }, [selectedProducts, displayedProducts, showAlert]);
  
  // Load purchase to cart (Tarix modal)
  const loadPurchaseToCart = useCallback((receipt: any) => {
@@ -861,8 +845,6 @@ export default function Kassa() {
  localStorage.removeItem('kassaCart'); // Clear cart from localStorage
  localStorage.removeItem('kassaLocalPrices'); // Clear prices from localStorage
  setSelectedCustomer(''); // Reset customer selection
- setPriceMode('retail'); // Reset to dona narxi
- localStorage.setItem('kassaPriceMode', 'retail'); // Save to localStorage
  setShowPayment(false);
  setIsReturnMode(false);
  setPrintReceipt(receiptData);
@@ -1180,24 +1162,6 @@ window.onload = function() {
  <span className="text-pink-600 dark:text-pink-400 font-bold">{total.toLocaleString()} {tKey("so'm")}</span>
  </p>
  </div>
- 
- {/* Price Mode Toggle */}
- <button
- onClick={togglePriceMode}
- className={`flex items-center gap-1.5 px-2 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all hover:scale-105 shadow-sm ${
- priceMode === 'retail'
- ? 'bg-blue-500 text-white hover:bg-blue-600'
- : 'bg-green-500 text-white hover:bg-green-600'
- }`}
- title={priceMode === 'retail' ? 'Dona narxida' : 'Optom narxida'}
- >
- <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
- </svg>
- <span className="hidden sm:inline whitespace-nowrap">
- {priceMode === 'retail' ? 'Dona' : 'Optom'}
- </span>
- </button>
  </div>
 
  {/* Customer Select & Saved Receipts */}
@@ -1397,6 +1361,7 @@ window.onload = function() {
  {((product as any).costPrice || 0).toLocaleString()}
  </span>
  <span className="font-bold text-slate-600">•</span>
+ <span className="font-bold text-slate-600">Optom:</span>
  <span className={`font-black ${isExpanded ? 'text-green-600' : 'text-red-600 dark:text-red-400'}`}>
  {product.price.toLocaleString()}
  </span>
@@ -1681,6 +1646,7 @@ window.onload = function() {
  {((product as any).costPrice || 0).toLocaleString()}
  </span>
  <span className="font-bold text-slate-600">•</span>
+ <span className="font-bold text-slate-600">Optom:</span>
  <span className={`font-black ${isSelected ? 'text-green-600' : 'text-red-600 dark:text-red-400'}`}>
  {product.price.toLocaleString()}
  </span>
@@ -1870,6 +1836,7 @@ window.onload = function() {
  {((product as any).costPrice || 0).toLocaleString()}
  </span>
  <span className="text-xs font-bold text-slate-600">•</span>
+ <span className="text-xs font-bold text-slate-600">Optom:</span>
  <span className="text-sm font-black text-warning-600">
  {product.price.toLocaleString()}
  </span>
