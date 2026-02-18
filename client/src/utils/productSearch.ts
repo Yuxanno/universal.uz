@@ -1,9 +1,10 @@
 /**
- * Универсальная функция поиска товаров (v2.3 - Global Debug Edition)
+ * Универсальная функция поиска товаров (v2.4 - Optom Only Edition)
  * 
  * ПОЛИТИКА:
- * - Если есть цифры: СТРОГОЕ (EXACT) совпадение кода, цены или слова в названии.
+ * - Если есть цифры: СТРОГОЕ (EXACT) совпадение кода или OPTOM narx, или слова в названии.
  * - Если нет цифр: ГИБКОЕ (LOOSE) совпадение (вхождение подстроки).
+ * - FAQAT RAQAM: Avval kod, keyin FAQAT OPTOM NARX (tan va dona narx ishlatilmaydi)
  */
 
 import { uzLatToCyr } from './uzLatToCyr';
@@ -64,7 +65,7 @@ export function searchProducts<T extends SearchableProduct>(
             return false; // Faqat nomdan qidirish
         }
 
-        // AGAR FAQAT RAQAM BO'LSA - AVVAL KOD, KEYIN NARX
+        // AGAR FAQAT RAQAM BO'LSA - AVVAL KOD, KEYIN FAQAT OPTOM NARX
         if (isNumeric && numValue !== null) {
             // 1. Avval kod bo'yicha qidirish (PRIORITET)
             const code = normalize(product.code);
@@ -74,25 +75,21 @@ export function searchProducts<T extends SearchableProduct>(
                 return true;
             }
             
-            // 2. Agar kod topilmasa, narx bo'yicha qidirish
-            // MUHIM: Faqat narx maydonlarini tekshirish, nom ichidagi raqamlarni emas!
-            const costPrice = product.costPrice || (product as any).tan_narx;
+            // 2. Agar kod topilmasa, FAQAT OPTOM NARX bo'yicha qidirish
+            // MUHIM: Faqat optom narx tekshiriladi (tan va dona narx ishlatilmaydi)
             const optomPrice = product.price || (product as any).optom_narx;
-            const donaPrice = product.dona_narx;
             
-            // Narxlarni string ga o'tkazib, boshidan qidirish (5000 -> 5000, 5001, 5000.5 topadi, lekin 15000 topilmaydi)
-            const costStr = costPrice != null ? String(costPrice) : '';
+            // Narxni string ga o'tkazib, boshidan qidirish (5000 -> 5000, 5001, 5000.5 topadi, lekin 15000 topilmaydi)
             const optomStr = optomPrice != null ? String(optomPrice) : '';
-            const donaStr = donaPrice != null ? String(donaPrice) : '';
             
-            // Qidiruv qiymati bilan boshlanadigan narxlarni topish
-            if (costStr.startsWith(q) || optomStr.startsWith(q) || donaStr.startsWith(q)) {
-                matchReason = `Price starts with (cost:${costStr}, optom:${optomStr}, dona:${donaStr})`;
-                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Price starts with: ${q}`);
+            // Qidiruv qiymati bilan boshlanadigan optom narxni topish
+            if (optomStr.startsWith(q)) {
+                matchReason = `Optom price starts with (${optomStr})`;
+                console.log(`✅ MATCH: ${product.name} | Code: ${product.code} | Optom price starts with: ${q}`);
                 return true;
             }
             
-            return false; // Faqat kod yoki narx
+            return false; // Faqat kod yoki optom narx
         }
 
         // AGAR HARF + RAQAM BO'LSA - KOD VA NOM BO'YICHA (FAQAT BOSHIDAN)

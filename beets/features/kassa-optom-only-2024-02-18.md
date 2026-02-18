@@ -1,16 +1,20 @@
-# Kassa - Faqat Optom Narxda Hisoblash
+# Kassa - Faqat Optom Narxda Hisoblash va Qidirish
 
 **Sana**: 2024-02-18  
 **Holat**: ✅ Amalga oshirilgan  
-**Fayl**: `client/src/pages/admin/Kassa.tsx`
+**Fayllar**: 
+- `client/src/pages/admin/Kassa.tsx`
+- `client/src/utils/productSearch.ts`
 
 ## 📋 Muammo
 
-Kassa qismida mahsulotlar xaridga yuklanayotganda ba'zi hollarda avtomatik dona narxga o'tib qolardi. Bu narx rejimi (optom/dona) o'rtasida noaniqlikka olib kelardi.
+1. Kassa qismida mahsulotlar xaridga yuklanayotganda ba'zi hollarda avtomatik dona narxga o'tib qolardi
+2. Qidiruv barcha narxlarda (tan, optom, dona) qidirardi, bu noaniqlikka olib kelardi
 
 ## 🎯 Yechim
 
-Dona narx funksiyasini butunlay olib tashlandi va barcha mahsulotlar doim faqat **optom narxda** hisoblanadi.
+1. Dona narx funksiyasini butunlay olib tashlandi va barcha mahsulotlar doim faqat **optom narxda** hisoblanadi
+2. Qidiruv funksiyasi faqat raqam kiritilganda **kod yoki optom narx** bo'yicha qidiradi (tan va dona narx ishlatilmaydi)
 
 ## 🔧 Amalga Oshirilgan O'zgarishlar
 
