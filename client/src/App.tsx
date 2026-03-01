@@ -16,6 +16,7 @@ const SalesReport = lazy(() => import('./pages/admin/SalesReport'));
 const Kassa = lazy(() => import('./pages/admin/Kassa'));
 const Products = lazy(() => import('./pages/admin/Products'));
 const Warehouses = lazy(() => import('./pages/admin/Warehouses'));
+const WarehouseDetail = lazy(() => import('./pages/admin/WarehouseDetail'));
 const Customers = lazy(() => import('./pages/admin/Customers'));
 const Debts = lazy(() => import('./pages/admin/Debts'));
 const Orders = lazy(() => import('./pages/admin/Orders'));
@@ -116,6 +117,7 @@ function App() {
  <Route path="kassa" element={<Kassa />} />
  <Route path="products" element={<Products />} />
  <Route path="warehouses" element={<Warehouses />} />
+              <Route path="warehouses/:id" element={<WarehouseDetail />} />
  <Route path="customers" element={<Customers />} />
  <Route path="debts" element={<Debts />} />
  <Route path="orders" element={<Orders />} />

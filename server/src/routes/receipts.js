@@ -725,6 +725,58 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// ===== SAVED RECEIPTS (cross-device sync) =====
+
+// Get all saved receipts
+router.get('/saved', auth, async (req, res) => {
+  try {
+    const receipts = await Receipt.find({ status: 'saved', createdBy: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(receipts);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Save a receipt (park)
+router.post('/saved', auth, async (req, res) => {
+  try {
+    const { items, total, customer } = req.body;
+    const receipt = new Receipt({
+      items,
+      total,
+      status: 'saved',
+      createdBy: req.user._id,
+      customer: customer || undefined
+    });
+    await receipt.save();
+
+    if (global.io) {
+      global.io.emit('saved-receipt:updated');
+    }
+
+    res.status(201).json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
+// Delete saved receipt
+router.delete('/saved/:id', auth, async (req, res) => {
+  try {
+    await Receipt.findOneAndDelete({ _id: req.params.id, status: 'saved' });
+
+    if (global.io) {
+      global.io.emit('saved-receipt:updated');
+    }
+
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.put('/:id/approve', auth, authorize('admin', 'cashier'), async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id);

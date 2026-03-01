@@ -20,6 +20,17 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const warehouse = await Warehouse.findById(req.params.id);
+    if (!warehouse) return res.status(404).json({ message: 'Ombor topilmadi' });
+    const productCount = await Product.countDocuments({ warehouse: warehouse._id });
+    res.json({ ...warehouse.toObject(), productCount });
+  } catch (error) {
+    res.status(500).json({ message: 'Server xatosi', error: error.message });
+  }
+});
+
 router.post('/', auth, authorize('admin'), async (req, res) => {
   try {
     const warehouse = new Warehouse({ ...req.body, createdBy: req.user._id });

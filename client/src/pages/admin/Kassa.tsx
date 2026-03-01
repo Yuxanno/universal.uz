@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { CartItem, Product } from '../../types';
 import api from '../../utils/api';
-// import { socket } from '../../utils/socket';
+import { getSocket } from '../../utils/socket';
 import { useAlert } from '../../hooks/useAlert';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui/ToastContainer';
@@ -23,10 +23,10 @@ import PhoneInput from '../../components/PhoneInput';
 import './Kassa.modern.css';
 
 interface SavedReceipt {
- id: string;
- items: CartItem[];
+ _id: string;
+ items: { product: string; name: string; code: string; price: number; quantity: number }[];
  total: number;
- savedAt: string;
+ createdAt: string;
 }
 
 interface PrintReceipt {
@@ -214,44 +214,72 @@ export default function Kassa() {
  }
  }, [toast, showAlert, displayedProducts]);
 
+ const loadSavedReceipts = useCallback(async () => {
+ try {
+   // Migrate localStorage data to server (one-time)
+   const local = localStorage.getItem('savedReceipts');
+   if (local) {
+     const localReceipts = JSON.parse(local);
+     for (const r of localReceipts) {
+       await api.post('/receipts/saved', {
+         items: r.items.map((item: CartItem) => ({
+           product: item._id,
+           name: item.name,
+           code: item.code || '',
+           price: item.price,
+           quantity: item.cartQuantity || item.quantity || 1
+         })),
+         total: r.total
+       });
+     }
+     localStorage.removeItem('savedReceipts');
+   }
+   const { data } = await api.get('/receipts/saved');
+   setSavedReceipts(data);
+ } catch (err) {
+   console.error('Error loading saved receipts:', err);
+ }
+ }, []);
+
  useEffect(() => {
  loadSavedReceipts();
  loadWorkerItems();
- 
+
  // Listen for localStorage changes (when items are loaded from StaffReceipts)
  const handleStorageChange = (e: StorageEvent) => {
  if (e.key === 'kassaItems' && e.newValue) {
- console.log('🔄 localStorage changed, reloading worker items...');
  loadWorkerItems();
  }
  };
- 
+
  // Also listen for custom event (for same-tab changes)
  const handleKassaItemsUpdate = () => {
- console.log('🔄 Custom event received, reloading worker items...');
  loadWorkerItems();
  };
- 
+
  window.addEventListener('storage', handleStorageChange);
  window.addEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
- 
+
+ // Socket: real-time sync for saved receipts
+ const socket = getSocket();
+ const handleSavedReceiptUpdate = () => {
+   loadSavedReceipts();
+ };
+ socket?.on('saved-receipt:updated', handleSavedReceiptUpdate);
+
  return () => {
  window.removeEventListener('storage', handleStorageChange);
  window.removeEventListener('kassaItemsUpdated', handleKassaItemsUpdate);
+ socket?.off('saved-receipt:updated', handleSavedReceiptUpdate);
  };
- }, []);
+ }, [loadSavedReceipts]);
 
- // ИСПРАВЛЕНИЕ: Загружаем товары при монтировании, если их нет
+ // Load products on mount if empty
  useEffect(() => {
  if (displayedProducts.length === 0 && !loading) {
  refreshProducts();
  }
  }, [displayedProducts.length, loading, refreshProducts]);
-
- const loadSavedReceipts = () => {
- const saved = localStorage.getItem('savedReceipts');
- if (saved) setSavedReceipts(JSON.parse(saved));
- };
 
  // Memoize total calculation
  const total = useMemo(() => {
@@ -1068,33 +1096,59 @@ window.onload = function() {
  }, 1000);
  }, []);
 
- const saveReceipt = () => {
+ const saveReceipt = async () => {
  if (cart.length === 0) { showAlert("Chek bo'sh", 'Ogohlantirish', 'warning'); return; }
- const newSaved: SavedReceipt = {
- id: Date.now().toString(),
- items: [...cart],
- total,
- savedAt: new Date().toLocaleString()
- };
- const updated = [...savedReceipts, newSaved];
- setSavedReceipts(updated);
- localStorage.setItem('savedReceipts', JSON.stringify(updated));
- setCart([]);
- showAlert('Chek saqlandi!', 'Muvaffaqiyat', 'success');
+ try {
+   await api.post('/receipts/saved', {
+     items: cart.map(item => ({
+       product: item._id,
+       name: item.name,
+       code: item.code || '',
+       price: localPrices[item._id] ? parseInt(localPrices[item._id].replace(/\s/g, '')) || item.price : item.price,
+       quantity: item.cartQuantity
+     })),
+     total,
+     customer: selectedCustomer || undefined
+   });
+   setCart([]);
+   loadSavedReceipts();
+   showAlert('Chek saqlandi!', 'Muvaffaqiyat', 'success');
+ } catch (err) {
+   showAlert('Saqlashda xatolik', 'Xatolik', 'danger');
+ }
  };
 
- const loadSavedReceipt = (receipt: SavedReceipt) => {
- setCart(receipt.items);
- const updated = savedReceipts.filter(r => r.id !== receipt.id);
- setSavedReceipts(updated);
- localStorage.setItem('savedReceipts', JSON.stringify(updated));
+ const loadSavedReceipt = async (receipt: SavedReceipt) => {
+ const cartItems: CartItem[] = receipt.items.map(item => {
+   const product = displayedProducts.find(p => p._id === item.product);
+   return {
+     _id: item.product,
+     name: item.name,
+     code: item.code,
+     price: item.price,
+     quantity: product?.quantity || 0,
+     cartQuantity: item.quantity,
+     category: product?.category || '',
+     warehouse: product?.warehouse || ''
+   } as CartItem;
+ });
+ setCart(cartItems);
+ try {
+   await api.delete(`/receipts/saved/${receipt._id}`);
+   loadSavedReceipts();
+ } catch (err) {
+   console.error('Error deleting saved receipt:', err);
+ }
  setShowSavedReceipts(false);
  };
 
- const deleteSavedReceipt = (id: string) => {
- const updated = savedReceipts.filter(r => r.id !== id);
- setSavedReceipts(updated);
- localStorage.setItem('savedReceipts', JSON.stringify(updated));
+ const deleteSavedReceipt = async (id: string) => {
+ try {
+   await api.delete(`/receipts/saved/${id}`);
+   setSavedReceipts(prev => prev.filter(r => r._id !== id));
+ } catch (err) {
+   showAlert("O'chirishda xatolik", 'Xatolik', 'danger');
+ }
  };
 
  const handleCreateCustomer = async () => {
@@ -2041,7 +2095,7 @@ window.onload = function() {
  ) : (
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  {savedReceipts.map(receipt => (
- <div key={receipt.id} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-600 hover:border-primary-500 transition-all hover:shadow-lg">
+ <div key={receipt._id} className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-2xl border-2 border-neutral-200 dark:border-neutral-600 hover:border-primary-500 transition-all hover:shadow-lg">
  <div className="flex items-start justify-between mb-4">
  <div className="flex-1">
  <div className="flex items-center gap-2 mb-2">
@@ -2052,14 +2106,14 @@ window.onload = function() {
  {receipt.items.length} ta mahsulot
  </span>
  </div>
- <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">{receipt.savedAt}</p>
+ <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">{new Date(receipt.createdAt).toLocaleString()}</p>
  <p className="text-2xl font-black text-neutral-900 dark:text-neutral-100">
  {receipt.total.toLocaleString()}
  <span className="text-sm ml-1">so'm</span>
  </p>
  </div>
  <button
- onClick={() => deleteSavedReceipt(receipt.id)}
+ onClick={() => deleteSavedReceipt(receipt._id)}
  className="p-2 rounded-xl text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/30 transition-all"
  >
  <Trash2 className="w-5 h-5" />

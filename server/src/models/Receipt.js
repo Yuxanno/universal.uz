@@ -16,7 +16,7 @@ const receiptSchema = new mongoose.Schema({
   cardAmount: { type: Number, default: 0 },
   debtAmount: { type: Number, default: 0 },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-  status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected', 'completed', 'archived', 'sent_to_kassa', 'returned'], default: 'completed' },
+  status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected', 'completed', 'archived', 'sent_to_kassa', 'returned', 'saved'], default: 'completed' },
   isReturn: { type: Boolean, default: false },
   description: { type: String }, // Description for return records (customer name + date + total)
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
