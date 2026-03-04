@@ -216,24 +216,8 @@ export default function Kassa() {
 
  const loadSavedReceipts = useCallback(async () => {
  try {
-   // Migrate localStorage data to server (one-time)
-   const local = localStorage.getItem('savedReceipts');
-   if (local) {
-     const localReceipts = JSON.parse(local);
-     for (const r of localReceipts) {
-       await api.post('/receipts/saved', {
-         items: r.items.map((item: CartItem) => ({
-           product: item._id,
-           name: item.name,
-           code: item.code || '',
-           price: item.price,
-           quantity: item.cartQuantity || item.quantity || 1
-         })),
-         total: r.total
-       });
-     }
-     localStorage.removeItem('savedReceipts');
-   }
+   // Clear old localStorage data (no longer used)
+   localStorage.removeItem('savedReceipts');
    const { data } = await api.get('/receipts/saved');
    setSavedReceipts(data);
  } catch (err) {
@@ -1101,7 +1085,7 @@ window.onload = function() {
  try {
    await api.post('/receipts/saved', {
      items: cart.map(item => ({
-       product: item._id,
+       product: (item as any)._productId || item._id.split('_')[0],
        name: item.name,
        code: item.code || '',
        price: localPrices[item._id] ? parseInt(localPrices[item._id].replace(/\s/g, '')) || item.price : item.price,

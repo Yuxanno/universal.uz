@@ -743,8 +743,13 @@ router.get('/saved', auth, async (req, res) => {
 router.post('/saved', auth, async (req, res) => {
   try {
     const { items, total, customer } = req.body;
+    // Sanitize product IDs - extract valid ObjectId from composite cartId (e.g. "id_timestamp_random")
+    const cleanItems = (items || []).map(item => ({
+      ...item,
+      product: item.product && item.product.includes('_') ? item.product.split('_')[0] : item.product
+    }));
     const receipt = new Receipt({
-      items,
+      items: cleanItems,
       total,
       status: 'saved',
       createdBy: req.user._id,
