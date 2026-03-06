@@ -299,24 +299,17 @@ export default function SalesReport() {
   };
 
   const getPeriodDate = () => {
-    const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-    const MONTHS_S = ['yan','fev','mart','apr','may','iyun','iyul','avg','sen','okt','noy','dek'];
-    const DAYS = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
     const today = new Date();
     if (period === 'today') {
-      return `${today.getDate()} ${MONTHS[today.getMonth()]}, ${DAYS[today.getDay()]}`;
+      return formatDate(today, true);
     }
     if (period === 'week') {
-      const diff = today.getDay() === 0 ? -6 : 1 - today.getDay();
-      const monday = new Date(today);
-      monday.setDate(today.getDate() + diff);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      return monday.getMonth() === sunday.getMonth()
-        ? `${monday.getDate()}-${sunday.getDate()} ${MONTHS_S[monday.getMonth()]}, ${sunday.getFullYear()}`
-        : `${monday.getDate()} ${MONTHS_S[monday.getMonth()]} - ${sunday.getDate()} ${MONTHS_S[sunday.getMonth()]}, ${sunday.getFullYear()}`;
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return `${formatDate(weekAgo, false)} - ${formatDate(today, true)}`;
     }
-    return `${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+    const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+    return `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
   };
 
   if (loading) {
@@ -671,7 +664,7 @@ export default function SalesReport() {
                           {receipt.customer?.name || t('Oddiy mijoz')}
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {formatDate(receipt.createdAt, false)} {formatTime(receipt.createdAt)} • #{receipt._id.slice(-8)}
+                          {formatDate(receipt.createdAt, true)} {formatTime(receipt.createdAt)} • #{receipt._id.slice(-8)}
                         </p>
                       </div>
                     </div>
@@ -738,7 +731,7 @@ export default function SalesReport() {
                       className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{formatDate(receipt.createdAt, false)}</p>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{formatDate(receipt.createdAt, true)}</p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">{formatTime(receipt.createdAt)}</p>
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-neutral-600 dark:text-neutral-400">
