@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
+
+const MONTHS_UZ = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+const MONTHS_SHORT_UZ = ['yan','fev','mart','apr','may','iyun','iyul','avg','sen','okt','noy','dek'];
+const DAYS_UZ = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
+
+const getDateLabel = (period: 'today' | 'week'): string => {
+  const now = new Date();
+  if (period === 'today') {
+    return `${now.getDate()} ${MONTHS_UZ[now.getMonth()]}, ${DAYS_UZ[now.getDay()]}`;
+  }
+  const diffToMonday = now.getDay() === 0 ? -6 : 1 - now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const mM = MONTHS_SHORT_UZ[monday.getMonth()];
+  const sM = MONTHS_SHORT_UZ[sunday.getMonth()];
+  return monday.getMonth() === sunday.getMonth()
+    ? `${monday.getDate()}-${sunday.getDate()} ${mM}, ${sunday.getFullYear()}`
+    : `${monday.getDate()} ${mM} - ${sunday.getDate()} ${sM}, ${sunday.getFullYear()}`;
+};
 import { 
  DollarSign, TrendingUp, ShoppingCart, Receipt, Package, 
  Clock, RefreshCw, ArrowUpRight, ArrowDownRight, X
@@ -59,7 +80,6 @@ export default function Dashboard() {
  const fetchTopProducts = async () => {
  try {
  const res = await api.get('/stats/top-products?limit=20');
- console.log('Top products data:', res.data);
  setTopProducts(res.data);
  } catch (err) {
  console.error('Error fetching top products:', err);
@@ -129,7 +149,7 @@ export default function Dashboard() {
  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
  <div>
  <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-50">{t("Umumiy ko'rinish")}</h2>
- <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{t("Biznesingiz holati")}</p>
+ <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{getDateLabel(period)}</p>
  </div>
  <div className="flex items-center gap-2">
  <div className="flex p-1 bg-white dark:bg-neutral-900 rounded-xl w-full sm:w-auto border-2 border-neutral-200 dark:border-neutral-800 shadow-sm">
