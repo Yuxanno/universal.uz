@@ -22,6 +22,22 @@ import { searchProducts } from '../../utils/productSearch';
 import PhoneInput from '../../components/PhoneInput';
 import './Kassa.modern.css';
 
+const MONTHS_UZ = ['yan','fev','mart','apr','may','iyun','iyul','avg','sen','okt','noy','dek'];
+const getWeekLabel = (offset: number): string => {
+  const now = new Date();
+  const diffToMonday = now.getDay() === 0 ? -6 : 1 - now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday + offset * 7);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const mM = MONTHS_UZ[monday.getMonth()];
+  const sM = MONTHS_UZ[sunday.getMonth()];
+  return monday.getMonth() === sunday.getMonth()
+    ? `${monday.getDate()}-${sunday.getDate()} ${mM}`
+    : `${monday.getDate()} ${mM} - ${sunday.getDate()} ${sM}`;
+};
+
 interface SavedReceipt {
  _id: string;
  items: { product: string; name: string; code: string; price: number; quantity: number }[];
@@ -1935,7 +1951,7 @@ window.onload = function() {
  </svg>
  </button>
  <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
- {historyWeekOffset === 0 ? 'Shu hafta' : historyWeekOffset === -1 ? "O'tgan hafta" : `${historyWeekOffset * -1} hafta oldin`}
+ {getWeekLabel(historyWeekOffset)}
  </span>
  <button
  onClick={() => { const o = historyWeekOffset + 1; setHistoryWeekOffset(o); loadHistoryForWeek(o); }}
