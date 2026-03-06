@@ -1,78 +1,50 @@
-const CACHE_NAME = 'universal-pos-v1';
-const urlsToCache = [
-  '/',
-  '/index.html'
-];
+const CACHE_NAME = 'universal-pos-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        // Кэшируем только те файлы, которые точно существуют
-        return cache.addAll(urlsToCache).catch((err) => {
-          console.log('Cache addAll error:', err);
-          // Не падаем, если не удалось закэшировать
-          return Promise.resolve();
-        });
-      })
+      .then((cache) => cache.addAll(['/', '/index.html']).catch(() => Promise.resolve()))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then((names) =>
+      Promise.all(names.map((name) => name !== CACHE_NAME && caches.delete(name)))
+    )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Игнорируем запросы к API
-  if (event.request.url.includes('/api/')) {
+  const url = new URL(event.request.url);
+
+  // Faqat GET so'rovlar - POST va boshqalarni o'tkazib yuborish
+  if (event.request.method !== 'GET') return;
+
+  // API va socket so'rovlarini to'xtatmaslik
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io/')) return;
+
+  // /assets/ JS/CSS chunk larini HECH QACHON cache qilmaslik
+  // (har build da hash o'zgaradi, eski hash lar 404 bo'ladi)
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
+  // HTML sahifalar: network-first, cache ga fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Проверяем что ответ валидный
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-
-        // Клонируем ответ для кэша
-        const responseToCache = response.clone();
-
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
         return response;
       })
-      .catch(() => {
-        // Если сеть недоступна, пытаемся взять из кэша
-        return caches.match(event.request).then((response) => {
-          if (response) {
-            return response;
-          }
-          // Если в кэше нет, возвращаем пустой ответ
-          return new Response('Offline', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain'
-            })
-          });
-        });
-      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match('/index.html'))
+      )
   );
 });
