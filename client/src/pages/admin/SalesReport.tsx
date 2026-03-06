@@ -671,7 +671,7 @@ export default function SalesReport() {
                           {receipt.customer?.name || t('Oddiy mijoz')}
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {formatTime(receipt.createdAt)} • #{receipt._id.slice(-8)}
+                          {formatDate(receipt.createdAt, false)} {formatTime(receipt.createdAt)} • #{receipt._id.slice(-8)}
                         </p>
                       </div>
                     </div>
@@ -737,8 +737,9 @@ export default function SalesReport() {
                       onClick={() => setSelectedReceipt(receipt)}
                       className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
                     >
-                      <td className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100">
-                        {formatTime(receipt.createdAt)}
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{formatDate(receipt.createdAt, false)}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{formatTime(receipt.createdAt)}</p>
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-neutral-600 dark:text-neutral-400">
                         #{receipt._id.slice(-8)}
