@@ -121,10 +121,11 @@ export default function Kassa() {
  region: ''
  });
  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
- const [showPurchaseHistory, setShowPurchaseHistory] = useState(false); // Tarix modal
- const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]); // Xaridlar tarixi
- const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null); // Tanlangan xarid batafsil
- const [isLoadingHistory, setIsLoadingHistory] = useState(false); // Loading holati
+ const [showPurchaseHistory, setShowPurchaseHistory] = useState(false);
+ const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
+ const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
+ const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+ const [historyWeekOffset, setHistoryWeekOffset] = useState(0);
  
  // SENIOR SOLUTION: Inline quantity input for selected product
  const [quantityInputProduct, setQuantityInputProduct] = useState<Product | null>(null);
@@ -684,24 +685,32 @@ export default function Kassa() {
  }, [displayedProducts, toast]);
  
  // Open purchase history (Tarix)
- const openPurchaseHistory = useCallback(async () => {
- // Modalni darhol ochish - tezroq UI
- setShowPurchaseHistory(true);
- setIsLoadingHistory(true); // Loading boshlanishi
- setPurchaseHistory([]); // Bo'sh array
- 
+ const loadHistoryForWeek = useCallback(async (offset: number) => {
+ setIsLoadingHistory(true);
+ setPurchaseHistory([]);
+ const now = new Date();
+ const diffToMonday = now.getDay() === 0 ? -6 : 1 - now.getDay();
+ const monday = new Date(now);
+ monday.setDate(now.getDate() + diffToMonday + offset * 7);
+ monday.setHours(0, 0, 0, 0);
+ const nextMonday = new Date(monday);
+ nextMonday.setDate(monday.getDate() + 7);
  try {
- const response = await api.get('/receipts?status=completed&isReturn=false&limit=50');
- setPurchaseHistory(response.data);
- console.log('📋 Xaridlar tarixi yuklandi:', response.data);
+   const response = await api.get(`/receipts?status=completed&isReturn=false&startDate=${monday.toISOString()}&endDate=${nextMonday.toISOString()}&limit=500`);
+   setPurchaseHistory(response.data);
  } catch (err) {
- console.error('❌ Xaridlar tarixini yuklashda xatolik:', err);
- setShowPurchaseHistory(false); // Xatolik bo'lsa modalni yopish
- showAlert('Xaridlar tarixini yuklashda xatolik', 'Xatolik', 'danger');
+   console.error('Xaridlar tarixini yuklashda xatolik:', err);
+   showAlert('Xaridlar tarixini yuklashda xatolik', 'Xatolik', 'danger');
  } finally {
- setIsLoadingHistory(false); // Loading tugashi
+   setIsLoadingHistory(false);
  }
  }, [showAlert]);
+
+ const openPurchaseHistory = useCallback(() => {
+ setShowPurchaseHistory(true);
+ setHistoryWeekOffset(0);
+ loadHistoryForWeek(0);
+ }, [loadHistoryForWeek]);
  
  // Calculate total amount
  const totalAmount = useMemo(() => {
@@ -1896,7 +1905,7 @@ window.onload = function() {
  <div className="bg-white dark:bg-neutral-800 rounded-3xl w-full max-w-2xl shadow-2xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col animate-scale-in border-2 border-indigo-200">
  {/* Header */}
  <div className="p-4 sm:p-6 bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/30 border-b border-indigo-200 flex-shrink-0">
- <div className="flex items-center justify-between">
+ <div className="flex items-center justify-between mb-3">
  <div className="flex items-center gap-3">
  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
@@ -1913,6 +1922,29 @@ window.onload = function() {
  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-white/50 dark:hover:bg-neutral-700 transition-colors flex-shrink-0"
  >
  <X className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-500 dark:text-neutral-400" />
+ </button>
+ </div>
+ {/* Week navigation */}
+ <div className="flex items-center justify-between bg-white/60 dark:bg-neutral-700/40 rounded-xl px-3 py-2">
+ <button
+ onClick={() => { const o = historyWeekOffset - 1; setHistoryWeekOffset(o); loadHistoryForWeek(o); }}
+ className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+ >
+ <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+ </svg>
+ </button>
+ <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+ {historyWeekOffset === 0 ? 'Shu hafta' : historyWeekOffset === -1 ? "O'tgan hafta" : `${historyWeekOffset * -1} hafta oldin`}
+ </span>
+ <button
+ onClick={() => { const o = historyWeekOffset + 1; setHistoryWeekOffset(o); loadHistoryForWeek(o); }}
+ disabled={historyWeekOffset >= 0}
+ className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+ >
+ <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+ <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+ </svg>
  </button>
  </div>
  </div>
