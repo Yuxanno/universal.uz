@@ -299,18 +299,24 @@ export default function SalesReport() {
   };
 
   const getPeriodDate = () => {
+    const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+    const MONTHS_S = ['yan','fev','mart','apr','may','iyun','iyul','avg','sen','okt','noy','dek'];
+    const DAYS = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
     const today = new Date();
     if (period === 'today') {
-      return formatDate(today, true); // DD.MM.YYYY
+      return `${today.getDate()} ${MONTHS[today.getMonth()]}, ${DAYS[today.getDay()]}`;
     }
     if (period === 'week') {
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return `${formatDate(weekAgo, false)} - ${formatDate(today, true)}`; // DD.MM - DD.MM.YYYY
+      const diff = today.getDay() === 0 ? -6 : 1 - today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + diff);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return monday.getMonth() === sunday.getMonth()
+        ? `${monday.getDate()}-${sunday.getDate()} ${MONTHS_S[monday.getMonth()]}, ${sunday.getFullYear()}`
+        : `${monday.getDate()} ${MONTHS_S[monday.getMonth()]} - ${sunday.getDate()} ${MONTHS_S[sunday.getMonth()]}, ${sunday.getFullYear()}`;
     }
-    // For month, show month name and year
-    const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
-    return `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+    return `${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
   };
 
   if (loading) {
